@@ -48,7 +48,7 @@ export type ServerMsg =
   | { type: 'lobby'; hostId: string; phase: 'lobby' | 'race'; settings: LobbySettings; clients: LobbyClient[] }
   | { type: 'start'; trackId: string; laps: number; slots: Slot[]; countdown: number }
   | { type: 'snap'; cars: NetCar[]; race: NetRace }
-  | { type: 'end'; results: ResultRow[] };
+  | { type: 'end'; results: ResultRow[]; /** best-lap leaderboard rank per car id */ ranks: Record<string, number> };
 
 const r2 = (v: number) => Math.round(v * 100) / 100;
 

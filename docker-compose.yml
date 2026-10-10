@@ -6,3 +6,6 @@ services:
     restart: unless-stopped
     ports:
       - "${SPIDI_PORT:-8090}:8090"
+    volumes:
+      # permanente Rangliste: data/leaderboard.json (git-ignoriert, Vorlage im Repo)
+      - ./data:/app/data
