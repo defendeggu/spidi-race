@@ -106,7 +106,7 @@ export function stepCar(c: CarState, spec: CarSpec, inp: CarInput, track: Track,
   c.braking = brk > 0 && vfOld > 0.5;
 
   // lateral grip
-  const gripBase = spec.grip * (c.offroad ? 0.65 : 1);
+  const gripBase = (spec.grip + track.bankGrip(i)) * (c.offroad ? 0.65 : 1);
   const grip = gripBase * (inp.handbrake ? 0.3 : 1);
   vl += clamp(-vl * 10, -grip, grip) * dt;
   c.skid = clamp((Math.abs(vl) - 2) / 6, 0, 1);

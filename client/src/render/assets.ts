@@ -10,6 +10,12 @@ export const NATURE_MODELS = [
   'rock_largeA', 'rock_largeB', 'rock_largeC', 'rock_tallA', 'stone_tallA', 'plant_bushLarge',
 ];
 export const BUILDING_MODELS = ['building-type-a', 'building-type-c', 'building-type-f', 'building-type-k', 'building-type-n', 'building-type-t'];
+export const CITY_MODELS = [
+  ...'abcdefghijklmn'.split('').map((c) => `building-${c}`),
+  ...'abcde'.split('').map((c) => `building-skyscraper-${c}`),
+  ...'acfhl'.split('').map((c) => `low-detail-building-${c}`),
+  'low-detail-building-wide-a',
+];
 export const TEXTURES = ['asphalt', 'grass', 'rock', 'snow', 'sand', 'gravel', 'concrete'] as const;
 export type TextureName = (typeof TEXTURES)[number];
 
@@ -60,6 +66,7 @@ export async function loadAssets(onProgress: (done: number, total: number) => vo
   CAR_MODELS.forEach((m) => addModel('cars', m));
   NATURE_MODELS.forEach((m) => addModel('nature', m));
   BUILDING_MODELS.forEach((m) => addModel('buildings', m));
+  CITY_MODELS.forEach((m) => addModel('city', m));
   for (const t of TEXTURES)
     jobs.push(async () => {
       const tex = await texLoader.loadAsync(`${BASE}textures/${t}.jpg`);

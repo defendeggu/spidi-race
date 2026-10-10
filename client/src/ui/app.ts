@@ -110,10 +110,14 @@ export class App {
     this.setScreen('credits', `
       <div class="menu panel wide">
         <h2>Credits</h2>
-        <p>Spidi Race v${__APP_VERSION__} – Code unter MIT-Lizenz.</p>
+        <p class="credits-head">
+          <b>Spidi Race</b> · Version ${__APP_VERSION__} <small>(<a href="https://semver.org/lang/de/" target="_blank" rel="noopener">SemVer</a>)</small><br />
+          Created by <b>Adrian S.</b> and <b>Anthropic Claude</b><br />
+          <a href="https://github.com/defendeggu/spidi-race" target="_blank" rel="noopener">github.com/defendeggu/spidi-race</a> – Code unter MIT-Lizenz
+        </p>
         <p class="hint">Grafiken (alle ${cc0}, Public Domain) – herzlichen Dank an:</p>
         <ul class="credits">
-          <li><b>Kenney</b> (<a href="https://kenney.nl" target="_blank" rel="noopener">kenney.nl</a>): Car Kit, Nature Kit, City Kit (Suburban)</li>
+          <li><b>Kenney</b> (<a href="https://kenney.nl" target="_blank" rel="noopener">kenney.nl</a>): Car Kit, Nature Kit, City Kit (Suburban), City Kit (Commercial)</li>
           <li><b>ambientCG</b> (<a href="https://ambientcg.com" target="_blank" rel="noopener">ambientcg.com</a>): Asphalt031, Grass004, Rock064, Snow010A, Ground080, Gravel043, Concrete034</li>
         </ul>
         <p class="hint">Sounds werden live im Browser synthetisiert. Inspiriert von <i>Need for Speed II: Special Edition</i> (1997).</p>

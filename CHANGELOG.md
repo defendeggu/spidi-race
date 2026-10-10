@@ -2,6 +2,19 @@
 
 Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.3.0] – 2026-10-10
+
+### Hinzugefügt
+- Neue Strecke **Downtown** (Stadtkurs, ~2 km): 90°-Ecken, Schikane, Unterführung, Häuserschluchten aus dem Kenney City Kit (Commercial), Gehsteige, Strassenlaternen
+- Neue Strecke **Speedway** (Superspeedway-Oval, ~5,5 km, 18 m breit): Steilkurven mit Übergangsbögen, fast permanent Vollgas, Tribünen mit Publikum, Fangzaun und Flutlichtmasten
+- Konfigurierbare Kurvenüberhöhung pro Strecke; Überhöhung erhöht den Grip (Physik und KI)
+- Tests: Speedway ist mit jedem Auto bei Endgeschwindigkeit fahrbar, Vollgas-Runde ohne Wandkontakt
+- Entwickler-Ansicht `?view=<strecke>@<meter>` zum Begutachten der Strecke
+- Credits: Link zum GitHub-Repo, „Created by Adrian S. and Anthropic Claude“, Versionsnummer nach SemVer
+
+### Behoben
+- Nach den Lawinengalerien (Alpenpass, Küstenstrasse) versperrte eine schräge, durchfahrbare Wand die halbe Fahrbahn
+
 ## [0.2.0] – 2026-10-10
 
 ### Hinzugefügt
@@ -27,5 +40,6 @@ Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog]
 - HUD mit Minimap, synthetischer Sound, 3 Kameras
 - Docker-Image und docker-compose (Port 8090)
 
+[0.3.0]: https://github.com/defendeggu/spidi-race/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/defendeggu/spidi-race/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/defendeggu/spidi-race/releases/tag/v0.1.0

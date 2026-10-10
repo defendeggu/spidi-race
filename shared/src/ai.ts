@@ -54,7 +54,6 @@ export class AIDriver {
     const steer = clamp(-err * 2.4, -1, 1);
 
     // target speed from curvature ahead, accounting for braking distance
-    const usableGrip = spec.grip * 0.88 * this.skill;
     const decel = spec.brake * 0.7;
     let vTarget = spec.topSpeed * (0.82 + 0.18 * this.skill);
     const scan = 25 + Math.max(0, vf) * 2.4;
@@ -62,7 +61,7 @@ export class AIDriver {
       const i = Math.floor(((((c.s + d) % track.length) + track.length) % track.length) / track.ds) % track.n;
       const k = Math.abs(track.curv[i]);
       if (k < 1e-4) continue;
-      const vMax = Math.sqrt(usableGrip / k);
+      const vMax = Math.sqrt(((spec.grip + track.bankGrip(i)) * 0.88 * this.skill) / k);
       vTarget = Math.min(vTarget, Math.sqrt(vMax * vMax + 2 * decel * d));
     }
 

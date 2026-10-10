@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { mulberry32, type Track } from '@spidi/shared';
+import { mulberry32, WALL_OFFSET, type Track } from '@spidi/shared';
 import { assetsReady, getModel, getTexture } from './assets';
 import { coastline, type Terrain } from './terrain';
 
@@ -150,7 +150,11 @@ export function buildScenery(track: Track, terrain: Terrain): THREE.Group {
     { model: 'rock_tallA', geo: fallback.rock, scale: 4 },
   ];
 
-  if (track.def.theme === 'alpine') {
+  if (track.def.theme === 'city') {
+    group.add(cityScenery(track, terrain));
+  } else if (track.def.theme === 'speedway') {
+    group.add(speedwayScenery(track, terrain));
+  } else if (track.def.theme === 'alpine') {
     const pines: Variant[] = [
       { model: 'tree_pineTallA', geo: fallback.pine, scale: 7.5 },
       { model: 'tree_pineTallB', geo: fallback.pine, scale: 6.5 },
@@ -200,6 +204,151 @@ export function buildScenery(track: Track, terrain: Terrain): THREE.Group {
     group.add(scatter(track, terrain, houses, 46, seed + 5, { minDist: 18, maxDist: 70, scale: [0.9, 1.15], ok: land, samples: Math.min(track.n, 320), square: true }));
     group.add(lighthouse(terrain));
   }
+  return group;
+}
+
+/** Footprint radius (m) of a variant at scale 1 of the placement matrix. */
+function footprint(v: Variant) {
+  const model = v.model && assetsReady() ? getModel(v.model) : undefined;
+  const box = new THREE.Box3();
+  if (model) {
+    box.setFromObject(model);
+    return (Math.max(box.max.x - box.min.x, box.max.z - box.min.z) / 2) * v.scale;
+  }
+  const g = v.geo!();
+  g.computeBoundingBox();
+  return Math.max(g.boundingBox!.max.x - g.boundingBox!.min.x, g.boundingBox!.max.z - g.boundingBox!.min.z) / 2;
+}
+
+/**
+ * Rows of buildings facing the road at a given distance from its edge. Rejects spots that would
+ * overlap the road (other parts of the circuit) or previously placed buildings.
+ */
+function buildingRows(
+  track: Track, terrain: Terrain, variants: Variant[], placed: { x: number; z: number; r: number }[],
+  opts: { gap: number; spacing: number; seed: number; jitter: number },
+) {
+  const rand = mulberry32(opts.seed);
+  const radii = variants.map(footprint);
+  const buckets: THREE.Matrix4[][] = variants.map(() => []);
+  const o = new THREE.Object3D();
+  const roadEdge = track.maxHalfWidth + WALL_OFFSET + 5;
+  const stepN = Math.max(1, Math.round(opts.spacing / track.ds));
+  for (let i = 0; i < track.n; i += stepN) {
+    for (const side of [-1, 1]) {
+      const vi = Math.floor(rand() * variants.length);
+      const r = radii[vi];
+      const off = roadEdge + opts.gap + r + rand() * opts.jitter;
+      const x = track.px[i] + track.rx[i] * side * off;
+      const z = track.pz[i] + track.rz[i] * side * off;
+      if (terrain.distAt(x, z) < roadEdge + r * 0.8) continue;
+      if (placed.some((p) => Math.hypot(p.x - x, p.z - z) < p.r + r + 1.5)) continue;
+      placed.push({ x, z, r });
+      // building front (+z of the model) faces the road
+      o.position.set(x, terrain.heightAt(x, z) - 0.3, z);
+      o.rotation.set(0, Math.atan2(-side * track.rx[i], -side * track.rz[i]), 0);
+      o.scale.setScalar(1);
+      o.updateMatrix();
+      buckets[vi].push(o.matrix.clone());
+    }
+  }
+  const group = new THREE.Group();
+  variants.forEach((v, i) => instanced(v, buckets[i]).forEach((m) => group.add(m)));
+  return group;
+}
+
+const towerGeo = (h: number, color: string) => () =>
+  mergeGeometries([
+    colored(new THREE.BoxGeometry(14, h, 14).translate(0, h / 2, 0), color),
+    colored(new THREE.BoxGeometry(14.4, 0.8, 14.4).translate(0, h, 0), '#555a60'),
+  ])!;
+
+function cityScenery(track: Track, terrain: Terrain) {
+  const group = new THREE.Group();
+  const seed = track.def.seed;
+  const placed: { x: number; z: number; r: number }[] = [];
+  const shops: Variant[] = 'abcdefghijk'.split('').map((c, i) => ({
+    model: `building-${c}`, geo: towerGeo(14 + (i % 4) * 5, i % 2 ? '#b9b2a6' : '#9fa8b3'), scale: 14,
+  }));
+  const towers: Variant[] = [
+    ...'abcde'.split('').map((c, i) => ({ model: `building-skyscraper-${c}`, geo: towerGeo(50 + i * 12, '#7f93a8'), scale: 15 })),
+    ...'lmn'.split('').map((c) => ({ model: `building-${c}`, geo: towerGeo(36, '#a39c90'), scale: 14 })),
+  ];
+  const background: Variant[] = 'acfhl'.split('').map((c, i) => ({ model: `low-detail-building-${c}`, geo: towerGeo(40 + i * 6, '#8d97a3'), scale: 26 }));
+  group.add(buildingRows(track, terrain, shops, placed, { gap: 1, spacing: 16, seed: seed + 1, jitter: 2 }));
+  group.add(buildingRows(track, terrain, towers, placed, { gap: 26, spacing: 26, seed: seed + 2, jitter: 8 }));
+  group.add(buildingRows(track, terrain, background, placed, { gap: 60, spacing: 34, seed: seed + 3, jitter: 40 }));
+  group.add(buildingRows(track, terrain, background, placed, { gap: 120, spacing: 40, seed: seed + 4, jitter: 80 }));
+  // a few trees on the sidewalks and in parks
+  group.add(scatter(track, terrain, [{ model: 'tree_default', geo: fallback.round, scale: 6 }, { model: 'tree_oak', geo: fallback.round, scale: 6 }], 160, seed + 5, {
+    minDist: 13, maxDist: 60, scale: [0.8, 1.1], ok: (x, _y, z) => !placed.some((p) => Math.hypot(p.x - x, p.z - z) < p.r + 3),
+  }));
+  group.add(streetLamps(track));
+  return group;
+}
+
+/** Street lamps on both sides of the road every ~30 m. */
+function streetLamps(track: Track) {
+  const pole = mergeGeometries([
+    colored(new THREE.CylinderGeometry(0.12, 0.16, 8, 6).translate(0, 4, 0), '#3d4248'),
+    colored(new THREE.BoxGeometry(0.15, 0.15, 2.2).translate(0, 8, 1.0), '#3d4248'),
+  ])!;
+  const lampGeo = new THREE.BoxGeometry(0.5, 0.15, 0.9).translate(0, 7.88, 1.9);
+  const every = Math.round(30 / track.ds);
+  const count = Math.ceil(track.n / every) * 2;
+  const poles = new THREE.InstancedMesh(pole, new THREE.MeshLambertMaterial({ vertexColors: true }), count);
+  const lamps = new THREE.InstancedMesh(lampGeo, new THREE.MeshBasicMaterial({ color: '#fff4cc' }), count);
+  const o = new THREE.Object3D();
+  let k = 0;
+  for (let i = 0; i < track.n; i += every) {
+    if (track.gallery[i]) continue;
+    for (const side of [-1, 1]) {
+      const lat = side * (track.hw[i] + WALL_OFFSET + 1.4);
+      o.position.set(track.px[i] + track.rx[i] * lat, track.py[i] + track.bank[i] * lat + 0.15, track.pz[i] + track.rz[i] * lat);
+      // arm points over the road
+      o.rotation.set(0, Math.atan2(-side * track.rx[i], -side * track.rz[i]), 0);
+      o.updateMatrix();
+      poles.setMatrixAt(k, o.matrix);
+      lamps.setMatrixAt(k++, o.matrix);
+    }
+  }
+  poles.count = lamps.count = k;
+  const g = new THREE.Group();
+  g.add(poles, lamps);
+  return g;
+}
+
+function speedwayScenery(track: Track, terrain: Terrain) {
+  const group = new THREE.Group();
+  const seed = track.def.seed;
+  const trees: Variant[] = [
+    { model: 'tree_default', geo: fallback.round, scale: 7 },
+    { model: 'tree_oak', geo: fallback.round, scale: 7 },
+    { model: 'tree_pineRoundA', geo: fallback.pine, scale: 7 },
+  ];
+  group.add(scatter(track, terrain, trees, 700, seed + 1, { minDist: 70, maxDist: 450, scale: [0.9, 1.4], ok: () => true }));
+  // floodlight towers around the outside of the oval
+  const outer = -Math.sign(track.curv.reduce((a, b) => a + b, 0)) || 1;
+  const towerGeo2 = mergeGeometries([
+    colored(new THREE.CylinderGeometry(0.4, 0.7, 34, 6).translate(0, 17, 0), '#8a9096'),
+    colored(new THREE.BoxGeometry(6, 3, 0.6).translate(0, 34, 0), '#3d4248'),
+  ])!;
+  const every = Math.round(160 / track.ds);
+  const towers = new THREE.InstancedMesh(towerGeo2, new THREE.MeshLambertMaterial({ vertexColors: true }), Math.ceil(track.n / every));
+  const lights = new THREE.InstancedMesh(new THREE.BoxGeometry(5.4, 2.4, 0.2).translate(0, 34, -0.35), new THREE.MeshBasicMaterial({ color: '#fffbe6' }), Math.ceil(track.n / every));
+  const o = new THREE.Object3D();
+  let k = 0;
+  for (let i = 0; i < track.n; i += every) {
+    const lat = outer * (track.hw[i] + WALL_OFFSET + 34);
+    const x = track.px[i] + track.rx[i] * lat, z = track.pz[i] + track.rz[i] * lat;
+    o.position.set(x, terrain.heightAt(x, z), z);
+    o.rotation.set(0, Math.atan2(-outer * track.rx[i], -outer * track.rz[i]) + Math.PI, 0);
+    o.updateMatrix();
+    towers.setMatrixAt(k, o.matrix);
+    lights.setMatrixAt(k++, o.matrix);
+  }
+  towers.count = lights.count = k;
+  group.add(towers, lights);
   return group;
 }
 

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { getTrack, type Track } from '@spidi/shared';
+import { getTrack, type Track, type TrackTheme } from '@spidi/shared';
 import { buildScenery } from './scenery';
 import { buildTerrain } from './terrain';
 import { buildTrackMesh } from './trackMesh';
@@ -12,9 +12,11 @@ export interface World {
   sun: THREE.DirectionalLight;
 }
 
-const THEMES = {
+const THEMES: Record<TrackTheme, { skyTop: string; horizon: string; fog: string; sun: string; ground: string; fogFar: number }> = {
   alpine: { skyTop: '#3b77c4', horizon: '#cfe1ef', fog: '#c8dbe9', sun: '#fff3dc', ground: '#4c6b3a', fogFar: 1500 },
   coast: { skyTop: '#2f86d1', horizon: '#f2e7d2', fog: '#e9e3d4', sun: '#fff0d0', ground: '#7d8b4a', fogFar: 1700 },
+  city: { skyTop: '#4a6fa8', horizon: '#f0d6b8', fog: '#d9cbbb', sun: '#ffe2b8', ground: '#6b6b66', fogFar: 1300 },
+  speedway: { skyTop: '#2a7fd8', horizon: '#dceaf5', fog: '#d4e4f0', sun: '#fff6e0', ground: '#5f8a3c', fogFar: 2600 },
 };
 
 function sky(top: string, horizon: string) {

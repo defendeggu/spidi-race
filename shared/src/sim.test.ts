@@ -16,7 +16,8 @@ describe('track', () => {
       for (const s of [0, 123.4, t.length / 2, t.length - 1]) {
         const p = t.pointAt(s, 3);
         const pr = t.project(p.x, p.z);
-        expect(Math.abs(pr.s - s)).toBeLessThan(0.5);
+        const ds = Math.abs(pr.s - s);
+        expect(Math.min(ds, t.length - ds)).toBeLessThan(0.5);
         expect(pr.lat).toBeCloseTo(3, 1);
       }
     });
@@ -24,14 +25,19 @@ describe('track', () => {
     it(`${def.id}: does not self-intersect (separate sections stay apart)`, () => {
       const t = getTrack(def.id);
       const clearance = t.maxHalfWidth * 2 + WALL_OFFSET * 2 + 6;
+      let min = Infinity, where = '';
       for (let i = 0; i < t.n; i += 3) {
-        for (let j = 0; j < t.n; j += 3) {
-          const along = Math.min(Math.abs(i - j), t.n - Math.abs(i - j)) * t.ds;
+        for (let j = i + 3; j < t.n; j += 3) {
+          const along = Math.min(j - i, t.n - (j - i)) * t.ds;
           if (along < 120) continue;
           const d = Math.hypot(t.px[i] - t.px[j], t.pz[i] - t.pz[j]);
-          expect(d, `samples ${i} and ${j}`).toBeGreaterThan(clearance);
+          if (d < min) {
+            min = d;
+            where = `samples ${i} and ${j}`;
+          }
         }
       }
+      expect(min, where).toBeGreaterThan(clearance);
     });
   }
 });
@@ -53,6 +59,35 @@ describe('physics', () => {
     const b = createCarState('b', t, 1, 0, Math.PI / 2);
     collideCars(a, b, 1400, 1400);
     expect(Math.hypot(a.x - b.x, a.z - b.z)).toBeGreaterThan(1.9);
+  });
+});
+
+describe('speedway', () => {
+  it('can be driven flat out: every car has enough grip at its real top speed in every corner', () => {
+    const t = getTrack('speedway');
+    for (const car of CARS) {
+      // terminal speed where engine force equals drag + rolling resistance (see stepCar)
+      let v = 0;
+      for (let k = 0; k < 60 * 120; k++) v += (car.accel * Math.max(0, 1 - (v / car.topSpeed) ** 2) - v * 0.015 - 0.25) * DT;
+      for (let i = 0; i < t.n; i++) {
+        expect(v * v * Math.abs(t.curv[i]), `${car.id} (${(v * 3.6).toFixed(0)} km/h) at sample ${i}`).toBeLessThan(car.grip + t.bankGrip(i));
+      }
+    }
+  });
+
+  it('a car holding full throttle and only steering laps without hitting the wall', () => {
+    const t = getTrack('speedway');
+    const g = gridPosition(t, 0);
+    const c = createCarState('a', t, g.x, g.z, g.heading);
+    const ai = new AIDriver(1, 1);
+    let wallHits = 0;
+    for (let k = 0; k < 60 * 90; k++) {
+      const inp = ai.update(c, CARS[1], t, DT);
+      stepCar(c, CARS[1], { ...inp, throttle: 1, brake: 0 }, t, DT);
+      if (c.impact > 2) wallHits++;
+    }
+    expect(wallHits).toBe(0);
+    expect(forwardSpeed(c)).toBeGreaterThan(75);
   });
 });
 

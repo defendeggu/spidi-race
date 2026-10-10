@@ -1,5 +1,37 @@
 import { Track, type TrackDef } from './track';
 
+/**
+ * Superspeedway oval built from a curvature profile: straight, clothoid (curvature ramps up),
+ * constant-radius turn, clothoid back to straight – so there is no sudden tight spot at the turn-in.
+ */
+function speedwayOval(straight: number, radius: number, transition: number): number[][] {
+  const k = 1 / radius;
+  const arc = Math.PI * radius - transition;
+  const half: [number, (s: number) => number][] = [
+    [straight, () => 0],
+    [transition, (s) => (k * s) / transition],
+    [arc, () => k],
+    [transition, (s) => k * (1 - s / transition)],
+  ];
+  const segs = [...half, ...half];
+  const step = 25;
+  const pts: number[][] = [];
+  let x = -straight / 2, z = 0, h = Math.PI / 2;
+  for (const [len, curv] of segs) {
+    const n = Math.round(len / step);
+    const ds = len / n;
+    for (let i = 0; i < n; i++) {
+      pts.push([x, z, 0]);
+      // midpoint integration; positive curvature turns left (heading increases)
+      const hm = h + (curv(i * ds) * ds) / 2;
+      x += Math.sin(hm) * ds;
+      z += Math.cos(hm) * ds;
+      h += curv((i + 0.5) * ds) * ds;
+    }
+  }
+  return pts;
+}
+
 export const TRACK_DEFS: TrackDef[] = [
   {
     id: 'alpenpass',
@@ -61,6 +93,55 @@ export const TRACK_DEFS: TrackDef[] = [
       [-120, 5, 12],
     ],
     galleries: [[12.25, 12.85, -1]],
+  },
+  {
+    id: 'downtown',
+    name: 'Downtown',
+    description: 'Stadtkurs zwischen Hochhäusern: enge 90°-Ecken, Schikane und eine Unterführung.',
+    theme: 'city',
+    width: 12,
+    defaultLaps: 3,
+    seed: 41,
+    points: [
+      [0, 0, 2, 14],
+      [320, 0, 2, 14],
+      [380, 8, 2],
+      [392, 60, 3],
+      [392, 220, 5],
+      [400, 262, 5],
+      [450, 272, 5],
+      [560, 272, 4],
+      [598, 290, 4],
+      [606, 340, 3],
+      [590, 380, 3],
+      [540, 392, 2],
+      [300, 392, 1],
+      [250, 400, 1],
+      [220, 420, 1],
+      [180, 425, 1],
+      [60, 425, 2],
+      [10, 410, 2],
+      [-8, 370, 3],
+      [-8, 230, 4],
+      [-30, 190, 4],
+      [-60, 170, 4],
+      [-90, 140, 3],
+      [-95, 90, 3],
+      [-80, 30, 2],
+      [-40, 4, 2],
+    ],
+    galleries: [[11.3, 11.8, 1]],
+  },
+  {
+    id: 'speedway',
+    name: 'Speedway',
+    description: 'Riesiges Superspeedway-Oval mit Steilkurven – fast permanent Vollgas mit über 280 km/h.',
+    theme: 'speedway',
+    width: 18,
+    defaultLaps: 3,
+    seed: 59,
+    points: speedwayOval(900, 520, 200),
+    banking: { gain: 160, max: 0.3 },
   },
 ];
 

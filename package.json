@@ -1,6 +1,6 @@
 {
   "name": "spidi-race",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "Arcade-Rennspiel im Browser, inspiriert von Need for Speed II SE",
   "workspaces": [

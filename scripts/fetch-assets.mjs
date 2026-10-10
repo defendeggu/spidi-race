@@ -29,6 +29,20 @@ const KENNEY = [
     files: ['building-type-a.glb', 'building-type-c.glb', 'building-type-f.glb', 'building-type-k.glb', 'building-type-n.glb', 'building-type-t.glb', 'Textures/colormap.png'],
   },
   {
+    name: 'City Kit (Commercial)',
+    page: 'https://kenney.nl/assets/city-kit-commercial',
+    url: 'https://kenney.nl/media/pages/assets/city-kit-commercial/a742d900eb-1753115042/kenney_city-kit-commercial_2.1.zip',
+    dir: 'Models/GLB format/',
+    out: 'city',
+    files: [
+      ...'abcdefghijklmn'.split('').map((c) => `building-${c}.glb`),
+      ...'abcde'.split('').map((c) => `building-skyscraper-${c}.glb`),
+      ...'acfhl'.split('').map((c) => `low-detail-building-${c}.glb`),
+      'low-detail-building-wide-a.glb',
+      'Textures/colormap.png',
+    ],
+  },
+  {
     name: 'Nature Kit',
     page: 'https://kenney.nl/assets/nature-kit',
     url: 'https://kenney.nl/media/pages/assets/nature-kit/37ac38a37b-1677698939/kenney_nature-kit.zip',
@@ -38,7 +52,7 @@ const KENNEY = [
       'tree_pineTallA.glb', 'tree_pineTallB.glb', 'tree_pineDefaultA.glb', 'tree_pineRoundA.glb', 'tree_pineSmallA.glb',
       'tree_oak.glb', 'tree_default.glb', 'tree_fat.glb', 'tree_thin.glb', 'tree_palmTall.glb', 'tree_palmBend.glb',
       'rock_largeA.glb', 'rock_largeB.glb', 'rock_largeC.glb', 'rock_tallA.glb', 'stone_tallA.glb', 'plant_bushLarge.glb',
-    ].map((f) => f),
+    ],
   },
 ];
 
