@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { mulberry32, WALL_OFFSET, type Track } from '@spidi/shared';
+import { getTexture, type TextureName } from './assets';
 import { bannerTexture, checkerTexture, chevronTexture } from './textures';
 
 type Profile = (i: number) => number[][]; // [lat, dy][]
@@ -12,8 +13,11 @@ type Colorer = (i: number, k: number) => THREE.Color;
 function strip(track: Track, profile: Profile, color: Colorer, include: (i: number) => boolean = () => true) {
   const pos: number[] = [];
   const col: number[] = [];
-  const { n, px, py, pz, rx, rz, bank } = track;
+  const uv: number[] = [];
+  const { n, px, py, pz, rx, rz, bank, ds } = track;
   const pt = (i: number, lat: number, dy: number) => [px[i] + rx[i] * lat, py[i] + bank[i] * lat + dy, pz[i] + rz[i] * lat];
+  // texture coordinates in metres: across = lateral offset + height (so walls are not stretched), along = arc length
+  const tc = (i: number, p: number[]) => [p[0] + p[1], i * ds];
   for (let i = 0; i < n; i++) {
     if (!include(i)) continue;
     const j = (i + 1) % n;
@@ -24,6 +28,7 @@ function strip(track: Track, profile: Profile, color: Colorer, include: (i: numb
       const c = pt(j, B[k][0], B[k][1]);
       const d = pt(j, B[k + 1][0], B[k + 1][1]);
       pos.push(...a, ...b, ...c, ...b, ...d, ...c);
+      uv.push(...tc(i, A[k]), ...tc(i, A[k + 1]), ...tc(i + 1, B[k]), ...tc(i, A[k + 1]), ...tc(i + 1, B[k + 1]), ...tc(i + 1, B[k]));
       const cl = color(i, k);
       for (let v = 0; v < 6; v++) col.push(cl.r, cl.g, cl.b);
     }
@@ -31,8 +36,21 @@ function strip(track: Track, profile: Profile, color: Colorer, include: (i: numb
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
   g.computeVertexNormals();
   return g;
+}
+
+/** Vertex-coloured material, optionally textured with a CC0 texture repeating every `metres`. */
+function surface(tex: TextureName | null, metres: number, double = false) {
+  const src = tex ? getTexture(tex) : undefined;
+  let map: THREE.Texture | null = null;
+  if (src) {
+    map = src.clone();
+    map.needsUpdate = true;
+    map.repeat.set(1 / metres, 1 / metres);
+  }
+  return new THREE.MeshLambertMaterial({ vertexColors: true, map, side: double ? THREE.DoubleSide : THREE.FrontSide });
 }
 
 /** Places an object at track sample i with lateral offset, facing along the track (or against with flip). */
@@ -54,11 +72,15 @@ export function buildTrackMesh(track: Track): THREE.Group {
   const vcDouble = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
   const hw = track.hw;
 
-  // road surface
-  const asphalt = C(alpine ? '#46484b' : '#4a4a4d');
-  const roadShades = Array.from({ length: track.n }, () => asphalt.clone().multiplyScalar(0.93 + rand() * 0.1));
+
+  const textured = !!getTexture('asphalt');
+  const W = WALL_OFFSET;
+
+  // road surface (vertex colours act as tint / variation on top of the texture)
+  const asphalt = textured ? C(alpine ? '#9a9a9a' : '#a8a5a0') : C(alpine ? '#46484b' : '#4a4a4d');
+  const roadShades = Array.from({ length: track.n }, () => asphalt.clone().multiplyScalar(0.94 + rand() * 0.08));
   const road = strip(track, (i) => [[-hw[i], 0], [0, 0], [hw[i], 0]], (i) => roadShades[i]);
-  group.add(new THREE.Mesh(road, vc));
+  group.add(new THREE.Mesh(road, surface('asphalt', 7)));
 
   // markings
   const white = C('#e9e9e2');
@@ -68,25 +90,29 @@ export function buildTrackMesh(track: Track): THREE.Group {
   group.add(new THREE.Mesh(strip(track, (i) => [[-hw[i] + 0.35, 0.025], [-hw[i] + 0.55, 0.025]], () => white), vc));
   group.add(new THREE.Mesh(strip(track, (i) => [[hw[i] - 0.55, 0.025], [hw[i] - 0.35, 0.025]], () => white), vc));
 
-  // curbs in corners, gravel shoulders elsewhere
-  const red = C('#c4262e'), curbWhite = C('#f0f0f0'), shoulder = C(alpine ? '#6f685a' : '#9b8d6c');
-  const curbColor = (i: number) => (Math.abs(track.curv[i]) > 0.012 ? (Math.floor(i / 1) % 2 ? red : curbWhite) : shoulder);
-  const W = WALL_OFFSET;
+  // gravel shoulders, red/white curbs on top of them in corners
+  const shoulder = textured ? C(alpine ? '#b8b0a0' : '#d8ccb0') : C(alpine ? '#6f685a' : '#9b8d6c');
+  const red = C('#c4262e'), curbWhite = C('#f0f0f0');
+  const inCorner = (i: number) => Math.abs(track.curv[i]) > 0.012;
   for (const side of [-1, 1]) {
-    const prof: Profile = (i) => (side < 0 ? [[-hw[i] - W, 0], [-hw[i] - 0.9, 0.02], [-hw[i], 0.02]] : [[hw[i], 0.02], [hw[i] + 0.9, 0.02], [hw[i] + W, 0]]);
-    group.add(new THREE.Mesh(strip(track, prof, (i, k) => ((side < 0 ? k === 1 : k === 0) ? curbColor(i) : shoulder)), vc));
+    group.add(new THREE.Mesh(strip(track, (i) => (side < 0 ? [[-hw[i] - W, 0], [-hw[i], 0.01]] : [[hw[i], 0.01], [hw[i] + W, 0]]), () => shoulder), surface('gravel', 3)));
+    group.add(new THREE.Mesh(strip(track, (i) => (side < 0 ? [[-hw[i] - 0.9, 0.03], [-hw[i], 0.03]] : [[hw[i], 0.03], [hw[i] + 0.9, 0.03]]), (i) => (i % 2 ? red : curbWhite), inCorner), vc));
   }
 
   // barriers + skirts down to the terrain
-  const verge = C(alpine ? '#5a6a3a' : '#8a8a55');
+  const verge = textured ? C(alpine ? '#9fb07a' : '#c8c088') : C(alpine ? '#5a6a3a' : '#8a8a55');
   for (const side of [-1, 1]) {
     const L = (i: number) => side * (hw[i] + W);
     if (alpine) {
       group.add(new THREE.Mesh(strip(track, (i) => [[L(i), 0.5], [L(i), 0.85]], () => C('#b8bfc6')), vcDouble));
     } else {
-      group.add(new THREE.Mesh(strip(track, (i) => [[L(i), 0], [L(i), 0.9], [L(i) + side * 0.5, 0.9], [L(i) + side * 0.5, 0]], (_i, k) => (k === 1 ? C('#d9cdb0') : C('#c2b391'))), vcDouble));
+      const wallTint = textured ? [C('#f2e6cc'), C('#e0d0b0')] : [C('#d9cdb0'), C('#c2b391')];
+      group.add(new THREE.Mesh(
+        strip(track, (i) => [[L(i), 0], [L(i), 0.9], [L(i) + side * 0.5, 0.9], [L(i) + side * 0.5, 0]], (_i, k) => (k === 1 ? wallTint[0] : wallTint[1])),
+        surface('concrete', 2.5, true),
+      ));
     }
-    group.add(new THREE.Mesh(strip(track, (i) => [[L(i), 0], [L(i) + side * 3.5, -2.2]], () => verge), vcDouble));
+    group.add(new THREE.Mesh(strip(track, (i) => [[L(i), 0], [L(i) + side * 3.5, -2.2]], () => verge), surface('grass', 4, true)));
   }
 
   // guardrail posts
@@ -116,8 +142,9 @@ function addGalleries(track: Track, group: THREE.Group) {
   const has = (i: number) => track.gallery[i] !== 0;
   if (!Array.from(track.gallery).some((g) => g !== 0)) return;
   const hw = track.hw;
-  const concrete = new THREE.Color('#aaa59b'), under = new THREE.Color('#6e6a63');
-  const mat = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
+  const textured = !!getTexture('concrete');
+  const concrete = new THREE.Color(textured ? '#e8e4dc' : '#aaa59b'), under = new THREE.Color(textured ? '#9a968e' : '#6e6a63');
+  const mat = surface('concrete', 4, true);
   const R = (i: number) => hw[i] + WALL_OFFSET + 1.4;
   const H = 6.4;
   group.add(new THREE.Mesh(strip(track, (i) => [[-R(i), H + 0.7], [R(i), H + 0.7]], () => concrete, has), mat));
@@ -128,7 +155,7 @@ function addGalleries(track: Track, group: THREE.Group) {
   group.add(new THREE.Mesh(strip(track, (i) => [[track.gallery[i] * (R(i) - 0.4), 0], [track.gallery[i] * (R(i) - 0.4), H]], () => under, has), mat));
   // valley-side pillars
   const pillarGeo = new THREE.BoxGeometry(0.9, H, 0.9);
-  const pillarMat = new THREE.MeshLambertMaterial({ color: '#a29d93' });
+  const pillarMat = new THREE.MeshLambertMaterial({ color: textured ? '#d8d4cc' : '#a29d93', map: getTexture('concrete') ?? null });
   for (let i = 0; i < track.n; i += 4) {
     if (!has(i)) continue;
     const p = new THREE.Mesh(pillarGeo, pillarMat);

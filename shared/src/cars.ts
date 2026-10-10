@@ -29,6 +29,8 @@ export interface CarSpec {
   mass: number;
   color: string;
   accent: string;
+  /** Kenney Car Kit model used by the client (visual only) */
+  model: string;
   shape: CarShape;
 }
 
@@ -36,7 +38,7 @@ export const CARS: CarSpec[] = [
   {
     id: 'falcone',
     name: 'Falcone Strada',
-    description: 'Italienischer V12 – ausgewogen und schnell',
+    description: 'Italienisches Sportcoupé – ausgewogen und schnell',
     topSpeed: 88,
     accel: 9.4,
     brake: 16,
@@ -47,12 +49,13 @@ export const CARS: CarSpec[] = [
     mass: 1450,
     color: '#c8102e',
     accent: '#1b1b1b',
+    model: 'sedan-sports',
     shape: { length: 4.5, width: 1.98, height: 0.86, roof: 1.18, cabinShift: -0.1, spoiler: false },
   },
   {
     id: 'sturmvogel',
     name: 'Sturmvogel RS',
-    description: 'Deutscher Biturbo – höchste Endgeschwindigkeit',
+    description: 'Futuristischer Prototyp – höchste Endgeschwindigkeit',
     topSpeed: 94,
     accel: 8.8,
     brake: 17,
@@ -63,12 +66,13 @@ export const CARS: CarSpec[] = [
     mass: 1400,
     color: '#c3cbd2',
     accent: '#222831',
+    model: 'race-future',
     shape: { length: 4.4, width: 1.92, height: 0.9, roof: 1.26, cabinShift: -0.25, spoiler: true },
   },
   {
     id: 'kaito',
     name: 'Kaito ZX',
-    description: 'Japanischer Leichtbau – Kurvenkünstler',
+    description: 'Leichter Formelwagen – Kurvenkünstler',
     topSpeed: 82,
     accel: 9.8,
     brake: 17.5,
@@ -79,12 +83,13 @@ export const CARS: CarSpec[] = [
     mass: 1250,
     color: '#f2c500',
     accent: '#111111',
+    model: 'race',
     shape: { length: 4.2, width: 1.86, height: 0.84, roof: 1.2, cabinShift: 0.05, spoiler: true },
   },
   {
     id: 'brutale',
     name: 'Brutale V10',
-    description: 'Amerikanisches Muscle-Monster – brutale Beschleunigung',
+    description: 'Hot Hatch mit V10 – brutale Beschleunigung',
     topSpeed: 86,
     accel: 11,
     brake: 14.5,
@@ -95,6 +100,7 @@ export const CARS: CarSpec[] = [
     mass: 1650,
     color: '#1f7a3a',
     accent: '#f4f4f4',
+    model: 'hatchback-sports',
     shape: { length: 4.6, width: 2.0, height: 0.92, roof: 1.22, cabinShift: -0.35, spoiler: false },
   },
 ];

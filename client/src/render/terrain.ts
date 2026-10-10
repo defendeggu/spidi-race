@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { fbm, lerp, mulberry32, smoothstep, WALL_OFFSET, type Track } from '@spidi/shared';
+import { getTexture } from './assets';
 
 export interface Terrain {
   mesh: THREE.Mesh;
@@ -82,33 +83,47 @@ export function buildTerrain(track: Track): Terrain {
   geo.computeVertexNormals();
   const nor = geo.attributes.normal as THREE.BufferAttribute;
   const colors = new Float32Array(pos.count * 3);
+  const splat = new Float32Array(pos.count * 4);
   const rand = mulberry32(track.def.seed);
   const c = new THREE.Color();
-  const pal = palette(track.def.theme);
+  const textures = splatTextures(track.def.theme);
+  // with textures the vertex colours only tint; without, they are the whole look
+  const pal = textures ? tintPalette(track.def.theme) : palette(track.def.theme);
+  const w = [0, 0, 0, 0];
+  /** blend colour and texture weights towards layer `layer` (0 grass, 1 rock, 2 snow/sand, 3 gravel) */
+  const mix = (col: THREE.Color, layer: number, t: number) => {
+    c.lerp(col, t);
+    for (let q = 0; q < 4; q++) w[q] = w[q] * (1 - t) + (q === layer ? t : 0);
+  };
   for (let k = 0; k < pos.count; k++) {
     const y = pos.getY(k), x = pos.getX(k), z = pos.getZ(k);
     const slope = 1 - nor.getY(k);
     const d = dists[k];
     const v = fbm(x * 0.02, z * 0.02, 99, 2);
+    c.copy(pal.grass).lerp(pal.grass2, v);
+    w[0] = 1;
+    w[1] = w[2] = w[3] = 0;
     if (track.def.theme === 'alpine') {
-      c.copy(pal.grass).lerp(pal.grass2, v);
-      if (slope > 0.28) c.lerp(pal.rock, smoothstep(0.28, 0.45, slope));
+      if (slope > 0.28) mix(pal.rock, 1, smoothstep(0.28, 0.45, slope));
       const snowLine = 125 + v * 40;
-      if (y > snowLine && slope < 0.55) c.lerp(pal.snow, smoothstep(snowLine, snowLine + 25, y));
+      if (y > snowLine && slope < 0.55) mix(pal.snow, 2, smoothstep(snowLine, snowLine + 25, y));
     } else {
-      c.copy(pal.grass).lerp(pal.grass2, v);
-      if (slope > 0.3) c.lerp(pal.rock, smoothstep(0.3, 0.5, slope));
-      if (y < 3) c.lerp(pal.sand, smoothstep(3, 0.5, y));
-      if (y < -2) c.lerp(pal.seabed, smoothstep(-2, -8, y));
+      if (slope > 0.3) mix(pal.rock, 1, smoothstep(0.3, 0.5, slope));
+      if (y < 3) mix(pal.sand, 2, smoothstep(3, 0.5, y));
+      if (y < -2) mix(pal.seabed, 2, smoothstep(-2, -8, y));
     }
-    if (d < near + 4) c.lerp(pal.verge, 1 - smoothstep(near, near + 4, d));
+    if (d < near + 4) mix(pal.verge, 3, 1 - smoothstep(near, near + 4, d));
     const jitter = 0.94 + rand() * 0.1;
     colors[k * 3] = c.r * jitter;
     colors[k * 3 + 1] = c.g * jitter;
     colors[k * 3 + 2] = c.b * jitter;
+    splat.set(w, k * 4);
   }
   geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-  const mesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
+  geo.setAttribute('splat', new THREE.BufferAttribute(splat, 4));
+  const material = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: !textures });
+  if (textures) applySplatShader(material, textures);
+  const mesh = new THREE.Mesh(geo, material);
 
   const sample = (arr: Float32Array, x: number, z: number) => {
     const fx = THREE.MathUtils.clamp((x - minX) / step, 0, RES - 0.001);
@@ -127,4 +142,49 @@ function palette(theme: string) {
   return theme === 'alpine'
     ? { grass: C('#4c7a34'), grass2: C('#6b8f3e'), rock: C('#7b756d'), snow: C('#f1f4f7'), verge: C('#6a604c'), sand: C('#c9b98a'), seabed: C('#3b5f6b') }
     : { grass: C('#7d9443'), grass2: C('#a3a457'), rock: C('#a38f70'), snow: C('#ffffff'), verge: C('#8a7d5c'), sand: C('#dcc995'), seabed: C('#4f7d82') };
+}
+
+/** Vertex tints used on top of the textures. */
+function tintPalette(theme: string) {
+  const C = (h: string) => new THREE.Color(h);
+  return theme === 'alpine'
+    ? { grass: C('#e6eecf'), grass2: C('#c7d49a'), rock: C('#e2ddd6'), snow: C('#ffffff'), verge: C('#d8d0c0'), sand: C('#ffffff'), seabed: C('#ffffff') }
+    : { grass: C('#f0eac0'), grass2: C('#d6d08f'), rock: C('#f0e0c8'), snow: C('#ffffff'), verge: C('#e8dcc0'), sand: C('#fff8e8'), seabed: C('#6f8f90') };
+}
+
+function splatTextures(theme: string) {
+  const names = ['grass', 'rock', theme === 'alpine' ? 'snow' : 'sand', 'gravel'] as const;
+  const tex = names.map((n) => getTexture(n));
+  return tex.every((t) => t) ? (tex as THREE.Texture[]) : null;
+}
+
+/** Extend the Lambert material: blend 4 world-projected textures by the per-vertex 'splat' weights. */
+function applySplatShader(material: THREE.MeshLambertMaterial, tex: THREE.Texture[]) {
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.tSplat0 = { value: tex[0] };
+    shader.uniforms.tSplat1 = { value: tex[1] };
+    shader.uniforms.tSplat2 = { value: tex[2] };
+    shader.uniforms.tSplat3 = { value: tex[3] };
+    shader.uniforms.uSplatScale = { value: new THREE.Vector4(1 / 7, 1 / 12, 1 / 10, 1 / 4) };
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nattribute vec4 splat;\nvarying vec4 vSplat;\nvarying vec2 vWorldXZ;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvSplat = splat;\nvWorldXZ = (modelMatrix * vec4(transformed, 1.0)).xz;');
+    shader.fragmentShader = shader.fragmentShader
+      .replace(
+        '#include <common>',
+        `#include <common>
+        uniform sampler2D tSplat0; uniform sampler2D tSplat1; uniform sampler2D tSplat2; uniform sampler2D tSplat3;
+        uniform vec4 uSplatScale;
+        varying vec4 vSplat; varying vec2 vWorldXZ;
+        // two scales per layer hide the tiling
+        vec3 layer(sampler2D t, float s) { return mix(texture2D(t, vWorldXZ * s).rgb, texture2D(t, vWorldXZ * s * 0.23).rgb, 0.45); }`,
+      )
+      .replace(
+        '#include <map_fragment>',
+        `vec4 sw = vSplat / max(0.0001, vSplat.x + vSplat.y + vSplat.z + vSplat.w);
+        vec3 splatColor = layer(tSplat0, uSplatScale.x) * sw.x + layer(tSplat1, uSplatScale.y) * sw.y
+          + layer(tSplat2, uSplatScale.z) * sw.z + layer(tSplat3, uSplatScale.w) * sw.w;
+        diffuseColor.rgb *= splatColor;`,
+      );
+  };
 }
