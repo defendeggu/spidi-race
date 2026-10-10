@@ -5,6 +5,7 @@ Sie wurden mit `npm run assets` (scripts/fetch-assets.mjs) heruntergeladen. Dank
 
 - **Car Kit** von Kenney (www.kenney.nl), CC0 – https://kenney.nl/assets/car-kit → `cars/`
 - **City Kit (Suburban)** von Kenney (www.kenney.nl), CC0 – https://kenney.nl/assets/city-kit-suburban → `buildings/`
+- **City Kit (Commercial)** von Kenney (www.kenney.nl), CC0 – https://kenney.nl/assets/city-kit-commercial → `city/`
 - **Nature Kit** von Kenney (www.kenney.nl), CC0 – https://kenney.nl/assets/nature-kit → `nature/`
 - **Asphalt031** von ambientCG (ambientcg.com), CC0 – https://ambientcg.com/view?id=Asphalt031 → `textures/asphalt.jpg`
 - **Grass004** von ambientCG (ambientcg.com), CC0 – https://ambientcg.com/view?id=Grass004 → `textures/grass.jpg`

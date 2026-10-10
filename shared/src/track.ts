@@ -1,6 +1,6 @@
 import { clamp, lerp } from './math';
 
-export type TrackTheme = 'alpine' | 'coast';
+export type TrackTheme = 'alpine' | 'coast' | 'city' | 'speedway';
 
 export interface TrackDef {
   id: string;
@@ -15,6 +15,8 @@ export interface TrackDef {
   galleries?: number[][];
   defaultLaps: number;
   seed: number;
+  /** road banking in corners: slope = -curvature * gain, clamped to ±max (default gain 4, max 0.08) */
+  banking?: { gain: number; max: number };
 }
 
 export interface Projection {
@@ -164,7 +166,8 @@ export class Track {
       this.curv[j] = ((this.tx[b] - this.tx[a]) * this.rx[j] + (this.tz[b] - this.tz[a]) * this.rz[j]) / (2 * this.ds);
     }
     smoothCircular(this.curv, 3, 2);
-    for (let j = 0; j < n; j++) this.bank[j] = clamp(-this.curv[j] * 4, -0.08, 0.08);
+    const bk = def.banking ?? { gain: 4, max: 0.08 };
+    for (let j = 0; j < n; j++) this.bank[j] = clamp(-this.curv[j] * bk.gain, -bk.max, bk.max);
     smoothCircular(this.bank, 4, 2);
 
     const bd = this.bounds;
@@ -173,6 +176,11 @@ export class Track {
       bd.minZ = Math.min(bd.minZ, this.pz[j]); bd.maxZ = Math.max(bd.maxZ, this.pz[j]);
       bd.minY = Math.min(bd.minY, this.py[j]); bd.maxY = Math.max(bd.maxY, this.py[j]);
     }
+  }
+
+  /** Extra lateral grip (m/s²) from the road's banking at sample i. */
+  bankGrip(i: number) {
+    return 9.81 * Math.abs(this.bank[i]) * 0.9;
   }
 
   get maxHalfWidth() {

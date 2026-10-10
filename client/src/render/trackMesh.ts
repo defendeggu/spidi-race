@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { mulberry32, WALL_OFFSET, type Track } from '@spidi/shared';
+import { mulberry32, WALL_OFFSET, type Track, type TrackTheme } from '@spidi/shared';
 import { getTexture, type TextureName } from './assets';
 import { bannerTexture, checkerTexture, chevronTexture } from './textures';
 
@@ -63,21 +63,39 @@ function placeAt(track: Track, obj: THREE.Object3D, i: number, lat: number, dy: 
   obj.rotation.y = Math.atan2(track.tx[i], track.tz[i]) + rotY;
 }
 
+interface TrackStyle {
+  /** asphalt tint with texture / flat colour without */
+  asphalt: [string, string];
+  centre: 'dashed-white' | 'dashed-yellow' | 'lanes' | 'none';
+  shoulder: [string, string];
+  curbs: 'redwhite' | 'kerb' | 'none';
+  barrier: 'guardrail' | 'stonewall' | 'jersey' | 'safer';
+  verge: [string, string];
+  vergeTex: TextureName;
+  chevrons: boolean;
+}
+
+const STYLES: Record<TrackTheme, TrackStyle> = {
+  alpine: { asphalt: ['#9a9a9a', '#46484b'], centre: 'dashed-white', shoulder: ['#b8b0a0', '#6f685a'], curbs: 'redwhite', barrier: 'guardrail', verge: ['#9fb07a', '#5a6a3a'], vergeTex: 'grass', chevrons: true },
+  coast: { asphalt: ['#a8a5a0', '#4a4a4d'], centre: 'dashed-yellow', shoulder: ['#d8ccb0', '#9b8d6c'], curbs: 'redwhite', barrier: 'stonewall', verge: ['#c8c088', '#8a8a55'], vergeTex: 'grass', chevrons: true },
+  city: { asphalt: ['#8e8e8e', '#3e3f42'], centre: 'dashed-white', shoulder: ['#d0d0d0', '#8a8a88'], curbs: 'kerb', barrier: 'jersey', verge: ['#d4d4d4', '#8a8a88'], vergeTex: 'concrete', chevrons: false },
+  speedway: { asphalt: ['#8a8a8a', '#3a3b3e'], centre: 'lanes', shoulder: ['#909090', '#4a4a4d'], curbs: 'none', barrier: 'safer', verge: ['#b8c8a0', '#5f8a3c'], vergeTex: 'grass', chevrons: false },
+};
+
 export function buildTrackMesh(track: Track): THREE.Group {
   const group = new THREE.Group();
-  const alpine = track.def.theme === 'alpine';
+  const style = STYLES[track.def.theme];
   const rand = mulberry32(track.def.seed + 3);
   const C = (h: string) => new THREE.Color(h);
   const vc = new THREE.MeshLambertMaterial({ vertexColors: true });
   const vcDouble = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
   const hw = track.hw;
-
-
   const textured = !!getTexture('asphalt');
+  const pick = (pair: [string, string]) => C(textured ? pair[0] : pair[1]);
   const W = WALL_OFFSET;
 
   // road surface (vertex colours act as tint / variation on top of the texture)
-  const asphalt = textured ? C(alpine ? '#9a9a9a' : '#a8a5a0') : C(alpine ? '#46484b' : '#4a4a4d');
+  const asphalt = pick(style.asphalt);
   const roadShades = Array.from({ length: track.n }, () => asphalt.clone().multiplyScalar(0.94 + rand() * 0.08));
   const road = strip(track, (i) => [[-hw[i], 0], [0, 0], [hw[i], 0]], (i) => roadShades[i]);
   group.add(new THREE.Mesh(road, surface('asphalt', 7)));
@@ -85,46 +103,86 @@ export function buildTrackMesh(track: Track): THREE.Group {
   // markings
   const white = C('#e9e9e2');
   const yellow = C('#e8c22a');
-  const center = alpine ? white : yellow;
-  group.add(new THREE.Mesh(strip(track, () => [[-0.12, 0.025], [0.12, 0.025]], () => center, (i) => Math.floor(i / 3) % 2 === 0), vc));
-  group.add(new THREE.Mesh(strip(track, (i) => [[-hw[i] + 0.35, 0.025], [-hw[i] + 0.55, 0.025]], () => white), vc));
-  group.add(new THREE.Mesh(strip(track, (i) => [[hw[i] - 0.55, 0.025], [hw[i] - 0.35, 0.025]], () => white), vc));
+  const line = (lat: (i: number) => number, width: number, color: THREE.Color, dashed: boolean) =>
+    group.add(new THREE.Mesh(
+      strip(track, (i) => [[lat(i) - width / 2, 0.025], [lat(i) + width / 2, 0.025]], () => color, dashed ? (i) => Math.floor(i / 3) % 2 === 0 : undefined),
+      vc,
+    ));
+  if (style.centre === 'dashed-white' || style.centre === 'dashed-yellow') line(() => 0, 0.24, style.centre === 'dashed-white' ? white : yellow, true);
+  if (style.centre === 'lanes') for (const f of [-1 / 3, 1 / 3]) line((i) => hw[i] * 2 * f, 0.2, white, true);
+  line((i) => -hw[i] + 0.45, 0.2, white, false);
+  line((i) => hw[i] - 0.45, 0.2, style.centre === 'lanes' ? yellow : white, false);
 
-  // gravel shoulders, red/white curbs on top of them in corners
-  const shoulder = textured ? C(alpine ? '#b8b0a0' : '#d8ccb0') : C(alpine ? '#6f685a' : '#9b8d6c');
-  const red = C('#c4262e'), curbWhite = C('#f0f0f0');
+  // shoulders, curbs in corners (racing) or grey kerbstones (city)
+  const shoulder = pick(style.shoulder);
+  const red = C('#c4262e'), curbWhite = C('#f0f0f0'), kerb = C(textured ? '#e4e4e4' : '#a8a8a8');
   const inCorner = (i: number) => Math.abs(track.curv[i]) > 0.012;
   for (const side of [-1, 1]) {
-    group.add(new THREE.Mesh(strip(track, (i) => (side < 0 ? [[-hw[i] - W, 0], [-hw[i], 0.01]] : [[hw[i], 0.01], [hw[i] + W, 0]]), () => shoulder), surface('gravel', 3)));
-    group.add(new THREE.Mesh(strip(track, (i) => (side < 0 ? [[-hw[i] - 0.9, 0.03], [-hw[i], 0.03]] : [[hw[i], 0.03], [hw[i] + 0.9, 0.03]]), (i) => (i % 2 ? red : curbWhite), inCorner), vc));
+    group.add(new THREE.Mesh(
+      strip(track, (i) => (side < 0 ? [[-hw[i] - W, 0], [-hw[i], 0.01]] : [[hw[i], 0.01], [hw[i] + W, 0]]), () => shoulder),
+      surface(style.curbs === 'none' ? 'asphalt' : 'gravel', style.curbs === 'none' ? 7 : 3),
+    ));
+    const curbProfile = (i: number) => (side < 0 ? [[-hw[i] - 0.9, 0.03], [-hw[i], 0.03]] : [[hw[i], 0.03], [hw[i] + 0.9, 0.03]]);
+    if (style.curbs === 'redwhite') group.add(new THREE.Mesh(strip(track, curbProfile, (i) => (i % 2 ? red : curbWhite), inCorner), vc));
+    if (style.curbs === 'kerb') {
+      group.add(new THREE.Mesh(strip(track, (i) => (side < 0 ? [[-hw[i] - 0.3, 0.12], [-hw[i], 0.12]] : [[hw[i], 0.12], [hw[i] + 0.3, 0.12]]), () => kerb), surface('concrete', 2)));
+    }
   }
 
-  // barriers + skirts down to the terrain
-  const verge = textured ? C(alpine ? '#9fb07a' : '#c8c088') : C(alpine ? '#5a6a3a' : '#8a8a55');
+  // barriers + skirts down to the terrain (deeper where the road is banked)
+  const verge = pick(style.verge);
+  const outerSide = -Math.sign(track.curv.reduce((a, b) => a + b, 0)) || 1;
   for (const side of [-1, 1]) {
     const L = (i: number) => side * (hw[i] + W);
-    if (alpine) {
-      group.add(new THREE.Mesh(strip(track, (i) => [[L(i), 0.5], [L(i), 0.85]], () => C('#b8bfc6')), vcDouble));
-    } else {
-      const wallTint = textured ? [C('#f2e6cc'), C('#e0d0b0')] : [C('#d9cdb0'), C('#c2b391')];
+    const wall = (height: number, thick: number, tint: [string, string], metres: number) => {
+      const t = C(textured ? tint[0] : tint[1]);
+      const top = t.clone().multiplyScalar(1.08);
       group.add(new THREE.Mesh(
-        strip(track, (i) => [[L(i), 0], [L(i), 0.9], [L(i) + side * 0.5, 0.9], [L(i) + side * 0.5, 0]], (_i, k) => (k === 1 ? wallTint[0] : wallTint[1])),
-        surface('concrete', 2.5, true),
+        strip(track, (i) => [[L(i), 0], [L(i), height], [L(i) + side * thick, height], [L(i) + side * thick, 0]], (_i, k) => (k === 1 ? top : t)),
+        surface('concrete', metres, true),
       ));
+    };
+    switch (style.barrier) {
+      case 'guardrail':
+        group.add(new THREE.Mesh(strip(track, (i) => [[L(i), 0.5], [L(i), 0.85]], () => C('#b8bfc6')), vcDouble));
+        break;
+      case 'stonewall':
+        wall(0.9, 0.5, ['#f2e6cc', '#d9cdb0'], 2.5);
+        break;
+      case 'jersey':
+        wall(1.0, 0.6, ['#e8e8e6', '#b5b5b2'], 2.5);
+        break;
+      case 'safer':
+        wall(1.3, 0.5, ['#f6f6f6', '#d8d8d8'], 3);
+        if (side === outerSide) {
+          // catch fence above the outer wall
+          const fence = new THREE.MeshLambertMaterial({ color: '#c8ccd0', transparent: true, opacity: 0.35, side: THREE.DoubleSide, depthWrite: false });
+          group.add(new THREE.Mesh(strip(track, (i) => [[L(i) + side * 0.25, 1.3], [L(i) + side * 0.25, 5.5]], () => C('#ffffff')), fence));
+        }
+        break;
     }
-    group.add(new THREE.Mesh(strip(track, (i) => [[L(i), 0], [L(i) + side * 3.5, -2.2]], () => verge), surface('grass', 4, true)));
+    const drop = (i: number) => 2.2 + Math.abs(track.bank[i]) * 14;
+    if (style.barrier === 'jersey') {
+      // city: raised sidewalk behind the barrier, then down to the ground
+      group.add(new THREE.Mesh(strip(track, (i) => [[L(i), 0.15], [L(i) + side * 5, 0.15]], () => verge), surface('concrete', 3, true)));
+      group.add(new THREE.Mesh(strip(track, (i) => [[L(i) + side * 5, 0.15], [L(i) + side * 6, -drop(i)]], () => verge), surface('concrete', 3, true)));
+    } else {
+      group.add(new THREE.Mesh(strip(track, (i) => [[L(i), 0], [L(i) + side * 3.5, -drop(i)]], () => verge), surface(style.vergeTex, 4, true)));
+    }
   }
 
-  // guardrail posts
-  if (alpine) {
-    const postGeo = new THREE.BoxGeometry(0.14, 0.9, 0.14);
-    const count = Math.ceil(track.n / 2) * 2;
-    const posts = new THREE.InstancedMesh(postGeo, new THREE.MeshLambertMaterial({ color: '#8d949a' }), count);
+  // guardrail / fence posts
+  const postEvery = style.barrier === 'guardrail' ? 2 : style.barrier === 'safer' ? 3 : 0;
+  if (postEvery) {
+    const tall = style.barrier === 'safer';
+    const postGeo = new THREE.BoxGeometry(0.14, tall ? 5.5 : 0.9, 0.14);
+    const posts = new THREE.InstancedMesh(postGeo, new THREE.MeshLambertMaterial({ color: tall ? '#9aa0a6' : '#8d949a' }), Math.ceil(track.n / postEvery) * 2);
     const o = new THREE.Object3D();
     let k = 0;
-    for (let i = 0; i < track.n; i += 2)
+    for (let i = 0; i < track.n; i += postEvery)
       for (const side of [-1, 1]) {
-        placeAt(track, o, i, side * (hw[i] + W + 0.1), 0.45);
+        if (tall && side !== outerSide) continue;
+        placeAt(track, o, i, side * (hw[i] + W + (tall ? 0.25 : 0.1)), tall ? 2.75 : 0.45);
         o.updateMatrix();
         posts.setMatrixAt(k++, o.matrix);
       }
@@ -134,7 +192,8 @@ export function buildTrackMesh(track: Track): THREE.Group {
 
   addGalleries(track, group);
   addStartLine(track, group);
-  addChevrons(track, group);
+  if (style.chevrons) addChevrons(track, group);
+  if (track.def.theme === 'speedway') addGrandstands(track, group, outerSide);
   return group;
 }
 
@@ -152,7 +211,9 @@ function addGalleries(track: Track, group: THREE.Group) {
   group.add(new THREE.Mesh(strip(track, (i) => [[-R(i), H], [-R(i), H + 0.7]], () => concrete, has), mat));
   group.add(new THREE.Mesh(strip(track, (i) => [[R(i), H], [R(i), H + 0.7]], () => concrete, has), mat));
   // mountain-side wall
-  group.add(new THREE.Mesh(strip(track, (i) => [[track.gallery[i] * (R(i) - 0.4), 0], [track.gallery[i] * (R(i) - 0.4), H]], () => under, has), mat));
+  // side of the gallery at sample i; the quad after the last gallery sample reuses its neighbour's side
+  const sideAt = (i: number) => track.gallery[i] || track.gallery[(i - 1 + track.n) % track.n] || track.gallery[(i + 1) % track.n];
+  group.add(new THREE.Mesh(strip(track, (i) => [[sideAt(i) * (R(i) - 0.4), 0], [sideAt(i) * (R(i) - 0.4), H]], () => under, has), mat));
   // valley-side pillars
   const pillarGeo = new THREE.BoxGeometry(0.9, H, 0.9);
   const pillarMat = new THREE.MeshLambertMaterial({ color: textured ? '#d8d4cc' : '#a29d93', map: getTexture('concrete') ?? null });
@@ -160,6 +221,44 @@ function addGalleries(track: Track, group: THREE.Group) {
     if (!has(i)) continue;
     const p = new THREE.Mesh(pillarGeo, pillarMat);
     placeAt(track, p, i, -track.gallery[i] * (R(i) - 0.4), H / 2);
+    group.add(p);
+  }
+}
+
+/** Stepped grandstands with a crowd along the start/finish straight (outside of the oval). */
+function addGrandstands(track: Track, group: THREE.Group, side: number) {
+  const from = Math.round(40 / track.ds), to = Math.round(820 / track.ds);
+  const inRange = (i: number) => i >= from && i < to;
+  const rows = 14, depth = 1.1, rise = 0.65, base = 2.2;
+  const start = (i: number) => track.hw[i] + WALL_OFFSET + 3;
+  const profile = (i: number) => {
+    const L = start(i);
+    const pts: number[][] = [[L, 0], [L, base]];
+    for (let r = 0; r < rows; r++) {
+      pts.push([L + r * depth + depth, base + r * rise]);
+      pts.push([L + r * depth + depth, base + (r + 1) * rise]);
+    }
+    pts.push([L + rows * depth + 0.01, 0]);
+    return pts.map(([lat, dy]) => [lat * side, dy]);
+  };
+  const crowd = ['#d13b3b', '#3b6fd1', '#f2c230', '#f4f4f4', '#2f9a4a', '#e07a2e', '#7a3bd1', '#222222'].map((c) => new THREE.Color(c));
+  const concrete = new THREE.Color('#b4b4b0');
+  const rand = mulberry32(track.def.seed + 17);
+  const seats = Array.from({ length: track.n * 2 * rows + 8 }, () => crowd[Math.floor(rand() * crowd.length)]);
+  const mat = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
+  group.add(new THREE.Mesh(strip(track, profile, (i, k) => (k > 0 && k < rows * 2 + 1 ? seats[(i * rows * 2 + k) % seats.length] : concrete), inRange), mat));
+  // roof on posts
+  const roofH = base + rows * rise + 5;
+  const roofMat = new THREE.MeshLambertMaterial({ color: '#e4e6e8', emissive: '#3a3c40', side: THREE.DoubleSide });
+  group.add(new THREE.Mesh(
+    strip(track, (i) => [[side * (start(i) - 1), roofH], [side * (start(i) + rows * depth + 1), roofH + 1.5]], () => new THREE.Color('#ffffff'), inRange),
+    roofMat,
+  ));
+  const postGeo = new THREE.BoxGeometry(0.4, roofH, 0.4);
+  const postMat = new THREE.MeshLambertMaterial({ color: '#8a9096' });
+  for (let i = from; i < to; i += Math.round(24 / track.ds)) {
+    const p = new THREE.Mesh(postGeo, postMat);
+    placeAt(track, p, i, side * (start(i) + rows * depth + 0.5), roofH / 2);
     group.add(p);
   }
 }
