@@ -1,0 +1,8 @@
+services:
+  spidi-race:
+    build: .
+    image: spidi-race:latest
+    container_name: spidi-race
+    restart: unless-stopped
+    ports:
+      - "${SPIDI_PORT:-8090}:8090"
