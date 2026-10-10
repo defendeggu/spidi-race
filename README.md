@@ -1,6 +1,6 @@
 # Spidi Race 🏁
 
-![Version](https://img.shields.io/badge/version-0.3.0-ffcc00)
+![Version](https://img.shields.io/badge/version-0.4.0-ffcc00)
 ![Lizenz Code](https://img.shields.io/badge/code-MIT-blue)
 ![Lizenz Assets](https://img.shields.io/badge/assets-CC0-green)
 ![Docker](https://img.shields.io/badge/docker-ready-2496ED)
@@ -21,6 +21,7 @@ Ein Arcade-Rennspiel im Browser im Geist von *Need for Speed II: Special Edition
 - [Schnellstart mit Docker](#schnellstart-mit-docker)
 - [Steuerung](#steuerung)
 - [Netzwerkspiel](#netzwerkspiel)
+- [Rangliste](#rangliste)
 - [Entwicklung](#entwicklung)
 - [Grafik-Assets](#grafik-assets)
 - [Architektur](#architektur)
@@ -50,6 +51,7 @@ Ein Arcade-Rennspiel im Browser im Geist von *Need for Speed II: Special Edition
 - **KI-Gegner**: 0 bis 7, in den Stärken Leicht, Mittel und Schwer
 - **Splitscreen** für 2 Spieler an einer Tastatur, Gamepads werden ebenfalls unterstützt
 - **LAN-Multiplayer** mit bis zu 8 Autos, auch zusammen mit Splitscreen
+- **Permanente Rangliste** pro Strecke (beste Runde oder Rennzeit), aufrufbar im Hauptmenü
 - **HUD** mit Platzierung, Runden- und Bestzeiten, Tacho, Drehzahl und Minimap
 - **Arcade-Fahrphysik** mit Drift, Handbremse, Automatikgetriebe, Steigungen und Abprall an Leitplanken
 - **Sound**: Motor, Reifenquietschen und Crash werden live mit WebAudio erzeugt
@@ -70,6 +72,7 @@ Danach im Browser **http://localhost:8090** öffnen.
 | Port im Container | 8090 |
 | Anderer Host-Port | `SPIDI_PORT=9000 docker compose up -d` |
 | Healthcheck | `GET /health` |
+| Rangliste | `./data/leaderboard.json` (als Volume eingebunden) |
 
 Das Image ist zweistufig aufgebaut. Beim Build laufen die Tests und der Produktionsbuild. Zur Laufzeit braucht das Image nur Node, ohne `node_modules`. Die Assets liegen im Repo, der Build braucht also kein Internet ausser für npm.
 
@@ -101,6 +104,23 @@ So funktioniert es technisch:
 - Jeder Client simuliert seine eigenen Autos und sendet deren Zustand 30-mal pro Sekunde.
 - Der Server simuliert die KI-Gegner, entscheidet über Runden, Platzierungen und Zieleinlauf und verteilt den Spielstand an alle.
 - Fremde Autos werden mit etwa 110 ms Verzögerung interpoliert, damit sie flüssig fahren.
+
+## Rangliste
+
+Jedes beendete Rennen eines menschlichen Fahrers landet in der permanenten Rangliste (Hauptmenü → **Rangliste**):
+
+| Spalte | Inhalt |
+|---|---|
+| Fahrer, Auto | Name und gewähltes Auto |
+| Beste Runde | schnellste Runde – Standardwertung, über alle Rundenzahlen vergleichbar |
+| Rennzeit | Gesamtzeit mit Rundenzahl – Wertung je Rundenzahl wählbar |
+| Modus, Datum | Einzel, Splitscreen oder Netzwerk; Tag des Rennens |
+
+- Die Wertung gilt pro Strecke. Angezeigt werden die Top 50, gespeichert bis zu 2000 Rennen pro Strecke.
+- Der Server speichert alles in `data/leaderboard.json`. Diese Datei ist **git-ignoriert**. Im Repo liegt nur die leere Vorlage `data/leaderboard.template.json`, mit der ein neuer Server startet.
+- Mit Docker wird `./data` in den Container eingebunden. Die Rangliste übersteht Neustarts und Image-Updates und lässt sich einfach sichern.
+- Zurücksetzen: `data/leaderboard.json` löschen und den Server neu starten.
+- Die API ist `GET /api/leaderboard[?track=<id>]` und `POST /api/leaderboard` mit `{ entries: [...] }`. Unplausible Zeiten werden abgewiesen.
 
 ## Entwicklung
 
@@ -155,7 +175,7 @@ scripts/  Asset-Download
 
 ## Versionierung
 
-Das Projekt folgt [Semantic Versioning](https://semver.org/lang/de/). Die aktuelle Version ist **0.3.0**. Änderungen stehen im [CHANGELOG](CHANGELOG.md), Releases sind als Git-Tags `vX.Y.Z` markiert. Die Version steht auch unten rechts im Hauptmenü.
+Das Projekt folgt [Semantic Versioning](https://semver.org/lang/de/). Die aktuelle Version ist **0.4.0**. Änderungen stehen im [CHANGELOG](CHANGELOG.md), Releases sind als Git-Tags `vX.Y.Z` markiert. Die Version steht auch unten rechts im Hauptmenü.
 
 ## Lizenz und Credits
 

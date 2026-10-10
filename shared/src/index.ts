@@ -6,3 +6,4 @@ export * from './physics';
 export * from './race';
 export * from './ai';
 export * from './protocol';
+export * from './leaderboard';

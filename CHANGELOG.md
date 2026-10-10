@@ -2,6 +2,20 @@
 
 Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.4.0] – 2026-10-10
+
+### Hinzugefügt
+- **Permanente Rangliste** im Hauptmenü: Fahrer, Auto, Strecke, beste Runde, Rennzeit (mit Rundenzahl), Modus und Datum
+  - Wertung pro Strecke nach bester Runde oder nach Rennzeit (je Rundenzahl), Top 50, Medaillen für die ersten drei
+  - Einzel- und Splitscreen-Rennen werden vom Client gemeldet, Netzwerkrennen speichert der Server direkt
+  - Ergebnisbildschirm zeigt den erreichten Platz in den Rundenrekorden und einen Button zur Rangliste
+  - Plausibilitätsprüfung (bekannte Strecke/Auto, physikalisch mögliche Zeiten, Namen ohne Markup)
+- Server-API `GET/POST /api/leaderboard`, Speicherung atomar in `data/leaderboard.json`
+- Docker: `./data` wird als Volume eingebunden, die Rangliste übersteht Neustarts und Updates
+
+### Geändert
+- `data/leaderboard.json` ist git-ignoriert; im Repo liegt nur die leere Vorlage `data/leaderboard.template.json`
+
 ## [0.3.0] – 2026-10-10
 
 ### Hinzugefügt
@@ -40,6 +54,7 @@ Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog]
 - HUD mit Minimap, synthetischer Sound, 3 Kameras
 - Docker-Image und docker-compose (Port 8090)
 
+[0.4.0]: https://github.com/defendeggu/spidi-race/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/defendeggu/spidi-race/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/defendeggu/spidi-race/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/defendeggu/spidi-race/releases/tag/v0.1.0

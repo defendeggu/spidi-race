@@ -69,7 +69,8 @@ export class Game {
   private finishedNotified = false;
   private offNet: (() => void) | null = null;
   paused = false;
-  onFinish: ((results: ResultRow[]) => void) | null = null;
+  /** ranks: best-lap leaderboard rank per car id (online races are recorded by the server) */
+  onFinish: ((results: ResultRow[], ranks?: Record<string, number>) => void) | null = null;
   onPause: (() => void) | null = null;
 
   constructor(private hudLayer: HTMLElement, private opts: GameOptions) {
@@ -149,14 +150,14 @@ export class Game {
         }
       }
     } else if (m.type === 'end') {
-      this.finish(m.results);
+      this.finish(m.results, m.ranks);
     }
   }
 
-  private finish(results: ResultRow[]) {
+  private finish(results: ResultRow[], ranks?: Record<string, number>) {
     if (this.finishedNotified) return;
     this.finishedNotified = true;
-    this.onFinish?.(results);
+    this.onFinish?.(results, ranks);
   }
 
   private frame(dt: number, now: number) {

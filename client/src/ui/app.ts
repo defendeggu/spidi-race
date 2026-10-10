@@ -1,11 +1,13 @@
 import {
-  CARS, carRatings, formatTime, getCar, MAX_CARS, TRACK_DEFS,
+  CARS, carRatings, formatTime, getCar, MAX_CARS, rankEntries, TRACK_DEFS,
+  type LeaderboardEntry, type LeaderboardSort,
   type LobbyClient, type LobbyPlayer, type LobbySettings, type ResultRow, type ServerMsg, type Slot,
 } from '@spidi/shared';
 import { audio } from '../audio';
 import { Game, type LocalPlayerCfg } from '../game';
 import { escapeHtml } from '../hud';
 import { input, KEYMAPS, SOLO_KEYMAP } from '../input';
+import { fetchLeaderboard, submitResults } from '../leaderboardApi';
 import { Net } from '../net';
 import { Backdrop } from './backdrop';
 
@@ -92,6 +94,7 @@ export class App {
         <button class="big" data-a="single">Einzelrennen</button>
         <button class="big" data-a="split">Splitscreen · 2 Spieler</button>
         <button class="big" data-a="online">Netzwerkspiel</button>
+        <button class="big" data-a="board">Rangliste</button>
         <button class="big secondary" data-a="controls">Steuerung</button>
         <button class="big secondary" data-a="credits">Credits</button>
       </div>
@@ -100,6 +103,7 @@ export class App {
       single: () => this.showSetup('single'),
       split: () => this.showSetup('split'),
       online: () => this.showOnlineSetup(),
+      board: () => this.showLeaderboard({ trackId: this.prefs.trackId, sort: 'bestLap' }, () => this.showMain()),
       controls: () => this.showControls(),
       credits: () => this.showCredits(),
     });
@@ -267,7 +271,7 @@ export class App {
     this.ui.className = 'hidden';
     this.ui.innerHTML = '';
     this.screen = 'game';
-    game.onFinish = (results) => this.showResults(results);
+    game.onFinish = (results, ranks) => this.showResults(results, ranks);
     game.onPause = () => this.togglePause();
     game.start();
   }
@@ -315,10 +319,12 @@ export class App {
     this.showMain();
   }
 
-  private showResults(results: ResultRow[]) {
+  private showResults(results: ResultRow[], ranks?: Record<string, number>) {
     this.game?.setEngineVolume(0.25);
     const online = !!this.net;
-    const myIds = new Set(this.game ? [...this.game.race.entries.filter((e) => !e.isAI && (!online || e.ownerId === this.net!.clientId)).map((e) => e.id)] : []);
+    const game = this.game;
+    const trackId = game?.track.def.id ?? this.prefs.trackId;
+    const myIds = new Set(game ? game.race.entries.filter((e) => !e.isAI && (!online || e.ownerId === this.net!.clientId)).map((e) => e.id) : []);
     const rows = results.map((r) => `
       <tr class="${myIds.has(r.id) ? 'me' : ''}">
         <td>${r.position}</td><td>${escapeHtml(r.name)}${r.isAI ? ' <small>KI</small>' : ''}</td><td>${getCar(r.carId).name}</td>
@@ -328,8 +334,10 @@ export class App {
       <div class="menu panel overlay">
         <h2>Ergebnis</h2>
         <table class="results"><tr><th>#</th><th>Fahrer</th><th>Auto</th><th>Zeit</th><th>Beste Runde</th></tr>${rows}</table>
+        <div class="lb-info" id="lb-info"></div>
         <div class="row">
           ${online ? '<button class="go" data-a="lobby">Zurück zur Lobby</button>' : '<button class="go" data-a="again">Nochmal</button>'}
+          <button data-a="board">Rangliste</button>
           <button data-a="menu">Hauptmenü</button>
         </div>
       </div>`);
@@ -341,7 +349,102 @@ export class App {
         this.game = null;
         this.showLobby();
       },
+      board: () => this.showLeaderboard({ trackId, sort: 'bestLap' }, () => this.showResults(results, ranks)),
       menu: () => this.quitGame(),
+    });
+
+    // record my finished drivers in the permanent leaderboard (online: the server already did)
+    const mine = results.filter((r) => myIds.has(r.id) && r.finished);
+    if (mine.length === 0) return;
+    const show = (rk: number[]) => {
+      const el = document.getElementById('lb-info');
+      if (!el) return;
+      const trackName = TRACK_DEFS.find((t) => t.id === trackId)?.name ?? trackId;
+      el.innerHTML = mine
+        .map((r, i) => (rk[i] > 0 ? `🏆 <b>${escapeHtml(r.name)}</b>: Platz ${rk[i]} der Rundenrekorde auf ${trackName}` : ''))
+        .filter(Boolean)
+        .join('<br />');
+    };
+    const known = ranks;
+    if (known) {
+      show(mine.map((r) => known[r.id] ?? 0));
+      return;
+    }
+    if (this.submitted === results) return;
+    this.submitted = results;
+    const mode = this.lastLocal?.mode === 'split' ? 'split' : 'solo';
+    submitResults(mine.map((r) => ({ name: r.name, carId: r.carId, trackId, laps: game?.race.laps ?? 1, time: r.time, bestLap: r.bestLap, mode })))
+      .then((rk) => {
+        ranks = Object.fromEntries(mine.map((r, i) => [r.id, rk[i]]));
+        show(rk);
+      })
+      .catch(() => {
+        const el = document.getElementById('lb-info');
+        if (el) el.textContent = 'Rangliste nicht erreichbar – Ergebnis wurde nicht gespeichert.';
+      });
+  }
+
+  private submitted: ResultRow[] | null = null;
+
+  // ---------------------------------------------------------------- leaderboard
+
+  private showLeaderboard(view: { trackId: string; sort: LeaderboardSort; laps?: number }, back: () => void, entries?: LeaderboardEntry[]) {
+    if (!entries) {
+      this.setScreen('leaderboard', `<div class="menu panel"><h2>Rangliste</h2><p class="hint">Lade…</p></div>`);
+      fetchLeaderboard()
+        .then((all) => this.screen === 'leaderboard' && this.showLeaderboard(view, back, all))
+        .catch(() => {
+          this.setScreen('leaderboard', `
+            <div class="menu panel"><h2>Rangliste</h2>
+              <div class="error">Der Spielserver ist nicht erreichbar.</div>
+              <div class="row"><button data-a="back">Zurück</button></div></div>`);
+          this.bind({ back });
+        });
+      return;
+    }
+    const onTrack = entries.filter((e) => e.trackId === view.trackId);
+    const lapOptions = [...new Set(onTrack.map((e) => e.laps))].sort((a, b) => a - b);
+    if (view.sort === 'time' && !lapOptions.includes(view.laps ?? -1)) view.laps = lapOptions[0];
+    const ranked = rankEntries(entries, view.trackId, view.sort, view.laps).slice(0, 50);
+    const modes: Record<string, string> = { solo: 'Einzel', split: 'Splitscreen', online: 'Netzwerk' };
+    const date = (iso: string) => new Date(iso).toLocaleDateString('de-CH', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const rows = ranked.map((e, i) => {
+      const car = getCar(e.carId);
+      return `<tr class="${i < 3 ? `top${i + 1}` : ''}">
+        <td>${i + 1}</td><td>${escapeHtml(e.name)}</td>
+        <td><i class="dot" style="background:${car.color}"></i>${car.name}</td>
+        <td class="${view.sort === 'bestLap' ? 'key' : ''}">${formatTime(e.bestLap)}</td>
+        <td class="${view.sort === 'time' ? 'key' : ''}">${formatTime(e.time)} <small>(${e.laps} Rd.)</small></td>
+        <td><small>${modes[e.mode] ?? e.mode}</small></td><td><small>${date(e.date)}</small></td>
+      </tr>`;
+    }).join('');
+    this.setScreen('leaderboard', `
+      <div class="menu panel wide">
+        <h2>Rangliste</h2>
+        <div class="toggle">
+          ${TRACK_DEFS.map((t) => `<button class="${t.id === view.trackId ? 'sel' : ''}" data-a="track" data-id="${t.id}">${t.name}</button>`).join('')}
+        </div>
+        <div class="opts">
+          <label>Wertung
+            <select data-a="sort">
+              <option value="bestLap" ${view.sort === 'bestLap' ? 'selected' : ''}>Beste Runde</option>
+              <option value="time" ${view.sort === 'time' ? 'selected' : ''}>Rennzeit</option>
+            </select>
+          </label>
+          ${view.sort === 'time' && lapOptions.length ? `<label>Runden <select data-a="laps">${lapOptions.map((l) => `<option ${l === view.laps ? 'selected' : ''}>${l}</option>`).join('')}</select></label>` : ''}
+          <span class="hint">${onTrack.length} Rennen gespeichert</span>
+        </div>
+        ${ranked.length
+          ? `<div class="board-wrap"><table class="results board"><tr><th>#</th><th>Fahrer</th><th>Auto</th><th>Beste Runde</th><th>Rennzeit</th><th>Modus</th><th>Datum</th></tr>${rows}</table></div>`
+          : '<p class="hint">Noch keine Zeiten auf dieser Strecke – fahr die erste!</p>'}
+        <div class="row"><button data-a="back">Zurück</button></div>
+      </div>`);
+    const again = (v: typeof view) => this.showLeaderboard(v, back, entries);
+    this.bind({
+      track: (el) => again({ ...view, trackId: el.dataset.id! }),
+      sort: (el) => again({ ...view, sort: (el as HTMLSelectElement).value as LeaderboardSort }),
+      laps: (el) => again({ ...view, laps: Number((el as HTMLSelectElement).value) }),
+      back,
     });
   }
 

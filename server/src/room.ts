@@ -1,4 +1,5 @@
 import type { WebSocket } from 'ws';
+import type { Leaderboard } from './leaderboard';
 import {
   AIDriver, applyNetCar, CARS, collideCars, createCarState, getCar, getTrack, gridPosition, idleCar,
   MAX_CARS, NO_INPUT, Race, stepCar, toNetCar, TRACK_DEFS,
@@ -24,6 +25,8 @@ interface ServerCar {
 
 /** A single lobby/race shared by everyone connected to this server. */
 export class Room {
+  constructor(private leaderboard: Leaderboard) {}
+
   private clients = new Map<string, Client>();
   private nextId = 1;
   private hostId = '';
@@ -181,7 +184,15 @@ export class Room {
   private endRace(sendResults: boolean) {
     if (this.timer) clearInterval(this.timer);
     this.timer = null;
-    if (sendResults && this.race) this.broadcast({ type: 'end', results: this.race.results() });
+    if (sendResults && this.race) {
+      const results = this.race.results();
+      // online races go to the permanent leaderboard directly from the server
+      const finished = results.filter((r) => !r.isAI && r.finished);
+      const ranks = this.leaderboard.add(finished.map((r) => ({
+        name: r.name, carId: r.carId, trackId: this.track!.def.id, laps: this.race!.laps, time: r.time, bestLap: r.bestLap, mode: 'online',
+      })));
+      this.broadcast({ type: 'end', results, ranks: Object.fromEntries(finished.map((r, i) => [r.id, ranks[i]])) });
+    }
     this.race = null;
     this.cars = [];
     this.phase = 'lobby';

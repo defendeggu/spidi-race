@@ -3,11 +3,46 @@ import { createServer } from 'node:http';
 import { networkInterfaces } from 'node:os';
 import { extname, join, normalize, resolve } from 'node:path';
 import { WebSocketServer } from 'ws';
+import type { IncomingMessage, ServerResponse } from 'node:http';
 import { DEFAULT_PORT } from '@spidi/shared';
+import { Leaderboard } from './leaderboard';
 import { Room } from './room';
 
 const PORT = Number(process.env.PORT) || DEFAULT_PORT;
 const STATIC_DIR = resolve(process.env.STATIC_DIR ?? join(process.cwd(), 'client/dist'));
+const DATA_DIR = resolve(process.env.DATA_DIR ?? join(process.cwd(), 'data'));
+const leaderboard = new Leaderboard(join(DATA_DIR, 'leaderboard.json'));
+
+function json(res: ServerResponse, status: number, body: unknown) {
+  res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' }).end(JSON.stringify(body));
+}
+
+/** GET /api/leaderboard[?track=id] – POST /api/leaderboard { entries: LeaderboardSubmission[] } */
+function leaderboardApi(req: IncomingMessage, res: ServerResponse, url: URL) {
+  if (req.method === 'GET') {
+    const track = url.searchParams.get('track');
+    json(res, 200, { entries: track ? leaderboard.forTrack(track) : leaderboard.all() });
+    return;
+  }
+  if (req.method !== 'POST') {
+    json(res, 405, { error: 'method not allowed' });
+    return;
+  }
+  let body = '';
+  req.on('data', (chunk) => {
+    body += chunk;
+    if (body.length > 16 * 1024) req.destroy();
+  });
+  req.on('end', () => {
+    try {
+      const data = JSON.parse(body);
+      const entries = Array.isArray(data.entries) ? data.entries.slice(0, 2) : [];
+      json(res, 200, { ranks: leaderboard.add(entries) });
+    } catch {
+      json(res, 400, { error: 'invalid json' });
+    }
+  });
+}
 
 const TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -25,6 +60,10 @@ const TYPES: Record<string, string> = {
 
 const server = createServer((req, res) => {
   const url = new URL(req.url ?? '/', 'http://localhost');
+  if (url.pathname === '/api/leaderboard') {
+    leaderboardApi(req, res, url);
+    return;
+  }
   if (url.pathname === '/health') {
     res.writeHead(200, { 'content-type': 'text/plain' }).end('ok');
     return;
@@ -47,7 +86,7 @@ const server = createServer((req, res) => {
   createReadStream(file).pipe(res);
 });
 
-const room = new Room();
+const room = new Room(leaderboard);
 const wss = new WebSocketServer({ noServer: true, maxPayload: 64 * 1024 });
 server.on('upgrade', (req, socket, head) => {
   if (!req.url?.startsWith('/ws')) {
