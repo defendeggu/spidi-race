@@ -16,6 +16,9 @@ const TYPES: Record<string, string> = {
   '.json': 'application/json',
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.glb': 'model/gltf-binary',
+  '.md': 'text/markdown; charset=utf-8',
   '.ico': 'image/x-icon',
   '.woff2': 'font/woff2',
 };

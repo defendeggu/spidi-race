@@ -93,13 +93,33 @@ export class App {
         <button class="big" data-a="split">Splitscreen · 2 Spieler</button>
         <button class="big" data-a="online">Netzwerkspiel</button>
         <button class="big secondary" data-a="controls">Steuerung</button>
-      </div>`);
+        <button class="big secondary" data-a="credits">Credits</button>
+      </div>
+      <div class="version">v${__APP_VERSION__}</div>`);
     this.bind({
       single: () => this.showSetup('single'),
       split: () => this.showSetup('split'),
       online: () => this.showOnlineSetup(),
       controls: () => this.showControls(),
+      credits: () => this.showCredits(),
     });
+  }
+
+  private showCredits() {
+    const cc0 = '<a href="https://creativecommons.org/publicdomain/zero/1.0/" target="_blank" rel="noopener">CC0</a>';
+    this.setScreen('credits', `
+      <div class="menu panel wide">
+        <h2>Credits</h2>
+        <p>Spidi Race v${__APP_VERSION__} – Code unter MIT-Lizenz.</p>
+        <p class="hint">Grafiken (alle ${cc0}, Public Domain) – herzlichen Dank an:</p>
+        <ul class="credits">
+          <li><b>Kenney</b> (<a href="https://kenney.nl" target="_blank" rel="noopener">kenney.nl</a>): Car Kit, Nature Kit, City Kit (Suburban)</li>
+          <li><b>ambientCG</b> (<a href="https://ambientcg.com" target="_blank" rel="noopener">ambientcg.com</a>): Asphalt031, Grass004, Rock064, Snow010A, Ground080, Gravel043, Concrete034</li>
+        </ul>
+        <p class="hint">Sounds werden live im Browser synthetisiert. Inspiriert von <i>Need for Speed II: Special Edition</i> (1997).</p>
+        <div class="row"><button data-a="back">Zurück</button></div>
+      </div>`);
+    this.bind({ back: () => this.showMain() });
   }
 
   private showControls() {

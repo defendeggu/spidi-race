@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { type CarSpec, type CarState, forwardSpeed, type Track } from '@spidi/shared';
+import { assetsReady, carColormapImage, getModel } from './assets';
 import { blobShadowTexture } from './textures';
 
 interface Section {
@@ -64,21 +65,214 @@ export function carColor(spec: CarSpec, variant = 0) {
   return '#' + c.getHexString();
 }
 
+// ------------------------------------------------------------------ paint for Kenney models
+
+const COLS = 16, ROWS = 4;
+let paletteData: ImageData | null = null;
+
+function palette() {
+  if (paletteData) return paletteData;
+  const img = carColormapImage()!;
+  const c = document.createElement('canvas');
+  c.width = img.width;
+  c.height = img.height;
+  const g = c.getContext('2d')!;
+  g.drawImage(img, 0, 0);
+  paletteData = g.getImageData(0, 0, c.width, c.height);
+  return paletteData;
+}
+
+function rgbAt(d: ImageData, x: number, y: number) {
+  const i = (Math.min(d.height - 1, Math.max(0, Math.floor(y))) * d.width + Math.min(d.width - 1, Math.max(0, Math.floor(x)))) * 4;
+  return [d.data[i] / 255, d.data[i + 1] / 255, d.data[i + 2] / 255];
+}
+
+function hsl(rgb: number[]) {
+  const c = new THREE.Color(rgb[0], rgb[1], rgb[2]);
+  const o = { h: 0, s: 0, l: 0 };
+  c.getHSL(o);
+  return o;
+}
+
+/** Palette cells (in the shared colormap) that make up the car's paint, found by triangle area. */
+const paintCellCache = new Map<string, number[]>();
+function paintCells(model: string, body: THREE.Object3D) {
+  const cached = paintCellCache.get(model);
+  if (cached) return cached;
+  const d = palette();
+  const area = new Float64Array(COLS * ROWS);
+  const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
+  body.traverse((o) => {
+    if (!(o instanceof THREE.Mesh)) return;
+    const pos = o.geometry.attributes.position, uv = o.geometry.attributes.uv;
+    if (!uv) return;
+    const idx = o.geometry.index;
+    const count = idx ? idx.count : pos.count;
+    for (let t = 0; t < count; t += 3) {
+      const i0 = idx ? idx.getX(t) : t, i1 = idx ? idx.getX(t + 1) : t + 1, i2 = idx ? idx.getX(t + 2) : t + 2;
+      a.fromBufferAttribute(pos, i0);
+      b.fromBufferAttribute(pos, i1);
+      c.fromBufferAttribute(pos, i2);
+      const ar = b.clone().sub(a).cross(c.clone().sub(a)).length();
+      const u = (uv.getX(i0) + uv.getX(i1) + uv.getX(i2)) / 3, v = (uv.getY(i0) + uv.getY(i1) + uv.getY(i2)) / 3;
+      const cx = Math.min(COLS - 1, Math.floor(u * COLS)), cy = Math.min(ROWS - 1, Math.floor(v * ROWS));
+      area[cy * COLS + cx] += ar;
+    }
+  });
+  const cellColor = (k: number) => hsl(rgbAt(d, ((k % COLS) + 0.5) * (d.width / COLS), (Math.floor(k / COLS) + 0.5) * (d.height / ROWS)));
+  let best = -1;
+  for (let k = 0; k < area.length; k++) {
+    const h = cellColor(k);
+    if (h.s < 0.3 || h.l < 0.2 || h.l > 0.85) continue;
+    if (best < 0 || area[k] > area[best]) best = k;
+  }
+  const cells: number[] = [];
+  if (best >= 0) {
+    const hb = cellColor(best);
+    for (let k = 0; k < area.length; k++) {
+      if (area[k] <= 0) continue;
+      const h = cellColor(k);
+      const dh = Math.min(Math.abs(h.h - hb.h), 1 - Math.abs(h.h - hb.h));
+      if (h.s > 0.3 && dh < 0.06) cells.push(k);
+    }
+  }
+  paintCellCache.set(model, cells);
+  return cells;
+}
+
+const paintTexCache = new Map<string, THREE.Texture>();
+function paintTexture(model: string, body: THREE.Object3D, color: string) {
+  const key = `${model}|${color}`;
+  const hit = paintTexCache.get(key);
+  if (hit) return hit;
+  const d = palette();
+  const out = new ImageData(new Uint8ClampedArray(d.data), d.width, d.height);
+  const target = new THREE.Color(color);
+  // the texture is sampled in sRGB; recolour in sRGB space too
+  const tr = Math.pow(target.r, 1 / 2.2), tg = Math.pow(target.g, 1 / 2.2), tb = Math.pow(target.b, 1 / 2.2);
+  const cw = d.width / COLS, ch = d.height / ROWS;
+  const lum = (r: number, g: number, b: number) => 0.3 * r + 0.59 * g + 0.11 * b;
+  for (const k of paintCells(model, body)) {
+    const x0 = Math.round((k % COLS) * cw), y0 = Math.round(Math.floor(k / COLS) * ch);
+    const mid = rgbAt(d, x0 + cw / 2, y0 + ch / 2);
+    const ref = Math.max(0.05, lum(mid[0], mid[1], mid[2]));
+    for (let y = y0; y < y0 + ch; y++)
+      for (let x = x0; x < x0 + cw; x++) {
+        const i = (y * d.width + x) * 4;
+        const f = lum(d.data[i], d.data[i + 1], d.data[i + 2]) / 255 / ref;
+        out.data[i] = Math.min(255, tr * f * 255);
+        out.data[i + 1] = Math.min(255, tg * f * 255);
+        out.data[i + 2] = Math.min(255, tb * f * 255);
+      }
+  }
+  const c = document.createElement('canvas');
+  c.width = d.width;
+  c.height = d.height;
+  c.getContext('2d')!.putImageData(out, 0, 0);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.flipY = false;
+  tex.magFilter = THREE.NearestFilter;
+  tex.generateMipmaps = false;
+  tex.minFilter = THREE.LinearFilter;
+  paintTexCache.set(key, tex);
+  return tex;
+}
+
+// ------------------------------------------------------------------ car visual
+
 export class CarVisual {
   readonly group = new THREE.Group();
   private body = new THREE.Group();
-  private wheels: THREE.Group[] = [];
+  /** wheel holders: front-left, front-right, back-left, back-right; children[0] spins */
+  private wheels: THREE.Object3D[] = [];
+  private wheelRadius = 0.34;
   private tailMat: THREE.MeshLambertMaterial;
   private spin = 0;
   readonly up = new THREE.Vector3(0, 1, 0);
   private tmpUp = { x: 0, y: 1, z: 0 };
   private label?: THREE.Sprite;
+  private ownedMaterials: THREE.Material[] = [];
 
   constructor(readonly spec: CarSpec, name?: string, variant = 0) {
+    this.tailMat = new THREE.MeshLambertMaterial({ color: '#7a0d0d', emissive: '#300000' });
+    this.ownedMaterials.push(this.tailMat);
+    const color = carColor(spec, variant);
+    const model = assetsReady() ? getModel(spec.model) : undefined;
+    if (model) this.buildFromModel(model, color);
+    else this.buildProcedural(color);
+    this.group.add(this.body);
+
+    const sh = spec.shape;
+    const shadow = new THREE.Mesh(
+      new THREE.PlaneGeometry(sh.width + 0.7, sh.length + 0.6),
+      new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false }),
+    );
+    shadow.rotation.x = -Math.PI / 2;
+    shadow.position.y = 0.04;
+    shadow.renderOrder = 1;
+    this.group.add(shadow);
+
+    if (name) this.setLabel(name);
+  }
+
+  /** Kenney Car Kit model: scaled to the spec length, paint recoloured, wheels animated. */
+  private buildFromModel(src: THREE.Group, color: string) {
+    const root = src.clone(true);
+    const box = new THREE.Box3().setFromObject(root);
+    const s = this.spec.shape.length / (box.max.z - box.min.z);
+    const scaled = new THREE.Group();
+    scaled.scale.setScalar(s);
+    this.body.add(scaled);
+
+    const bodyParts = root.children.filter((o) => !o.name.startsWith('wheel'));
+    const paint = new THREE.Group();
+    bodyParts.forEach((o) => paint.add(o));
+    const map = paintTexture(this.spec.model, paint, color);
+    const mat = new THREE.MeshLambertMaterial({ map });
+    this.ownedMaterials.push(mat);
+    paint.traverse((o) => {
+      if (o instanceof THREE.Mesh) o.material = mat;
+    });
+    scaled.add(paint);
+
+    const order = ['wheel-front-left', 'wheel-front-right', 'wheel-back-left', 'wheel-back-right'];
+    const srcWheel = root.children.find((o) => o.name.startsWith('wheel')) as THREE.Mesh | undefined;
+    const srcMat = srcWheel?.material as THREE.MeshStandardMaterial | undefined;
+    const wheelMatModel = new THREE.MeshLambertMaterial({ map: srcMat?.map ?? null });
+    this.ownedMaterials.push(wheelMatModel);
+    for (const name of order) {
+      const node = root.children.find((o) => o.name === name);
+      if (!node) continue;
+      const holder = new THREE.Group();
+      holder.position.copy(node.position).multiplyScalar(s);
+      holder.scale.setScalar(s);
+      const spinner = new THREE.Group();
+      node.position.set(0, 0, 0);
+      node.traverse((o) => {
+        if (o instanceof THREE.Mesh) o.material = wheelMatModel;
+      });
+      spinner.add(node);
+      holder.add(spinner);
+      this.group.add(holder);
+      this.wheels.push(holder);
+      this.wheelRadius = 0.3 * s;
+    }
+
+    // brake light strip at the rear of the body
+    const bb = new THREE.Box3().setFromObject(scaled);
+    const tail = new THREE.Mesh(new THREE.BoxGeometry((bb.max.x - bb.min.x) * 0.6, 0.08, 0.04), this.tailMat);
+    tail.position.set(0, bb.min.y + (bb.max.y - bb.min.y) * 0.45, bb.min.z - 0.01);
+    this.body.add(tail);
+  }
+
+  private buildProcedural(color: string) {
+    const spec = this.spec;
     const sh = spec.shape;
     const L = sh.length / 2, W = sh.width / 2, H = sh.height;
-    const paint = new THREE.MeshPhongMaterial({ color: carColor(spec, variant), shininess: 60, flatShading: true });
+    const paint = new THREE.MeshPhongMaterial({ color, shininess: 60, flatShading: true });
     const accent = new THREE.MeshLambertMaterial({ color: spec.accent, flatShading: true });
+    this.ownedMaterials.push(paint, accent);
     const body = loft([
       { z: -L, hw: W * 0.92, yb: 0.32, yt: H * 0.88 },
       { z: -L + 0.25, hw: W, yb: 0.26, yt: H * 0.97 },
@@ -97,11 +291,9 @@ export class CarVisual {
       { z: cs + 1.0, hw: W * 0.84, yb: H * 0.82, yt: H * 0.86, thw: W * 0.8 },
     ]);
     this.body.add(new THREE.Mesh(cabin, glassMat));
-    // roof panel in paint colour
     const roof = new THREE.Mesh(new THREE.BoxGeometry(W * 1.28, 0.04, 0.85), paint);
     roof.position.set(0, R + 0.01, cs - 0.3);
     this.body.add(roof);
-    // stripe / sills
     const sill = new THREE.Mesh(new THREE.BoxGeometry(sh.width + 0.02, 0.12, sh.length * 0.62), accent);
     sill.position.set(0, 0.32, -0.1);
     this.body.add(sill);
@@ -121,13 +313,12 @@ export class CarVisual {
       hl.rotation.x = -0.5;
       this.body.add(hl);
     }
-    this.tailMat = new THREE.MeshLambertMaterial({ color: '#7a0d0d', emissive: '#300000' });
     const tail = new THREE.Mesh(new THREE.BoxGeometry(sh.width * 0.86, 0.12, 0.05), this.tailMat);
     tail.position.set(0, H * 0.72, -L - 0.01);
     this.body.add(tail);
 
     const wb = spec.wheelbase / 2;
-    for (const [x, z] of [[-W + 0.12, wb], [W - 0.12, wb], [-W + 0.12, -wb], [W - 0.12, -wb]]) {
+    for (const [x, z] of [[W - 0.12, wb], [-W + 0.12, wb], [W - 0.12, -wb], [-W + 0.12, -wb]]) {
       const holder = new THREE.Group();
       holder.position.set(x, 0.34, z);
       const wheel = new THREE.Group();
@@ -137,18 +328,6 @@ export class CarVisual {
       this.group.add(holder);
       this.wheels.push(holder);
     }
-    this.group.add(this.body);
-
-    const shadow = new THREE.Mesh(
-      new THREE.PlaneGeometry(sh.width + 0.7, sh.length + 0.6),
-      new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false }),
-    );
-    shadow.rotation.x = -Math.PI / 2;
-    shadow.position.y = 0.04;
-    shadow.renderOrder = 1;
-    this.group.add(shadow);
-
-    if (name) this.setLabel(name);
   }
 
   setLabel(name: string) {
@@ -168,7 +347,7 @@ export class CarVisual {
     tex.colorSpace = THREE.SRGBColorSpace;
     this.label = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthWrite: false, transparent: true, fog: true }));
     this.label.scale.set(4, 0.75, 1);
-    this.label.position.y = 2.4;
+    this.label.position.y = 2.6;
     this.group.add(this.label);
   }
 
@@ -196,8 +375,8 @@ export class CarVisual {
     this.group.quaternion.setFromRotationMatrix(this.basis);
 
     const v = forwardSpeed(c);
-    this.spin += (v * dt) / 0.34;
-    for (let i = 0; i < 4; i++) {
+    this.spin += (v * dt) / this.wheelRadius;
+    for (let i = 0; i < this.wheels.length; i++) {
       const w = this.wheels[i];
       w.children[0].rotation.x = this.spin;
       if (i < 2) w.rotation.y = -c.steer * 0.45;
@@ -210,8 +389,10 @@ export class CarVisual {
 
   dispose() {
     this.group.removeFromParent();
+    // geometries of Kenney models are shared with the cached source and must stay alive
     this.group.traverse((o) => {
-      if (o instanceof THREE.Mesh && o.geometry !== wheelGeo && o.geometry !== rimGeo) o.geometry.dispose();
+      if (o instanceof THREE.Mesh && o.geometry !== wheelGeo && o.geometry !== rimGeo && !o.geometry.userData.shared) o.geometry.dispose();
     });
+    for (const m of this.ownedMaterials) m.dispose();
   }
 }
