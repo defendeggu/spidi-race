@@ -227,3 +227,8 @@ table.board tr.top2 td:first-child::before { content: '🥈 '; }
 table.board tr.top3 td:first-child::before { content: '🥉 '; }
 table.board .dot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; border: 1px solid rgba(255,255,255,.5); }
 .lb-info { margin-top: 8px; color: var(--gold); min-height: 1.2em; }
+
+/* ------------------------------------------------------------ abort */
+button.danger { background: linear-gradient(#b3262e, #7a1020); border-left-color: #ff5a6a; }
+button.danger:hover:not(:disabled) { background: linear-gradient(#d0333c, #8f1426); }
+.notice { background: rgba(255, 204, 0, 0.15); border: 1px solid var(--gold); padding: 8px 12px; border-radius: 4px; }

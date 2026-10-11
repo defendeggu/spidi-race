@@ -104,6 +104,13 @@ export class Room {
       case 'start':
         if (c.id === this.hostId && this.phase === 'lobby') this.startRace();
         break;
+      case 'abort':
+        if (c.id === this.hostId && this.phase === 'race') {
+          this.broadcast({ type: 'aborted', by: c.players[0]?.name ?? 'Host' });
+          this.endRace(false);
+          console.log(`[room] race aborted by host ${c.id}`);
+        }
+        break;
       case 'state': {
         if (this.phase !== 'race' || !Array.isArray(msg.cars)) return;
         for (const nc of msg.cars) {

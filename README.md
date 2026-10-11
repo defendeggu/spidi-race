@@ -1,6 +1,6 @@
 # Spidi Race 🏁
 
-![Version](https://img.shields.io/badge/version-0.4.0-ffcc00)
+![Version](https://img.shields.io/badge/version-0.5.0-ffcc00)
 ![Lizenz Code](https://img.shields.io/badge/code-MIT-blue)
 ![Lizenz Assets](https://img.shields.io/badge/assets-CC0-green)
 ![Docker](https://img.shields.io/badge/docker-ready-2496ED)
@@ -97,6 +97,7 @@ Das Image ist zweistufig aufgebaut. Beim Build laufen die Tests und der Produkti
 2. Alle Mitspieler öffnen `http://<IP-des-Servers>:8090` und wählen **Netzwerkspiel**.
 3. Pro Gerät kann man 1 oder 2 Spieler anmelden. Bei 2 Spielern fahren beide im Splitscreen.
 4. Wer zuerst in der Lobby ist, ist Host: Er wählt Strecke, Runden und KI-Gegner und startet das Rennen.
+5. Der Host kann ein laufendes Rennen jederzeit für alle abbrechen: im Pause-Menü (`Esc`) oder in der Lobby mit **Rennen für alle abbrechen**, dann ein zweiter Klick zur Bestätigung.
 
 ![Lobby](docs/lobby.jpg)
 
@@ -175,7 +176,7 @@ scripts/  Asset-Download
 
 ## Versionierung
 
-Das Projekt folgt [Semantic Versioning](https://semver.org/lang/de/). Die aktuelle Version ist **0.4.0**. Änderungen stehen im [CHANGELOG](CHANGELOG.md), Releases sind als Git-Tags `vX.Y.Z` markiert. Die Version steht auch unten rechts im Hauptmenü.
+Das Projekt folgt [Semantic Versioning](https://semver.org/lang/de/). Die aktuelle Version ist **0.5.0**. Änderungen stehen im [CHANGELOG](CHANGELOG.md), Releases sind als Git-Tags `vX.Y.Z` markiert. Die Version steht auch unten rechts im Hauptmenü.
 
 ## Lizenz und Credits
 
