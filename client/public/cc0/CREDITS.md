@@ -14,3 +14,9 @@ Sie wurden mit `npm run assets` (scripts/fetch-assets.mjs) heruntergeladen. Dank
 - **Ground080** von ambientCG (ambientcg.com), CC0 – https://ambientcg.com/view?id=Ground080 → `textures/sand.jpg`
 - **Gravel043** von ambientCG (ambientcg.com), CC0 – https://ambientcg.com/view?id=Gravel043 → `textures/gravel.jpg`
 - **Concrete034** von ambientCG (ambientcg.com), CC0 – https://ambientcg.com/view?id=Concrete034 → `textures/concrete.jpg`
+- **Ground106** von ambientCG (ambientcg.com), CC0 – https://ambientcg.com/view?id=Ground106 → `textures/dirt.jpg`
+- **Ground037** von ambientCG (ambientcg.com), CC0 – https://ambientcg.com/view?id=Ground037 → `textures/forestfloor.jpg`
+- **Ground071** von ambientCG (ambientcg.com), CC0 – https://ambientcg.com/view?id=Ground071 → `textures/mud.jpg`
+- **Ground093C** von ambientCG (ambientcg.com), CC0 – https://ambientcg.com/view?id=Ground093C → `textures/dune.jpg`
+- **Rock029** von ambientCG (ambientcg.com), CC0 – https://ambientcg.com/view?id=Rock029 → `textures/redrock.jpg`
+- **Ground097** von ambientCG (ambientcg.com), CC0 – https://ambientcg.com/view?id=Ground097 → `textures/desertdirt.jpg`

@@ -2,6 +2,20 @@
 
 Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.6.0] – 2026-10-11
+
+### Hinzugefügt
+- **Offroad-Klasse** mit eigenen Strecken und Autos (getrennt von den Strassenwagen, auch für die KI)
+  - **Canyon Run** (Wüste, ~2,6 km): Schotter- und Sandpiste durch eine rote Schlucht, 3 Sprünge (einer über ein trockenes Flussbett), Felsbogen
+  - **Waldtrail** (Wald, ~2,8 km): Waldweg über Kuppen, 2 Schlammlöcher, Furt, Sprung über den Bach, Holzzäune, Camp
+  - Autos: **Bergziege 4x4**, **Baron V8**, **Sahara Raider** (Kenney Car Kit: SUV, Luxus-SUV, Pickup)
+- **Sprünge**: echte Flugphase mit Schwerkraft, Landung (harte Landungen kosten Tempo), Fahrzeug neigt sich entlang der Flugbahn, Meldung „SPRUNG! x,x s“
+- **Untergründe** Asphalt, Schotter, Sand, Schlamm und Wasser mit eigenem Grip und Rollwiderstand; Offroad-Autos leiden nur halb so stark
+- Optische Federung (Nachschwingen nach Landungen, Rütteln auf losem Untergrund), Staub-, Schlamm- und Wasserpartikel, Schottergeräusch
+- Autoauswahl je nach Streckenklasse (Strassen- und Offroad-Auto werden pro Spieler gemerkt); im Netzwerk wählt man das Auto in der Lobby, der Server korrigiert unpassende Klassen
+- Neue CC0-Assets: Kenney (SUVs, Pickup, Kakteen, Klippen, Baumstämme, Pilze, Zelt, Lagerfeuer, Zaun) und ambientCG (Ground106, Ground037, Ground071, Ground093C, Rock029, Ground097)
+- Tests: Sprünge (abheben, landen, langsam bleibt am Boden), Schlamm bremst, Klassen; Strassenstrecken bleiben ohne Flugphasen
+
 ## [0.5.0] – 2026-10-11
 
 ### Hinzugefügt
@@ -62,6 +76,7 @@ Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog]
 - HUD mit Minimap, synthetischer Sound, 3 Kameras
 - Docker-Image und docker-compose (Port 8090)
 
+[0.6.0]: https://github.com/defendeggu/spidi-race/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/defendeggu/spidi-race/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/defendeggu/spidi-race/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/defendeggu/spidi-race/compare/v0.2.0...v0.3.0

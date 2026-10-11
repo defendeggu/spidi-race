@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { type CarSpec, type CarState, forwardSpeed, type Track } from '@spidi/shared';
+import { type CarSpec, type CarState, forwardSpeed, SURFACE_PROPS, type Track } from '@spidi/shared';
 import { assetsReady, carColormapImage, getModel } from './assets';
 import { blobShadowTexture } from './textures';
 
@@ -360,10 +360,27 @@ export class CarVisual {
   private f3 = new THREE.Vector3();
   private x3 = new THREE.Vector3();
 
+  private suspY = 0;
+  private suspV = 0;
+  private roughPhase = Math.random() * 10;
+  private wheelBaseY: number[] = [];
+
   update(track: Track, x: number, y: number, z: number, heading: number, c: CarState, dt: number) {
     this.group.position.set(x, y, z);
-    track.upAt(c.idx, this.tmpUp);
-    const k = 1 - Math.exp(-dt * 10);
+    let k = 1 - Math.exp(-dt * 10);
+    if (c.airborne) {
+      // in the air the car follows its flight path
+      const sp = Math.hypot(c.vx, c.vy, c.vz) || 1;
+      const dx = c.vx / sp, dy = c.vy / sp, dz = c.vz / sp;
+      const rx = -Math.cos(heading), rz = Math.sin(heading);
+      // up = right × direction
+      this.tmpUp.x = -rz * dy;
+      this.tmpUp.y = rz * dx - rx * dz;
+      this.tmpUp.z = rx * dy;
+      k = 1 - Math.exp(-dt * 3);
+    } else {
+      track.upAt(c.idx, this.tmpUp);
+    }
     this.up.x += (this.tmpUp.x - this.up.x) * k;
     this.up.y += (this.tmpUp.y - this.up.y) * k;
     this.up.z += (this.tmpUp.z - this.up.z) * k;
@@ -376,8 +393,20 @@ export class CarVisual {
 
     const v = forwardSpeed(c);
     this.spin += (v * dt) / this.wheelRadius;
+    // suspension: damped spring kicked by landings, plus jitter on rough surfaces
+    const travel = this.spec.suspension;
+    if (c.landed > 0) this.suspV -= Math.min(c.landed, 15) * travel * 0.9;
+    this.suspV += (-160 * this.suspY - 14 * this.suspV) * dt;
+    this.suspY = THREE.MathUtils.clamp(this.suspY + this.suspV * dt, -travel * 1.5, travel * 1.5);
+    const rough = c.airborne ? 0 : SURFACE_PROPS[track.surfaceAt(c.idx)].rough;
+    this.roughPhase += Math.abs(v) * dt * 1.4;
+    const jitter = rough * travel * 0.35 * Math.min(1, Math.abs(v) / 15) * (Math.sin(this.roughPhase) * 0.6 + Math.sin(this.roughPhase * 2.7) * 0.4);
+    this.body.position.y = this.suspY + jitter;
+    const droop = c.airborne ? travel * 0.8 : 0;
     for (let i = 0; i < this.wheels.length; i++) {
       const w = this.wheels[i];
+      this.wheelBaseY[i] ??= w.position.y;
+      w.position.y = THREE.MathUtils.lerp(w.position.y, this.wheelBaseY[i] - droop, 1 - Math.exp(-dt * 12));
       w.children[0].rotation.x = this.spin;
       if (i < 2) w.rotation.y = -c.steer * 0.45;
     }

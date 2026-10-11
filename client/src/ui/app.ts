@@ -1,5 +1,6 @@
 import {
-  CARS, carRatings, formatTime, getCar, MAX_CARS, rankEntries, TRACK_DEFS,
+  carRatings, carsForClass, formatTime, getCar, getTrack, MAX_CARS, rankEntries, TRACK_DEFS,
+  type CarClass,
   type LeaderboardEntry, type LeaderboardSort,
   type LobbyClient, type LobbyPlayer, type LobbySettings, type ResultRow, type ServerMsg, type Slot,
 } from '@spidi/shared';
@@ -11,8 +12,11 @@ import { fetchLeaderboard, submitResults } from '../leaderboardApi';
 import { Net } from '../net';
 import { Backdrop } from './backdrop';
 
+/** a player's preferences: carId is the road car, offroadCarId the offroad car */
+type PlayerPref = LobbyPlayer & { offroadCarId?: string };
+
 interface Prefs {
-  players: LobbyPlayer[];
+  players: PlayerPref[];
   trackId: string;
   laps: number;
   aiCount: number;
@@ -28,7 +32,10 @@ const SKILLS = [
 
 function loadPrefs(): Prefs {
   const def: Prefs = {
-    players: [{ name: 'Spieler 1', carId: CARS[0].id }, { name: 'Spieler 2', carId: CARS[2].id }],
+    players: [
+      { name: 'Spieler 1', carId: 'falcone', offroadCarId: 'bergziege' },
+      { name: 'Spieler 2', carId: 'kaito', offroadCarId: 'raider' },
+    ],
     trackId: TRACK_DEFS[0].id, laps: 2, aiCount: 4, aiSkill: 0.93, onlineLocal: 1,
   };
   try {
@@ -122,7 +129,7 @@ export class App {
         <p class="hint">Grafiken (alle ${cc0}, Public Domain) – herzlichen Dank an:</p>
         <ul class="credits">
           <li><b>Kenney</b> (<a href="https://kenney.nl" target="_blank" rel="noopener">kenney.nl</a>): Car Kit, Nature Kit, City Kit (Suburban), City Kit (Commercial)</li>
-          <li><b>ambientCG</b> (<a href="https://ambientcg.com" target="_blank" rel="noopener">ambientcg.com</a>): Asphalt031, Grass004, Rock064, Snow010A, Ground080, Gravel043, Concrete034</li>
+          <li><b>ambientCG</b> (<a href="https://ambientcg.com" target="_blank" rel="noopener">ambientcg.com</a>): Asphalt031, Grass004, Rock064, Snow010A, Ground080, Gravel043, Concrete034, Ground106, Ground037, Ground071, Ground093C, Rock029, Ground097</li>
         </ul>
         <p class="hint">Sounds werden live im Browser synthetisiert. Inspiriert von <i>Need for Speed II: Special Edition</i> (1997).</p>
         <div class="row"><button data-a="back">Zurück</button></div>
@@ -154,9 +161,37 @@ export class App {
 
   // ---------------------------------------------------------------- shared widgets
 
-  private playerPanel(k: number) {
+  private classOf(trackId: string): CarClass {
+    return getTrack(trackId).carClass;
+  }
+
+  /** the car player k drives in the given class (falls back to a car of that class) */
+  private carOf(k: number, cls: CarClass) {
     const p = this.prefs.players[k];
-    const car = getCar(p.carId);
+    const id = cls === 'offroad' ? p.offroadCarId : p.carId;
+    const pool = carsForClass(cls);
+    return pool.some((c) => c.id === id) ? id! : pool[k % pool.length].id;
+  }
+
+  private setCarOf(k: number, cls: CarClass, id: string) {
+    if (cls === 'offroad') this.prefs.players[k].offroadCarId = id;
+    else this.prefs.players[k].carId = id;
+    this.savePrefs();
+  }
+
+  private cycleCar(k: number, cls: CarClass, d: number) {
+    const pool = carsForClass(cls);
+    const i = pool.findIndex((c) => c.id === this.carOf(k, cls));
+    this.setCarOf(k, cls, pool[(i + d + pool.length) % pool.length].id);
+  }
+
+  private lobbyPlayers(cls: CarClass): LobbyPlayer[] {
+    return this.prefs.players.slice(0, this.prefs.onlineLocal).map((p, k) => ({ name: p.name, carId: this.carOf(k, cls) }));
+  }
+
+  private playerPanel(k: number, cls: CarClass) {
+    const p = this.prefs.players[k];
+    const car = getCar(this.carOf(k, cls));
     const r = carRatings(car);
     const bar = (label: string, v: number) => `<div class="stat"><span>${label}</span><div class="bar"><i style="width:${v * 100}%"></i></div></div>`;
     return `
@@ -170,16 +205,13 @@ export class App {
         </div>
         <div class="car-desc">${car.description}</div>
         ${bar('Tempo', r.speed)}${bar('Beschl.', r.accel)}${bar('Handling', r.handling)}${bar('Bremsen', r.brakes)}
-        <div class="car-top">Spitze ca. ${Math.round(car.topSpeed * 3.6 * 0.92)} km/h</div>
+        <div class="car-top">${cls === 'offroad' ? 'Offroad · ' : ''}Spitze ca. ${Math.round(car.topSpeed * 3.6 * 0.92)} km/h</div>
       </div>`;
   }
 
-  private playerActions(refresh: () => void) {
+  private playerActions(refresh: () => void, cls: () => CarClass) {
     const cycle = (el: HTMLElement, d: number) => {
-      const k = Number(el.dataset.k);
-      const i = CARS.findIndex((c) => c.id === this.prefs.players[k].carId);
-      this.prefs.players[k].carId = CARS[(i + d + CARS.length) % CARS.length].id;
-      this.savePrefs();
+      this.cycleCar(Number(el.dataset.k), cls(), d);
       refresh();
     };
     return {
@@ -200,7 +232,7 @@ export class App {
         <div class="tracks">
           ${TRACK_DEFS.map((t) => `
             <button class="track ${t.id === s.trackId ? 'sel' : ''} ${t.theme}" data-a="track" data-id="${t.id}" ${dis}>
-              <b>${t.name}</b><span>${t.description}</span>
+              <b>${t.name}${t.class === 'offroad' ? ' <em class="badge">OFFROAD</em>' : ''}</b><span>${t.description}</span>
             </button>`).join('')}
         </div>
         <div class="opts">
@@ -228,16 +260,17 @@ export class App {
     const humans = mode === 'split' ? 2 : 1;
     const maxAi = MAX_CARS - humans;
     const refresh = () => this.showSetup(mode);
-    this.backdrop.show(this.prefs.trackId, this.prefs.players.slice(0, humans).map((p) => p.carId));
+    const cls = this.classOf(this.prefs.trackId);
+    this.backdrop.show(this.prefs.trackId, Array.from({ length: humans }, (_, k) => this.carOf(k, cls)));
     this.setScreen('setup', `
       <div class="menu panel wide">
         <h2>${mode === 'split' ? 'Splitscreen' : 'Einzelrennen'}</h2>
-        <div class="players">${this.playerPanel(0)}${humans > 1 ? this.playerPanel(1) : ''}</div>
+        <div class="players">${this.playerPanel(0, cls)}${humans > 1 ? this.playerPanel(1, cls) : ''}</div>
         ${this.settingsBlock(this.prefs, true, maxAi)}
         <div class="row"><button data-a="back">Zurück</button><button class="go" data-a="start">Rennen starten ▶</button></div>
       </div>`);
     this.bind({
-      ...this.playerActions(refresh),
+      ...this.playerActions(refresh, () => cls),
       ...this.settingsActions(this.prefs, maxAi, () => { this.savePrefs(); refresh(); }),
       back: () => this.showMain(),
       start: () => this.startLocal(mode),
@@ -249,14 +282,16 @@ export class App {
     const humans = mode === 'split' ? 2 : 1;
     const ai = Math.min(this.prefs.aiCount, MAX_CARS - humans);
     const names = ['Rossi', 'Lindqvist', 'Tanaka', 'Moreau', 'Becker', 'Okafor', 'Silva', 'Novak'];
+    const cls = this.classOf(this.prefs.trackId);
+    const pool = carsForClass(cls);
     const slots: Slot[] = [];
     for (let i = 0; i < ai; i++) {
-      slots.push({ id: `ai${i}`, name: names[i % names.length], carId: CARS[(i + 1) % CARS.length].id, isAI: true, ownerId: '', grid: i });
+      slots.push({ id: `ai${i}`, name: names[i % names.length], carId: pool[(i + 1) % pool.length].id, isAI: true, ownerId: '', grid: i });
     }
     const locals: LocalPlayerCfg[] = [];
     for (let k = 0; k < humans; k++) {
       const p = this.prefs.players[k];
-      slots.push({ id: `p${k + 1}`, name: p.name, carId: p.carId, isAI: false, ownerId: '', grid: ai + k });
+      slots.push({ id: `p${k + 1}`, name: p.name, carId: this.carOf(k, cls), isAI: false, ownerId: '', grid: ai + k });
       locals.push({ slotId: `p${k + 1}`, keymap: humans === 1 ? SOLO_KEYMAP : KEYMAPS[k], pad: k });
     }
     this.runGame(new Game(this.hudLayer, {
@@ -478,7 +513,7 @@ export class App {
   private showOnlineSetup(error = '') {
     const n = this.prefs.onlineLocal;
     const refresh = () => this.showOnlineSetup();
-    this.backdrop.show(this.prefs.trackId, this.prefs.players.slice(0, n).map((p) => p.carId));
+    this.backdrop.show(this.prefs.trackId, Array.from({ length: n }, (_, k) => this.carOf(k, 'road')));
     this.setScreen('onlineSetup', `
       <div class="menu panel wide">
         <h2>Netzwerkspiel</h2>
@@ -489,11 +524,12 @@ export class App {
           <button class="${n === 1 ? 'sel' : ''}" data-a="one">1 Spieler an diesem Gerät</button>
           <button class="${n === 2 ? 'sel' : ''}" data-a="two">2 Spieler (Splitscreen)</button>
         </div>
-        <div class="players">${this.playerPanel(0)}${n > 1 ? this.playerPanel(1) : ''}</div>
+        <div class="players">${this.playerPanel(0, 'road')}${n > 1 ? this.playerPanel(1, 'road') : ''}</div>
+        <p class="hint">Wählt der Host eine Offroad-Strecke, suchst du dein Offroad-Auto direkt in der Lobby aus.</p>
         <div class="row"><button data-a="back">Zurück</button><button class="go" data-a="connect">Lobby betreten ▶</button></div>
       </div>`);
     this.bind({
-      ...this.playerActions(refresh),
+      ...this.playerActions(refresh, () => 'road'),
       one: () => { this.prefs.onlineLocal = 1; this.savePrefs(); refresh(); },
       two: () => { this.prefs.onlineLocal = 2; this.savePrefs(); refresh(); },
       back: () => this.showMain(),
@@ -518,7 +554,7 @@ export class App {
       this.net = null;
       this.showMain('Verbindung zum Server verloren.');
     };
-    net.send({ type: 'join', players: this.prefs.players.slice(0, this.prefs.onlineLocal) });
+    net.send({ type: 'join', players: this.lobbyPlayers('road') });
   }
 
   private leaveNet() {
@@ -540,6 +576,12 @@ export class App {
     }
     if (m.type === 'lobby') {
       this.lobby = m;
+      // track class changed by the host: switch to my car of that class
+      if (m.phase === 'lobby') {
+        const want = this.lobbyPlayers(this.classOf(m.settings.trackId));
+        const mine = m.clients.find((c) => c.id === this.net!.clientId)?.players;
+        if (mine && JSON.stringify(mine) !== JSON.stringify(want)) this.net!.send({ type: 'join', players: want });
+      }
       if (this.screen === 'lobby' || this.screen === 'connecting') this.showLobby();
     } else if (m.type === 'start') {
       const me = this.net!.clientId;
@@ -562,10 +604,16 @@ export class App {
     const isHost = l.hostId === net.clientId;
     const humans = l.clients.reduce((s, c) => s + c.players.length, 0);
     const maxAi = Math.max(0, MAX_CARS - humans);
-    this.backdrop.show(l.settings.trackId, this.prefs.players.slice(0, this.prefs.onlineLocal).map((p) => p.carId));
-    const list = l.clients.map((c) => c.players.map((p) => `
-      <li class="${c.id === net.clientId ? 'me' : ''}"><i style="background:${getCar(p.carId).color}"></i>
-        ${escapeHtml(p.name)} <small>${getCar(p.carId).name}</small>${c.id === l.hostId ? ' <em>Host</em>' : ''}</li>`).join('')).join('');
+    const cls = this.classOf(l.settings.trackId);
+    this.backdrop.show(l.settings.trackId, this.lobbyPlayers(cls).map((p) => p.carId));
+    const canPick = l.phase === 'lobby';
+    const list = l.clients.map((c) => c.players.map((p, k) => {
+      const mine = c.id === net.clientId;
+      const arrows = (d: number, label: string) => (mine && canPick ? `<button class="mini" data-a="lcar" data-k="${k}" data-d="${d}">${label}</button>` : '');
+      return `
+      <li class="${mine ? 'me' : ''}"><i style="background:${getCar(p.carId).color}"></i>
+        ${escapeHtml(p.name)} ${arrows(-1, '◀')}<small>${getCar(p.carId).name}</small>${arrows(1, '▶')}${c.id === l.hostId ? ' <em>Host</em>' : ''}</li>`;
+    }).join('')).join('');
     const settings = { ...l.settings };
     this.setScreen('lobby', `
       <div class="menu panel wide">
@@ -585,6 +633,10 @@ export class App {
     this.bind({
       ...this.settingsActions(settings, maxAi, () => net.send({ type: 'settings', settings })),
       leave: () => this.showMain(),
+      lcar: (el) => {
+        this.cycleCar(Number(el.dataset.k), cls, Number(el.dataset.d));
+        net.send({ type: 'join', players: this.lobbyPlayers(cls) });
+      },
       abort: (el) => this.confirmAbort(el),
       start: () => {
         this.lobbyNotice = '';

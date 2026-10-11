@@ -81,6 +81,8 @@ export class EngineVoice {
   private gain: GainNode;
   private skidGain: GainNode;
   private skidSrc: AudioBufferSourceNode;
+  private gravelGain: GainNode;
+  private gravelSrc: AudioBufferSourceNode;
   private out: GainNode;
 
   constructor(pan = 0, volume = 1) {
@@ -117,9 +119,19 @@ export class EngineVoice {
     this.skidGain.gain.value = 0;
     this.skidSrc.connect(bp).connect(this.skidGain).connect(this.out);
     this.skidSrc.start();
+
+    // rumble of loose gravel / sand under the tyres
+    this.gravelSrc = audio.noiseSource();
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 520;
+    this.gravelGain = ctx.createGain();
+    this.gravelGain.gain.value = 0;
+    this.gravelSrc.connect(lp).connect(this.gravelGain).connect(this.out);
+    this.gravelSrc.start(0, Math.random());
   }
 
-  update(rpm: number, throttle: number, skid: number) {
+  update(rpm: number, throttle: number, skid: number, gravel = 0) {
     const ctx = audio.ctx!;
     const t = ctx.currentTime;
     const f = 28 + (rpm / 60) * 2.6;
@@ -128,6 +140,7 @@ export class EngineVoice {
     this.filter.frequency.setTargetAtTime(350 + rpm * 0.22 + throttle * 500, t, 0.05);
     this.gain.gain.setTargetAtTime(0.07 + throttle * 0.07 + (rpm / 8000) * 0.04, t, 0.05);
     this.skidGain.gain.setTargetAtTime(skid * 0.22, t, 0.05);
+    this.gravelGain.gain.setTargetAtTime(gravel * 0.35, t, 0.08);
   }
 
   setVolume(v: number) {
@@ -138,6 +151,7 @@ export class EngineVoice {
     this.oscA.stop();
     this.oscB.stop();
     this.skidSrc.stop();
+    this.gravelSrc.stop();
     this.out.disconnect();
   }
 }

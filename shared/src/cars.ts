@@ -1,3 +1,5 @@
+import type { CarClass } from './track';
+
 export interface CarShape {
   length: number;
   width: number;
@@ -12,6 +14,10 @@ export interface CarShape {
 
 export interface CarSpec {
   id: string;
+  /** 'road' cars race on asphalt tracks, 'offroad' cars on offroad tracks */
+  class: CarClass;
+  /** visual suspension travel (m) */
+  suspension: number;
   name: string;
   description: string;
   /** m/s, theoretical */
@@ -37,6 +43,8 @@ export interface CarSpec {
 export const CARS: CarSpec[] = [
   {
     id: 'falcone',
+    class: 'road',
+    suspension: 0.06,
     name: 'Falcone Strada',
     description: 'Italienisches Sportcoupé – ausgewogen und schnell',
     topSpeed: 88,
@@ -54,6 +62,8 @@ export const CARS: CarSpec[] = [
   },
   {
     id: 'sturmvogel',
+    class: 'road',
+    suspension: 0.06,
     name: 'Sturmvogel RS',
     description: 'Futuristischer Prototyp – höchste Endgeschwindigkeit',
     topSpeed: 94,
@@ -71,6 +81,8 @@ export const CARS: CarSpec[] = [
   },
   {
     id: 'kaito',
+    class: 'road',
+    suspension: 0.06,
     name: 'Kaito ZX',
     description: 'Leichter Formelwagen – Kurvenkünstler',
     topSpeed: 82,
@@ -88,6 +100,8 @@ export const CARS: CarSpec[] = [
   },
   {
     id: 'brutale',
+    class: 'road',
+    suspension: 0.06,
     name: 'Brutale V10',
     description: 'Hot Hatch mit V10 – brutale Beschleunigung',
     topSpeed: 86,
@@ -103,7 +117,68 @@ export const CARS: CarSpec[] = [
     model: 'hatchback-sports',
     shape: { length: 4.6, width: 2.0, height: 0.92, roof: 1.22, cabinShift: -0.35, spoiler: false },
   },
+  {
+    id: 'bergziege',
+    class: 'offroad',
+    suspension: 0.22,
+    name: 'Bergziege 4x4',
+    description: 'Kompakter Geländewagen – wendig mit viel Grip',
+    topSpeed: 64,
+    accel: 9.6,
+    brake: 15,
+    grip: 14.5,
+    steer: 0.68,
+    wheelbase: 2.4,
+    gears: 5,
+    mass: 1500,
+    color: '#3f8a3a',
+    accent: '#1b1b1b',
+    model: 'suv',
+    shape: { length: 4.2, width: 2.0, height: 1.0, roof: 1.6, cabinShift: -0.2, spoiler: false },
+  },
+  {
+    id: 'baron',
+    class: 'offroad',
+    suspension: 0.18,
+    name: 'Baron V8',
+    description: 'Luxus-Geländewagen – schnell und schwer',
+    topSpeed: 70,
+    accel: 8.6,
+    brake: 14,
+    grip: 13.2,
+    steer: 0.6,
+    wheelbase: 2.8,
+    gears: 6,
+    mass: 2100,
+    color: '#e0a21a',
+    accent: '#2a2a2a',
+    model: 'suv-luxury',
+    shape: { length: 4.8, width: 2.05, height: 1.05, roof: 1.65, cabinShift: -0.1, spoiler: false },
+  },
+  {
+    id: 'raider',
+    class: 'offroad',
+    suspension: 0.25,
+    name: 'Sahara Raider',
+    description: 'Wüsten-Pickup – brachiale Beschleunigung',
+    topSpeed: 66,
+    accel: 10.6,
+    brake: 14.5,
+    grip: 13.6,
+    steer: 0.62,
+    wheelbase: 3.0,
+    gears: 5,
+    mass: 1900,
+    color: '#c8452a',
+    accent: '#f4f4f4',
+    model: 'truck',
+    shape: { length: 5.0, width: 2.05, height: 1.0, roof: 1.6, cabinShift: 0.4, spoiler: false },
+  },
 ];
+
+export function carsForClass(cls: CarClass) {
+  return CARS.filter((c) => c.class === cls);
+}
 
 export function getCar(id: string): CarSpec {
   return CARS.find((c) => c.id === id) ?? CARS[0];
@@ -112,8 +187,9 @@ export function getCar(id: string): CarSpec {
 /** Display ratings 0..1 for the menu. */
 export function carRatings(c: CarSpec) {
   const norm = (v: number, lo: number, hi: number) => Math.max(0.1, Math.min(1, (v - lo) / (hi - lo)));
+  const off = c.class === 'offroad';
   return {
-    speed: norm(c.topSpeed, 70, 96),
+    speed: off ? norm(c.topSpeed, 56, 74) : norm(c.topSpeed, 70, 96),
     accel: norm(c.accel, 7, 11.5),
     handling: norm(c.grip + c.steer * 5, 13, 18.6),
     brakes: norm(c.brake, 12, 18),

@@ -61,16 +61,31 @@ const NATURE_COLORS: Record<string, string> = {
   dirt: '#857565',
   stone: '#9b978f',
   _defaultMat: '#8f8a82',
+  wood: '#8a5a36',
+  woodDark: '#5e3d24',
+  woodInner: '#d8b98f',
 };
 
-const lambertCache = new Map<THREE.Material, THREE.MeshLambertMaterial>();
+/** In the desert, rocks and cliffs are red sandstone. */
+const DESERT_COLORS: Record<string, string> = {
+  dirt: '#a8583a',
+  stone: '#b8724a',
+  grass: '#c98a55',
+  _defaultMat: '#a0583a',
+  leafsGreen: '#5b7d3a',
+};
+
+let colorTheme: 'default' | 'desert' = 'default';
+
+const lambertCache = new Map<string, THREE.MeshLambertMaterial>();
 function lambertFrom(m: THREE.Material) {
-  let l = lambertCache.get(m);
+  const key = `${m.uuid}|${colorTheme}`;
+  let l = lambertCache.get(key);
   if (!l) {
     const s = m as THREE.MeshStandardMaterial;
-    const natural = NATURE_COLORS[s.name];
+    const natural = (colorTheme === 'desert' ? DESERT_COLORS[s.name] : undefined) ?? NATURE_COLORS[s.name];
     l = new THREE.MeshLambertMaterial({ color: natural ? new THREE.Color(natural) : s.color, map: s.map ?? null, flatShading: !s.map });
-    lambertCache.set(m, l);
+    lambertCache.set(key, l);
   }
   return l;
 }
@@ -109,6 +124,8 @@ interface ScatterOpts {
   samples?: number;
   /** rotate in 90° steps only (buildings) */
   square?: boolean;
+  /** max height difference over 3 m (default 4) */
+  maxSlope?: number;
 }
 
 /** Scatter objects near the track, rejecting positions on/near the road or failing the filter. */
@@ -127,8 +144,9 @@ function scatter(track: Track, terrain: Terrain, variants: Variant[], count: num
     if (terrain.distAt(x, z) < Math.max(opts.minDist, terrain.near + 4)) continue;
     const y = terrain.heightAt(x, z);
     const slope = Math.abs(terrain.heightAt(x + 3, z) - y) + Math.abs(terrain.heightAt(x, z + 3) - y);
-    if (slope > 4 || !opts.ok(x, y, z)) continue;
-    o.position.set(x, y - 0.2, z);
+    if (slope > (opts.maxSlope ?? 4) || !opts.ok(x, y, z)) continue;
+    // sink objects on slopes so they never float above the (coarser) terrain mesh
+    o.position.set(x, y - 0.2 - slope * 0.6, z);
     o.rotation.set(0, opts.square ? Math.floor(rand() * 4) * (Math.PI / 2) + Math.atan2(track.tx[i], track.tz[i]) : rand() * Math.PI * 2, 0);
     o.scale.setScalar(opts.scale[0] + rand() * (opts.scale[1] - opts.scale[0]));
     o.updateMatrix();
@@ -142,6 +160,7 @@ function scatter(track: Track, terrain: Terrain, variants: Variant[], count: num
 
 export function buildScenery(track: Track, terrain: Terrain): THREE.Group {
   const group = new THREE.Group();
+  colorTheme = track.def.theme === 'desert' ? 'desert' : 'default';
   const seed = track.def.seed;
   const rocks: Variant[] = [
     { model: 'rock_largeA', geo: fallback.rock, scale: 5 },
@@ -150,7 +169,11 @@ export function buildScenery(track: Track, terrain: Terrain): THREE.Group {
     { model: 'rock_tallA', geo: fallback.rock, scale: 4 },
   ];
 
-  if (track.def.theme === 'city') {
+  if (track.def.theme === 'desert') {
+    group.add(desertScenery(track, terrain, rocks));
+  } else if (track.def.theme === 'forest') {
+    group.add(forestScenery(track, terrain));
+  } else if (track.def.theme === 'city') {
     group.add(cityScenery(track, terrain));
   } else if (track.def.theme === 'speedway') {
     group.add(speedwayScenery(track, terrain));
@@ -349,6 +372,83 @@ function speedwayScenery(track: Track, terrain: Terrain) {
   }
   towers.count = lights.count = k;
   group.add(towers, lights);
+  return group;
+}
+
+/** Objects placed along both road edges (every `spacing` metres, just outside the barrier line). */
+function edgeObjects(track: Track, terrain: Terrain, variants: Variant[], spacing: number, seed: number, offset: number, scale: [number, number]) {
+  const rand = mulberry32(seed);
+  const buckets: THREE.Matrix4[][] = variants.map(() => []);
+  const o = new THREE.Object3D();
+  const every = Math.max(1, Math.round(spacing / track.ds));
+  for (let i = 0; i < track.n; i += every) {
+    if (track.gallery[i]) continue;
+    for (const side of [-1, 1]) {
+      if (rand() < 0.25) continue;
+      const lat = side * (track.hw[i] + WALL_OFFSET + offset + rand() * 1.5);
+      const x = track.px[i] + track.rx[i] * lat, z = track.pz[i] + track.rz[i] * lat;
+      const y = Math.max(terrain.heightAt(x, z), track.py[i] + track.bank[i] * lat - 1);
+      o.position.set(x, y - 0.2, z);
+      o.rotation.set(0, rand() * Math.PI * 2, 0);
+      o.scale.setScalar(scale[0] + rand() * (scale[1] - scale[0]));
+      o.updateMatrix();
+      buckets[Math.floor(rand() * variants.length)].push(o.matrix.clone());
+    }
+  }
+  const group = new THREE.Group();
+  variants.forEach((v, i) => instanced(v, buckets[i]).forEach((m) => group.add(m)));
+  return group;
+}
+
+function desertScenery(track: Track, terrain: Terrain, rocks: Variant[]) {
+  const group = new THREE.Group();
+  const seed = track.def.seed;
+  const cacti: Variant[] = [
+    { model: 'cactus_tall', geo: fallback.cypress, scale: 6 },
+    { model: 'cactus_short', geo: fallback.cypress, scale: 6 },
+  ];
+  group.add(scatter(track, terrain, cacti, 500, seed + 1, { minDist: 13, maxDist: 160, scale: [0.7, 1.4], ok: () => true }));
+  group.add(scatter(track, terrain, rocks, 500, seed + 2, { minDist: 13, maxDist: 260, scale: [0.8, 1.8], ok: () => true, maxSlope: 1.5 }));
+  group.add(scatter(track, terrain, [{ model: 'cliff_large_rock', geo: fallback.rock, scale: 9 }], 90, seed + 3, {
+    minDist: 30, maxDist: 300, scale: [0.7, 1.4], ok: () => true, maxSlope: 2.5,
+  }));
+  group.add(scatter(track, terrain, [{ model: 'tree_palmTall', geo: fallback.cypress, scale: 8 }], 30, seed + 4, {
+    minDist: 16, maxDist: 60, scale: [0.8, 1.2], ok: () => true,
+  }));
+  // rocks lining the berms mark the edge of the piste
+  group.add(edgeObjects(track, terrain, rocks.slice(0, 3), 7, seed + 5, 0.8, [0.35, 0.7]));
+  return group;
+}
+
+function forestScenery(track: Track, terrain: Terrain) {
+  const group = new THREE.Group();
+  const seed = track.def.seed;
+  const trees: Variant[] = [
+    { model: 'tree_pineTallA', geo: fallback.pine, scale: 8 },
+    { model: 'tree_pineTallB', geo: fallback.pine, scale: 7 },
+    { model: 'tree_pineDefaultA', geo: fallback.pine, scale: 7.5 },
+    { model: 'tree_oak', geo: fallback.round, scale: 7 },
+    { model: 'tree_default', geo: fallback.round, scale: 7 },
+  ];
+  group.add(scatter(track, terrain, trees, 3600, seed + 1, { minDist: 12, maxDist: 240, scale: [0.8, 1.5], ok: () => true }));
+  const deadwood: Variant[] = [
+    { model: 'log', geo: fallback.rock, scale: 6 },
+    { model: 'log_large', geo: fallback.rock, scale: 4 },
+    { model: 'log_stack', geo: fallback.rock, scale: 5 },
+    { model: 'stump_old', geo: fallback.rock, scale: 5 },
+    { model: 'stump_round', geo: fallback.rock, scale: 5 },
+  ];
+  group.add(scatter(track, terrain, deadwood, 260, seed + 2, { minDist: 12, maxDist: 45, scale: [0.8, 1.3], ok: () => true }));
+  group.add(scatter(track, terrain, [
+    { model: 'mushroom_redGroup', geo: fallback.rock, scale: 5 },
+    { model: 'mushroom_tanGroup', geo: fallback.rock, scale: 5 },
+    { model: 'plant_bushLarge', geo: fallback.round, scale: 7 },
+  ], 400, seed + 3, { minDist: 12, maxDist: 40, scale: [0.7, 1.3], ok: () => true }));
+  // a camp near the start
+  group.add(scatter({ ...track, n: Math.min(track.n, 120) } as Track, terrain, [
+    { model: 'tent_detailedOpen', geo: () => fallback.house('#c84a3a', '#c84a3a'), scale: 7 },
+    { model: 'campfire_logs', geo: fallback.rock, scale: 6 },
+  ], 6, seed + 4, { minDist: 16, maxDist: 30, scale: [0.9, 1.1], ok: () => true }));
   return group;
 }
 

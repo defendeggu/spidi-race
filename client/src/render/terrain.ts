@@ -35,6 +35,14 @@ function naturalHeight(track: Track, x: number, z: number, d: number, hRef: numb
       return hRef - 0.4 + fbm(x * 0.01, z * 0.01, seed, 2) * 1.2 + Math.max(0, d - 450) * 0.25 * fbm(x * 0.003, z * 0.003, seed + 3, 3);
     case 'speedway':
       return -0.4 + fbm(x * 0.01, z * 0.01, seed, 2) * 0.6 + Math.max(0, d - 600) * 0.2 * fbm(x * 0.002, z * 0.002, seed + 3, 3);
+    case 'desert': {
+      // canyon: steep red walls close to the track (higher in some places than others), dunes further out
+      const wall = 20 + fbm(x * 0.004, z * 0.004, seed + 7, 3) * 70;
+      const dunes = fbm(x * 0.008, z * 0.008, seed, 3) * 14;
+      return hRef - 2 + smoothstep(8, 45, d) * wall + dunes;
+    }
+    case 'forest':
+      return hRef - 4 + fbm(x * 0.006, z * 0.006, seed, 4) * (10 + Math.min(d, 500) * 0.12);
   }
 }
 
@@ -135,6 +143,16 @@ export function buildTerrain(track: Track): Terrain {
         if (slope > 0.3) mix(pal.l2, 2, smoothstep(0.3, 0.5, slope));
         break;
       }
+      case 'desert':
+        if (slope > 0.22) mix(pal.l1, 1, smoothstep(0.22, 0.4, slope));
+        if (v > 0.6) mix(pal.l2, 2, smoothstep(0.6, 0.7, v) * 0.7);
+        break;
+      case 'forest': {
+        const clearing = fbm(x * 0.01, z * 0.01, track.def.seed + 13, 2);
+        if (clearing > 0.55) mix(pal.l1, 1, smoothstep(0.55, 0.65, clearing));
+        if (slope > 0.32) mix(pal.l2, 2, smoothstep(0.32, 0.5, slope));
+        break;
+      }
       case 'speedway':
         // mowing stripes on the infield, asphalt apron along the track
         c.copy(Math.sin((x + z) * 0.06) > 0 ? pal.base : pal.base2);
@@ -191,6 +209,18 @@ const THEMES: Record<TrackTheme, { textures: TextureName[]; scale: number[]; tin
     scale: [6, 7, 12, 4],
     tint: P({ base: '#d8d8d8', base2: '#bdbdbd', l1: '#dfe8c8', l2: '#e0dcd6', deep: '#ffffff', verge: '#c8c4bc' }),
     flat: P({ base: '#8d8d8a', base2: '#7d7d7a', l1: '#5d8a3a', l2: '#7b756d', deep: '#555555', verge: '#6e6a63' }),
+  },
+  desert: {
+    textures: ['dune', 'redrock', 'desertdirt', 'desertdirt'],
+    scale: [9, 14, 6, 5],
+    tint: P({ base: '#fff0e0', base2: '#f0d8c0', l1: '#ffe6d8', l2: '#ffffff', deep: '#ffffff', verge: '#f2e2d0' }),
+    flat: P({ base: '#d9a06a', base2: '#c98c58', l1: '#b0603a', l2: '#c08a5a', deep: '#555555', verge: '#a8754a' }),
+  },
+  forest: {
+    textures: ['forestfloor', 'grass', 'rock', 'dirt'],
+    scale: [6, 7, 12, 5],
+    tint: P({ base: '#e0e8d0', base2: '#c8d4b0', l1: '#e6eecf', l2: '#e2ddd6', deep: '#ffffff', verge: '#e8dccc' }),
+    flat: P({ base: '#4a5e32', base2: '#56693a', l1: '#5d8a3a', l2: '#7b756d', deep: '#555555', verge: '#6b5236' }),
   },
   speedway: {
     textures: ['grass', 'rock', 'sand', 'asphalt'],

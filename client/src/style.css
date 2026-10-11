@@ -232,3 +232,9 @@ table.board .dot { display: inline-block; width: 10px; height: 10px; border-radi
 button.danger { background: linear-gradient(#b3262e, #7a1020); border-left-color: #ff5a6a; }
 button.danger:hover:not(:disabled) { background: linear-gradient(#d0333c, #8f1426); }
 .notice { background: rgba(255, 204, 0, 0.15); border: 1px solid var(--gold); padding: 8px 12px; border-radius: 4px; }
+
+/* ------------------------------------------------------------ offroad */
+.track.desert { background: linear-gradient(135deg, #b5552c, #e0a252); }
+.track.forest { background: linear-gradient(135deg, #2c5a2e, #6b4a2e); }
+em.badge { font-style: normal; font-size: 10px; background: #ff7a00; color: #1a1000; padding: 1px 5px; border-radius: 3px; vertical-align: 3px; margin-left: 4px; font-family: Verdana, sans-serif; }
+button.mini { padding: 0 6px; font-size: 11px; margin: 0 2px; }
