@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { AIDriver } from './ai';
-import { CARS, getCar } from './cars';
+import { CARS, carsForClass, getCar } from './cars';
 import { CAR_HALF_WIDTH, collideCars, createCarState, forwardSpeed, stepCar } from './physics';
 import { Race, type Slot } from './race';
 import { gridPosition, WALL_OFFSET } from './track';
@@ -91,12 +91,67 @@ describe('speedway', () => {
   });
 });
 
+describe('offroad', () => {
+  const lapWith = (trackId: string, carId: string, throttle: number | null, seconds: number) => {
+    const t = getTrack(trackId);
+    const g = gridPosition(t, 0);
+    const c = createCarState('a', t, g.x, g.z, g.heading);
+    const ai = new AIDriver(3, 1);
+    const spec = getCar(carId);
+    let flights = 0, longest = 0, wasAir = false;
+    for (let k = 0; k < 60 * seconds; k++) {
+      const inp = ai.update(c, spec, t, DT);
+      // throttle=null: AI decides; otherwise hold a crawling pace
+      if (throttle !== null) inp.throttle = forwardSpeed(c) < throttle ? 1 : 0;
+      stepCar(c, spec, inp, t, DT);
+      if (c.airborne && !wasAir) flights++;
+      if (c.airborne) longest = Math.max(longest, c.airTime);
+      wasAir = c.airborne;
+      expect(Math.abs(c.lat)).toBeLessThan(t.hw[c.idx] + WALL_OFFSET);
+    }
+    return { flights, longest, c };
+  };
+
+  it('fast cars fly over the jumps and land on the track', () => {
+    const r = lapWith('canyon', 'bergziege', null, 70);
+    expect(r.flights).toBeGreaterThanOrEqual(3);
+    expect(r.longest).toBeGreaterThan(0.6);
+    expect(r.c.airborne).toBe(false);
+  });
+
+  it('crawling over the same jumps keeps the wheels on the ground', () => {
+    const r = lapWith('canyon', 'bergziege', 6, 40);
+    expect(r.longest).toBeLessThan(0.25);
+  });
+
+  it('mud slows the car down compared to dirt', () => {
+    const t = getTrack('waldtrail');
+    const speedAfter = (u: number) => {
+      let i = 0;
+      while (t.u[i] < u) i++;
+      const c = createCarState('a', t, t.px[i], t.pz[i], Math.atan2(t.tx[i], t.tz[i]));
+      c.vx = Math.sin(c.heading) * 25;
+      c.vz = Math.cos(c.heading) * 25;
+      for (let k = 0; k < 50; k++) stepCar(c, getCar('baron'), { throttle: 1, brake: 0, steer: 0, handbrake: false }, t, DT);
+      return forwardSpeed(c);
+    };
+    expect(speedAfter(5.35)).toBeLessThan(speedAfter(4.5) - 1.5);
+  });
+
+  it('every track class has cars and the classes are disjoint', () => {
+    expect(carsForClass('road').length).toBe(4);
+    expect(carsForClass('offroad').length).toBe(3);
+    expect(TRACK_DEFS.filter((d) => d.class === 'offroad').map((d) => d.id)).toEqual(['canyon', 'waldtrail']);
+  });
+});
+
 describe('race with AI drivers', () => {
   for (const def of TRACK_DEFS) {
     it(`${def.id}: all AI cars finish 2 laps`, () => {
       const t = getTrack(def.id);
+      const pool = carsForClass(t.carClass);
       const slots: Slot[] = Array.from({ length: 6 }, (_, k) => ({
-        id: `ai${k}`, name: `AI ${k}`, carId: CARS[k % CARS.length].id, isAI: true, ownerId: '', grid: k,
+        id: `ai${k}`, name: `AI ${k}`, carId: pool[k % pool.length].id, isAI: true, ownerId: '', grid: k,
       }));
       const race = new Race(t, 2, slots, 0.5);
       const cars = slots.map((s) => {
@@ -104,13 +159,14 @@ describe('race with AI drivers', () => {
         return { slot: s, state: createCarState(s.id, t, g.x, g.z, g.heading), ai: new AIDriver(s.grid, 0.9 + s.grid * 0.015) };
       });
       const states = cars.map((c) => c.state);
-      let steps = 0;
+      let steps = 0, maxAir = 0;
       const maxSteps = 60 * 60 * 10;
       while (race.phase !== 'finished' && steps < maxSteps) {
         if (race.started) {
           for (const c of cars) {
             const spec = getCar(c.slot.carId);
             stepCar(c.state, spec, c.ai.update(c.state, spec, t, DT, states), t, DT);
+            if (c.state.airborne) maxAir = Math.max(maxAir, c.state.airTime);
           }
           for (let i = 0; i < states.length; i++)
             for (let j = i + 1; j < states.length; j++) collideCars(states[i], states[j], 1400, 1400);
@@ -120,8 +176,11 @@ describe('race with AI drivers', () => {
       }
       const res = race.results();
       const avgLap = res.reduce((s, r) => s + r.bestLap, 0) / res.length;
-      console.log(`${def.id}: length ${t.length.toFixed(0)} m, winner ${res[0].time.toFixed(1)} s, avg best lap ${avgLap.toFixed(1)} s`);
+      console.log(`${def.id}: length ${t.length.toFixed(0)} m, winner ${res[0].time.toFixed(1)} s, avg best lap ${avgLap.toFixed(1)} s, longest flight ${maxAir.toFixed(2)} s`);
       expect(res.every((r) => r.finished)).toBe(true);
+      // road tracks have no jumps: at most tiny hops over crests
+      if (!def.jumps) expect(maxAir).toBeLessThan(0.3);
+      else expect(maxAir).toBeGreaterThan(0.6);
     });
   }
 });

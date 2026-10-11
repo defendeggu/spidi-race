@@ -1,6 +1,6 @@
 import type { CarSpec } from './cars';
 import { approach, clamp, wrapAngle } from './math';
-import { WALL_OFFSET, type Track } from './track';
+import { SURFACE_PROPS, WALL_OFFSET, type Track } from './track';
 
 export interface CarInput {
   throttle: number;
@@ -35,6 +35,13 @@ export interface CarState {
   braking: boolean;
   offroad: boolean;
   shiftTimer: number;
+  /** vertical speed (m/s); follows the road while on the ground */
+  vy: number;
+  airborne: boolean;
+  /** duration of the current (or, right after landing, the last) flight in seconds */
+  airTime: number;
+  /** set for one step when the car touches down: impact speed */
+  landed: number;
 }
 
 export const CAR_HALF_WIDTH = 0.95;
@@ -48,6 +55,7 @@ export function createCarState(id: string, track: Track, x: number, z: number, h
   return {
     id, x, y: p.y, z, heading, vx: 0, vz: 0, steer: 0, rpm: IDLE_RPM, gear: 1,
     idx: p.idx, s: p.s, lat: p.lat, skid: 0, impact: 0, throttle: 0, braking: false, offroad: false, shiftTimer: 0,
+    vy: 0, airborne: false, airTime: 0, landed: 0,
   };
 }
 
@@ -63,9 +71,20 @@ function gearTopSpeed(spec: CarSpec, gear: number) {
 export function idleCar(c: CarState, inp: CarInput, dt: number) {
   c.throttle = inp.throttle;
   c.rpm = approach(c.rpm, IDLE_RPM + inp.throttle * 5200, 9000 * dt);
-  c.vx = c.vz = 0;
+  c.vx = c.vz = c.vy = 0;
   c.skid = 0;
   c.impact = 0;
+}
+
+const GRAVITY = 9.81;
+/** the ground must fall away this much below the ballistic path before the car takes off */
+const TAKEOFF_TOLERANCE = 0.03;
+
+/** Grip factor and rolling drag of the surface for this car (offroad cars suffer only half the penalty). */
+function surfaceFor(spec: CarSpec, track: Track, i: number) {
+  const sp = SURFACE_PROPS[track.surfaceAt(i)];
+  if (spec.class !== 'offroad') return sp;
+  return { grip: sp.grip + (1 - sp.grip) * 0.5, drag: sp.drag * 0.5, rough: sp.rough };
 }
 
 export function stepCar(c: CarState, spec: CarSpec, inp: CarInput, track: Track, dt: number) {
@@ -80,7 +99,10 @@ export function stepCar(c: CarState, spec: CarSpec, inp: CarInput, track: Track,
 
   const i = c.idx;
   c.offroad = Math.abs(c.lat) > track.hw[i] + 0.4;
-  const thr = inp.throttle, brk = inp.brake;
+  const air = c.airborne;
+  const surf = surfaceFor(spec, track, i);
+  // in the air the wheels have no traction
+  const thr = air ? 0 : inp.throttle, brk = air ? 0 : inp.brake;
   let a = 0;
 
   if (thr > 0 && vf > -0.5) {
@@ -92,12 +114,15 @@ export function stepCar(c: CarState, spec: CarSpec, inp: CarInput, track: Track,
     else if (vf > -14) a -= spec.accel * 0.45 * brk;
   }
   if (thr > 0 && vf < -0.5) a += spec.brake * thr;
-  if (inp.handbrake) a -= Math.sign(vf) * 3.5;
+  if (inp.handbrake && !air) a -= Math.sign(vf) * 3.5;
   a -= vf * 0.015;
-  if (Math.abs(vf) > 0.1) a -= Math.sign(vf) * 0.25;
-  if (c.offroad) a -= vf * 0.15;
-  // gravity on slopes
-  a -= 9.81 * 0.7 * track.grade[i] * (fx * track.tx[i] + fz * track.tz[i]);
+  if (!air) {
+    if (Math.abs(vf) > 0.1) a -= Math.sign(vf) * 0.25;
+    if (c.offroad) a -= vf * 0.15;
+    a -= vf * surf.drag;
+    // gravity on slopes
+    a -= GRAVITY * 0.7 * track.grade[i] * (fx * track.tx[i] + fz * track.tz[i]);
+  }
 
   const vfOld = vf;
   vf += a * dt;
@@ -106,10 +131,10 @@ export function stepCar(c: CarState, spec: CarSpec, inp: CarInput, track: Track,
   c.braking = brk > 0 && vfOld > 0.5;
 
   // lateral grip
-  const gripBase = (spec.grip + track.bankGrip(i)) * (c.offroad ? 0.65 : 1);
-  const grip = gripBase * (inp.handbrake ? 0.3 : 1);
+  const gripBase = (spec.grip + track.bankGrip(i)) * (c.offroad ? 0.65 : 1) * surf.grip;
+  const grip = air ? 0 : gripBase * (inp.handbrake ? 0.3 : 1);
   vl += clamp(-vl * 10, -grip, grip) * dt;
-  c.skid = clamp((Math.abs(vl) - 2) / 6, 0, 1);
+  c.skid = air ? 0 : clamp((Math.abs(vl) - 2) / 6, 0, 1);
   if (brk > 0.8 && vf > 18) c.skid = Math.max(c.skid, 0.35);
 
   // yaw (bicycle model, limited by available grip)
@@ -122,6 +147,7 @@ export function stepCar(c: CarState, spec: CarSpec, inp: CarInput, track: Track,
     maxYaw *= 1.9;
   }
   yawRate = clamp(yawRate, -maxYaw, maxYaw);
+  if (air) yawRate *= 0.15;
 
   c.vx = fx * vf + rx * vl;
   c.vz = fz * vf + rz * vl;
@@ -156,14 +182,62 @@ export function stepCar(c: CarState, spec: CarSpec, inp: CarInput, track: Track,
       c.heading = wrapAngle(c.heading + wrapAngle(target - c.heading) * Math.min(0.35, Math.abs(vn) * 0.04));
     }
   }
-  c.y = p.y;
+  updateVertical(c, p.y, dt, track.carClass === 'offroad');
 
   updateGearbox(c, spec, vf, dt);
+}
+
+/** Ground following, take-off over crests and kickers, flight and landing. */
+function updateVertical(c: CarState, ground: number, dt: number, canFly: boolean) {
+  c.landed = 0;
+  if (c.airborne) {
+    c.vy -= GRAVITY * dt;
+    c.y += c.vy * dt;
+    c.airTime += dt;
+    if (c.y <= ground) {
+      const hit = -c.vy;
+      c.y = ground;
+      c.vy = 0;
+      c.airborne = false;
+      c.landed = Math.max(0.1, hit);
+      if (hit > 6) {
+        // hard landing costs some speed
+        const loss = Math.max(0.8, 1 - (hit - 6) * 0.015);
+        c.vx *= loss;
+        c.vz *= loss;
+        c.impact = Math.max(c.impact, hit * 0.6);
+      }
+    }
+    return;
+  }
+  const ballistic = c.y + c.vy * dt - 0.5 * GRAVITY * dt * dt;
+  // only offroad tracks let cars fly; road tracks keep the original glued-to-the-road feel
+  if (canFly && ground < ballistic - TAKEOFF_TOLERANCE) {
+    c.airborne = true;
+    c.airTime = 0;
+    c.y = ballistic;
+    c.vy -= GRAVITY * dt;
+    return;
+  }
+  if (ground - c.y > 0.6) {
+    // ran into a step (e.g. the far wall of a pit after a short jump)
+    c.vx *= 0.5;
+    c.vz *= 0.5;
+    c.impact = Math.max(c.impact, 8);
+  }
+  // stick to the road; clamp vertical speed so that sudden steps do not launch the car
+  c.vy = clamp((ground - c.y) / dt, -40, 40);
+  c.y = ground;
 }
 
 function updateGearbox(c: CarState, spec: CarSpec, vf: number, dt: number) {
   if (c.shiftTimer > 0) c.shiftTimer -= dt;
   let target: number;
+  if (c.airborne) {
+    // free-revving wheels in the air
+    c.rpm = approach(c.rpm, Math.min(MAX_RPM, c.rpm + c.throttle * 3000), 6000 * dt);
+    return;
+  }
   if (vf < -0.5) {
     c.gear = 0;
     target = IDLE_RPM + (Math.abs(vf) / gearTopSpeed(spec, 1)) * 6500;

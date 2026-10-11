@@ -1,11 +1,11 @@
 # Spidi Race 🏁
 
-![Version](https://img.shields.io/badge/version-0.5.0-ffcc00)
+![Version](https://img.shields.io/badge/version-0.6.0-ffcc00)
 ![Lizenz Code](https://img.shields.io/badge/code-MIT-blue)
 ![Lizenz Assets](https://img.shields.io/badge/assets-CC0-green)
 ![Docker](https://img.shields.io/badge/docker-ready-2496ED)
 
-Ein Arcade-Rennspiel im Browser im Geist von *Need for Speed II: Special Edition*: Alpenpässe, Küstenstrassen, Stadtkurs und Superspeedway, Splitscreen am selben Rechner und Rennen im Heimnetz. Gerendert wird mit Three.js, Modelle und Texturen stammen aus CC0-Paketen von Kenney und ambientCG.
+Ein Arcade-Rennspiel im Browser im Geist von *Need for Speed II: Special Edition*: Alpenpässe, Küstenstrassen, Stadtkurs, Superspeedway und Offroad-Pisten mit Sprüngen, Splitscreen am selben Rechner und Rennen im Heimnetz. Gerendert wird mit Three.js, Modelle und Texturen stammen aus CC0-Paketen von Kenney und ambientCG.
 
 ![Hauptmenü](docs/menu.jpg)
 
@@ -14,6 +14,8 @@ Ein Arcade-Rennspiel im Browser im Geist von *Need for Speed II: Special Edition
 | ![Küstenstrasse](docs/kuestenstrasse.jpg) | ![Downtown](docs/downtown.jpg) |
 | **Speedway** | **Splitscreen** |
 | ![Speedway](docs/speedway-steilkurve.jpg) | ![Splitscreen](docs/splitscreen.jpg) |
+| **Canyon Run (Offroad)** | **Waldtrail (Offroad)** |
+| ![Canyon Run](docs/canyon.jpg) | ![Waldtrail](docs/waldtrail.jpg) |
 
 ## Inhalt
 
@@ -30,24 +32,30 @@ Ein Arcade-Rennspiel im Browser im Geist von *Need for Speed II: Special Edition
 
 ## Features
 
-- **4 Strecken**
+- **6 Strecken** in zwei Klassen
 
-  | Strecke | Länge | Charakter |
-  |---|---|---|
-  | Alpenpass | 2,5 km | Serpentinen, Lawinengalerie, Schneeberge |
-  | Küstenstrasse | 2,9 km | Fischerdorf, Klippen, Palmen, Leuchtturm |
-  | Downtown | 2,0 km | Stadtkurs: 90°-Ecken, Schikane, Unterführung, Hochhäuser |
-  | Speedway | 5,5 km | Superspeedway-Oval mit Steilkurven: fast permanent Vollgas, über 280 km/h Schnitt |
+  | Strecke | Klasse | Länge | Charakter |
+  |---|---|---|---|
+  | Alpenpass | Strasse | 2,5 km | Serpentinen, Lawinengalerie, Schneeberge |
+  | Küstenstrasse | Strasse | 2,9 km | Fischerdorf, Klippen, Palmen, Leuchtturm |
+  | Downtown | Strasse | 2,0 km | Stadtkurs: 90°-Ecken, Schikane, Unterführung, Hochhäuser |
+  | Speedway | Strasse | 5,5 km | Superspeedway-Oval mit Steilkurven: fast permanent Vollgas, über 280 km/h Schnitt |
+  | Canyon Run | Offroad | 2,6 km | Schotter und Sand in einer roten Schlucht, 3 Sprünge, einer über ein Flussbett |
+  | Waldtrail | Offroad | 2,8 km | Waldweg, Kuppen, Schlammlöcher, Furt, Sprung über den Bach |
 
-- **4 Autos** mit eigenen Fahrwerten:
+- **7 Autos** mit eigenen Fahrwerten, je nach Streckenklasse:
 
-  | Auto | Modell | Stärke |
-  |---|---|---|
-  | Falcone Strada | Sportcoupé | ausgewogen |
-  | Sturmvogel RS | Prototyp | Höchstgeschwindigkeit |
-  | Kaito ZX | Formelwagen | Kurven |
-  | Brutale V10 | Hot Hatch | Beschleunigung |
+  | Auto | Klasse | Modell | Stärke |
+  |---|---|---|---|
+  | Falcone Strada | Strasse | Sportcoupé | ausgewogen |
+  | Sturmvogel RS | Strasse | Prototyp | Höchstgeschwindigkeit |
+  | Kaito ZX | Strasse | Formelwagen | Kurven |
+  | Brutale V10 | Strasse | Hot Hatch | Beschleunigung |
+  | Bergziege 4x4 | Offroad | Geländewagen | wendig, viel Grip |
+  | Baron V8 | Offroad | Luxus-SUV | schnell, schwer |
+  | Sahara Raider | Offroad | Pickup | Beschleunigung |
 
+- **Offroad**: echte Sprünge mit Flugphase, Untergründe Schotter, Sand, Schlamm und Wasser mit eigenem Grip, Federung, Staub- und Schlammpartikel
 - **KI-Gegner**: 0 bis 7, in den Stärken Leicht, Mittel und Schwer
 - **Splitscreen** für 2 Spieler an einer Tastatur, Gamepads werden ebenfalls unterstützt
 - **LAN-Multiplayer** mit bis zu 8 Autos, auch zusammen mit Splitscreen
@@ -138,7 +146,7 @@ npm run assets       # CC0-Assets neu herunterladen (siehe unten)
 ```
 
 **Neue Strecke anlegen:**
-1. In `shared/src/tracks.ts` eine Liste von Kontrollpunkten `[x, z, höhe, breite?]` hinzufügen. Dazu ein Theme wählen (`alpine`, `coast`, `city`, `speedway`), optional Galerien/Unterführungen und eine Kurvenüberhöhung (`banking`).
+1. In `shared/src/tracks.ts` eine Liste von Kontrollpunkten `[x, z, höhe, breite?]` hinzufügen. Dazu ein Theme wählen (`alpine`, `coast`, `city`, `speedway`, `desert`, `forest`). Optional kommen dazu: Galerien/Unterführungen, eine Kurvenüberhöhung (`banking`) und für Offroad `class: 'offroad'`, Untergründe (`surface`, `surfaces`) sowie Sprünge (`jumps`).
 2. `npm test` ausführen. Der Test prüft, dass sich die Strecke nicht selbst schneidet und dass KI-Fahrer sie komplett befahren können.
 3. Mit `http://localhost:5173/?view=<strecken-id>@<meter>` fährt die Kamera langsam ab der gewünschten Stelle über die Strecke, das ist praktisch zum Begutachten der Szenerie.
 
@@ -148,11 +156,12 @@ Alle Modelle und Texturen stehen unter **CC0 (Public Domain)** und liegen in [`c
 
 | Quelle | Paket | Verwendung |
 |---|---|---|
-| [Kenney](https://kenney.nl/assets/car-kit) | Car Kit | 4 Autos (`sedan-sports`, `race-future`, `race`, `hatchback-sports`) |
-| [Kenney](https://kenney.nl/assets/nature-kit) | Nature Kit | Nadel-, Laub- und Palmbäume, Felsen, Büsche |
+| [Kenney](https://kenney.nl/assets/car-kit) | Car Kit | 7 Autos (`sedan-sports`, `race-future`, `race`, `hatchback-sports`, `suv`, `suv-luxury`, `truck`) |
+| [Kenney](https://kenney.nl/assets/nature-kit) | Nature Kit | Bäume, Felsen, Büsche, Kakteen, Klippen, Baumstämme, Pilze, Zelt, Lagerfeuer |
 | [Kenney](https://kenney.nl/assets/city-kit-suburban) | City Kit (Suburban) | Häuser im Dorf, Chalets |
 | [Kenney](https://kenney.nl/assets/city-kit-commercial) | City Kit (Commercial) | Geschäftshäuser und Hochhäuser in Downtown |
 | [ambientCG](https://ambientcg.com) | Asphalt031, Grass004, Rock064, Snow010A, Ground080, Gravel043, Concrete034 | Strasse, Gelände, Bankett, Mauern |
+| [ambientCG](https://ambientcg.com) | Ground106, Ground037, Ground071, Ground093C, Rock029, Ground097 | Offroad: Waldweg, Waldboden, Schlamm, Dünen, roter Fels, Wüstenpiste |
 
 `npm run assets` ([scripts/fetch-assets.mjs](scripts/fetch-assets.mjs)) lädt die Original-Pakete herunter und kopiert nur die benötigten Dateien nach `client/public/cc0/`. Dabei entsteht auch die Datei `CREDITS.md` neu.
 
@@ -176,7 +185,7 @@ scripts/  Asset-Download
 
 ## Versionierung
 
-Das Projekt folgt [Semantic Versioning](https://semver.org/lang/de/). Die aktuelle Version ist **0.5.0**. Änderungen stehen im [CHANGELOG](CHANGELOG.md), Releases sind als Git-Tags `vX.Y.Z` markiert. Die Version steht auch unten rechts im Hauptmenü.
+Das Projekt folgt [Semantic Versioning](https://semver.org/lang/de/). Die aktuelle Version ist **0.6.0**. Änderungen stehen im [CHANGELOG](CHANGELOG.md), Releases sind als Git-Tags `vX.Y.Z` markiert. Die Version steht auch unten rechts im Hauptmenü.
 
 ## Lizenz und Credits
 

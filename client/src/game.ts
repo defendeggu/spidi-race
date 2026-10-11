@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import {
   AIDriver, applyNetCar, collideCars, createCarState, forwardSpeed, getCar, getTrack, gridPosition, idleCar,
-  lerp, lerpAngle, NO_INPUT, Race, stepCar, toNetCar,
+  lerp, lerpAngle, NO_INPUT, Race, stepCar, SURFACE_PROPS, toNetCar,
+  type Surface,
   type CarSpec, type CarState, type NetCar, type ResultRow, type ServerMsg, type Slot, type Track,
 } from '@spidi/shared';
 import { audio, EngineVoice } from './audio';
@@ -9,11 +10,16 @@ import { Hud, type MapDot } from './hud';
 import { input, type KeyMap } from './input';
 import type { Net } from './net';
 import { ChaseCamera } from './render/cameras';
+import { Particles } from './render/particles';
 import { carColor, CarVisual } from './render/carModel';
 import { getWorld, type World } from './render/world';
 import { renderViewports, type Viewport } from './renderer';
 
 const STEP = 1 / 60;
+
+function dustColor(surface: Surface) {
+  return { asphalt: '#bbbbbb', dirt: '#a88866', sand: '#d9b88a', mud: '#4a3a2a', water: '#d8ecf4' }[surface];
+}
 const INTERP_DELAY = 110;
 
 export interface LocalPlayerCfg {
@@ -69,6 +75,9 @@ export class Game {
   private finishedNotified = false;
   private offNet: (() => void) | null = null;
   paused = false;
+  private particles = new Particles();
+  /** landings during the last fixed steps (for HUD, sound and dust) */
+  private landings: { car: GameCar; airTime: number; hit: number }[] = [];
   /** ranks: best-lap leaderboard rank per car id (online races are recorded by the server) */
   onFinish: ((results: ResultRow[], ranks?: Record<string, number>) => void) | null = null;
   onPause: (() => void) | null = null;
@@ -77,6 +86,7 @@ export class Game {
     this.track = getTrack(opts.trackId);
     this.world = getWorld(opts.trackId);
     this.race = new Race(this.track, opts.laps, opts.slots, opts.countdown);
+    this.world.dynamic.add(this.particles.points);
     const myId = opts.net?.clientId;
     // humans keep the original paint, duplicates of the same model get a variant
     const variant = new Map<string, number>();
@@ -207,7 +217,11 @@ export class Game {
         inp = started ? c.ai.update(s, c.spec, this.track, dt, states) : NO_INPUT;
       }
       if (!started) idleCar(s, inp, dt);
-      else stepCar(s, c.spec, inp, this.track, dt);
+      else {
+        const air = s.airTime;
+        stepCar(s, c.spec, inp, this.track, dt);
+        if (s.landed > 0) this.landings.push({ car: c, airTime: air, hit: s.landed });
+      }
     }
     if (started) {
       for (let i = 0; i < this.cars.length; i++) {
@@ -264,7 +278,19 @@ export class Game {
       const s = c.state, p = c.prev;
       c.renderHeading = lerpAngle(p.heading, s.heading, alpha);
       c.visual.update(this.track, lerp(p.x, s.x, alpha), lerp(p.y, s.y, alpha), lerp(p.z, s.z, alpha), c.renderHeading, s, dt);
+      this.emitDust(c, dt);
     }
+    for (const l of this.landings) {
+      const s = l.car.state;
+      for (let k = 0; k < Math.min(30, l.hit * 3); k++) {
+        const a = Math.random() * Math.PI * 2;
+        this.particles.emit(s.x, s.y + 0.3, s.z, Math.cos(a) * 4, 1 + Math.random() * 2, Math.sin(a) * 4, dustColor(this.track.surfaceAt(s.idx)), 1.6, 1.4, 1);
+      }
+      const pl = this.players.find((p) => p.car === l.car);
+      if (pl && l.airTime > 0.8) pl.hud.flash(`SPRUNG! ${l.airTime.toFixed(1).replace('.', ',')} s`, 1.5);
+    }
+    this.landings.length = 0;
+    this.particles.update(dt);
 
     // countdown beeps
     if (this.race.phase === 'countdown' && this.race.countdown <= 3) {
@@ -293,7 +319,8 @@ export class Game {
       const myDots = dots.map((d, i) => ({ ...d, self: this.cars[i] === c }));
       pl.hud.update(this.race, v, s.gear, s.rpm, myDots, pl.wrongWay > 1.2, dt);
 
-      pl.voice?.update(s.rpm, s.throttle, s.skid * Math.min(1, Math.abs(v) / 8));
+      const rough = s.airborne ? 0 : SURFACE_PROPS[this.track.surfaceAt(s.idx)].rough;
+      pl.voice?.update(s.rpm, s.throttle, s.skid * Math.min(1, Math.abs(v) / 8), rough * Math.min(1, Math.abs(v) / 25));
       pl.impactCooldown -= dt;
       if (s.impact > 3 && pl.impactCooldown <= 0) {
         audio.crash(s.impact, split ? (k === 0 ? -0.45 : 0.45) : 0);
@@ -310,8 +337,34 @@ export class Game {
     for (const p of this.players) p.voice?.setVolume(v);
   }
 
+  /** Dust, mud or spray behind cars driving on loose surfaces. */
+  private emitDust(c: GameCar, dt: number) {
+    const s = c.state;
+    if (s.airborne) return;
+    const surface = this.track.surfaceAt(s.idx);
+    if (surface === 'asphalt') return;
+    const v = Math.abs(forwardSpeed(s));
+    if (v < 6) return;
+    const rate = Math.min(40, v * 0.8) * (surface === 'water' || surface === 'mud' ? 1.4 : 1);
+    let n = rate * dt;
+    const fx = Math.sin(s.heading), fz = Math.cos(s.heading);
+    while (n > 0) {
+      if (n < 1 && Math.random() > n) break;
+      n -= 1;
+      const side = (Math.random() - 0.5) * 2;
+      const x = s.x - fx * 2 + fz * side, z = s.z - fz * 2 - fx * side;
+      const heavy = surface === 'mud' || surface === 'water';
+      this.particles.emit(
+        x, s.y + 0.3, z,
+        -fx * v * 0.15 + (Math.random() - 0.5) * 2, heavy ? 2 + Math.random() * 3 : 0.6 + Math.random(), -fz * v * 0.15 + (Math.random() - 0.5) * 2,
+        dustColor(surface), heavy ? 0.7 : 1.4, heavy ? 0.8 : 1.8, heavy ? 9 : 0.4,
+      );
+    }
+  }
+
   dispose() {
     cancelAnimationFrame(this.raf);
+    this.particles.dispose();
     this.offNet?.();
     for (const c of this.cars) c.visual.dispose();
     for (const p of this.players) {

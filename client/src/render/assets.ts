@@ -3,11 +3,13 @@ import { GLTFLoader, type GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js'
 
 const BASE = `${import.meta.env.BASE_URL}cc0/`;
 
-export const CAR_MODELS = ['sedan-sports', 'race-future', 'race', 'hatchback-sports'];
+export const CAR_MODELS = ['sedan-sports', 'race-future', 'race', 'hatchback-sports', 'suv', 'suv-luxury', 'truck'];
 export const NATURE_MODELS = [
   'tree_pineTallA', 'tree_pineTallB', 'tree_pineDefaultA', 'tree_pineRoundA', 'tree_pineSmallA',
   'tree_oak', 'tree_default', 'tree_fat', 'tree_thin', 'tree_palmTall', 'tree_palmBend',
   'rock_largeA', 'rock_largeB', 'rock_largeC', 'rock_tallA', 'stone_tallA', 'plant_bushLarge',
+  'cactus_short', 'cactus_tall', 'cliff_large_rock', 'log', 'log_large', 'log_stack', 'stump_old', 'stump_round',
+  'mushroom_redGroup', 'mushroom_tanGroup', 'tent_detailedOpen', 'campfire_logs', 'fence_simple',
 ];
 export const BUILDING_MODELS = ['building-type-a', 'building-type-c', 'building-type-f', 'building-type-k', 'building-type-n', 'building-type-t'];
 export const CITY_MODELS = [
@@ -16,7 +18,10 @@ export const CITY_MODELS = [
   ...'acfhl'.split('').map((c) => `low-detail-building-${c}`),
   'low-detail-building-wide-a',
 ];
-export const TEXTURES = ['asphalt', 'grass', 'rock', 'snow', 'sand', 'gravel', 'concrete'] as const;
+export const TEXTURES = [
+  'asphalt', 'grass', 'rock', 'snow', 'sand', 'gravel', 'concrete',
+  'dirt', 'forestfloor', 'mud', 'dune', 'redrock', 'desertdirt',
+] as const;
 export type TextureName = (typeof TEXTURES)[number];
 
 const models = new Map<string, THREE.Group>();

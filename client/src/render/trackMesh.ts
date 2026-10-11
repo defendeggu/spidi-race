@@ -69,10 +69,14 @@ interface TrackStyle {
   centre: 'dashed-white' | 'dashed-yellow' | 'lanes' | 'none';
   shoulder: [string, string];
   curbs: 'redwhite' | 'kerb' | 'none';
-  barrier: 'guardrail' | 'stonewall' | 'jersey' | 'safer';
+  barrier: 'guardrail' | 'stonewall' | 'jersey' | 'safer' | 'fence' | 'berm';
   verge: [string, string];
   vergeTex: TextureName;
   chevrons: boolean;
+  /** texture of the driving surface and the shoulders */
+  roadTex?: TextureName;
+  shoulderTex?: TextureName;
+  galleryTex?: TextureName;
 }
 
 const STYLES: Record<TrackTheme, TrackStyle> = {
@@ -80,6 +84,14 @@ const STYLES: Record<TrackTheme, TrackStyle> = {
   coast: { asphalt: ['#a8a5a0', '#4a4a4d'], centre: 'dashed-yellow', shoulder: ['#d8ccb0', '#9b8d6c'], curbs: 'redwhite', barrier: 'stonewall', verge: ['#c8c088', '#8a8a55'], vergeTex: 'grass', chevrons: true },
   city: { asphalt: ['#8e8e8e', '#3e3f42'], centre: 'dashed-white', shoulder: ['#d0d0d0', '#8a8a88'], curbs: 'kerb', barrier: 'jersey', verge: ['#d4d4d4', '#8a8a88'], vergeTex: 'concrete', chevrons: false },
   speedway: { asphalt: ['#8a8a8a', '#3a3b3e'], centre: 'lanes', shoulder: ['#909090', '#4a4a4d'], curbs: 'none', barrier: 'safer', verge: ['#b8c8a0', '#5f8a3c'], vergeTex: 'grass', chevrons: false },
+  desert: {
+    asphalt: ['#f4e4d4', '#b98a5e'], centre: 'none', shoulder: ['#f0dccb', '#a8754a'], curbs: 'none', barrier: 'berm', verge: ['#f0d8c0', '#b0603a'],
+    vergeTex: 'dune', chevrons: true, roadTex: 'desertdirt', shoulderTex: 'dune', galleryTex: 'redrock',
+  },
+  forest: {
+    asphalt: ['#e6dccc', '#6b5236'], centre: 'none', shoulder: ['#e0d8c8', '#5e4a32'], curbs: 'none', barrier: 'fence', verge: ['#e0e8d0', '#4a5e32'],
+    vergeTex: 'forestfloor', chevrons: true, roadTex: 'dirt', shoulderTex: 'forestfloor',
+  },
 };
 
 export function buildTrackMesh(track: Track): THREE.Group {
@@ -96,9 +108,12 @@ export function buildTrackMesh(track: Track): THREE.Group {
 
   // road surface (vertex colours act as tint / variation on top of the texture)
   const asphalt = pick(style.asphalt);
-  const roadShades = Array.from({ length: track.n }, () => asphalt.clone().multiplyScalar(0.94 + rand() * 0.08));
+  // kickers and landing ramps are packed darker so they stand out when approaching
+  const roadShades = Array.from({ length: track.n }, (_, i) =>
+    asphalt.clone().multiplyScalar((0.94 + rand() * 0.08) * (track.jumpH[i] > 0.15 ? 0.72 : 1)));
   const road = strip(track, (i) => [[-hw[i], 0], [0, 0], [hw[i], 0]], (i) => roadShades[i]);
-  group.add(new THREE.Mesh(road, surface('asphalt', 7)));
+  group.add(new THREE.Mesh(road, surface(style.roadTex ?? 'asphalt', style.roadTex ? 5 : 7)));
+  addSurfacePatches(track, group);
 
   // markings
   const white = C('#e9e9e2');
@@ -110,8 +125,10 @@ export function buildTrackMesh(track: Track): THREE.Group {
     ));
   if (style.centre === 'dashed-white' || style.centre === 'dashed-yellow') line(() => 0, 0.24, style.centre === 'dashed-white' ? white : yellow, true);
   if (style.centre === 'lanes') for (const f of [-1 / 3, 1 / 3]) line((i) => hw[i] * 2 * f, 0.2, white, true);
-  line((i) => -hw[i] + 0.45, 0.2, white, false);
-  line((i) => hw[i] - 0.45, 0.2, style.centre === 'lanes' ? yellow : white, false);
+  if (style.centre !== 'none') {
+    line((i) => -hw[i] + 0.45, 0.2, white, false);
+    line((i) => hw[i] - 0.45, 0.2, style.centre === 'lanes' ? yellow : white, false);
+  }
 
   // shoulders, curbs in corners (racing) or grey kerbstones (city)
   const shoulder = pick(style.shoulder);
@@ -120,7 +137,7 @@ export function buildTrackMesh(track: Track): THREE.Group {
   for (const side of [-1, 1]) {
     group.add(new THREE.Mesh(
       strip(track, (i) => (side < 0 ? [[-hw[i] - W, 0], [-hw[i], 0.01]] : [[hw[i], 0.01], [hw[i] + W, 0]]), () => shoulder),
-      surface(style.curbs === 'none' ? 'asphalt' : 'gravel', style.curbs === 'none' ? 7 : 3),
+      surface(style.shoulderTex ?? (style.curbs === 'none' ? 'asphalt' : 'gravel'), style.curbs === 'none' && !style.shoulderTex ? 7 : 3),
     ));
     const curbProfile = (i: number) => (side < 0 ? [[-hw[i] - 0.9, 0.03], [-hw[i], 0.03]] : [[hw[i], 0.03], [hw[i] + 0.9, 0.03]]);
     if (style.curbs === 'redwhite') group.add(new THREE.Mesh(strip(track, curbProfile, (i) => (i % 2 ? red : curbWhite), inCorner), vc));
@@ -152,6 +169,17 @@ export function buildTrackMesh(track: Track): THREE.Group {
       case 'jersey':
         wall(1.0, 0.6, ['#e8e8e6', '#b5b5b2'], 2.5);
         break;
+      case 'fence': {
+        // wooden rails; posts are added below
+        const wood = C(textured ? '#9a6a42' : '#7a5232');
+        group.add(new THREE.Mesh(strip(track, (i) => [[L(i), 0.45], [L(i), 0.6]], () => wood), vcDouble));
+        group.add(new THREE.Mesh(strip(track, (i) => [[L(i), 0.9], [L(i), 1.05]], () => wood), vcDouble));
+        break;
+      }
+      case 'berm':
+        // low sand berm; rocks along it come from the scenery
+        group.add(new THREE.Mesh(strip(track, (i) => [[L(i) - side * 0.3, 0], [L(i) + side * 0.6, 0.7], [L(i) + side * 1.6, 0]], () => verge), surface(style.vergeTex, 4, true)));
+        break;
       case 'safer':
         wall(1.3, 0.5, ['#f6f6f6', '#d8d8d8'], 3);
         if (side === outerSide) {
@@ -161,7 +189,8 @@ export function buildTrackMesh(track: Track): THREE.Group {
         }
         break;
     }
-    const drop = (i: number) => 2.2 + Math.abs(track.bank[i]) * 14;
+    // deeper where the road is banked or raised by a jump
+    const drop = (i: number) => 2.2 + Math.abs(track.bank[i]) * 14 + Math.max(0, track.jumpH[i]) * 1.5;
     if (style.barrier === 'jersey') {
       // city: raised sidewalk behind the barrier, then down to the ground
       group.add(new THREE.Mesh(strip(track, (i) => [[L(i), 0.15], [L(i) + side * 5, 0.15]], () => verge), surface('concrete', 3, true)));
@@ -172,17 +201,19 @@ export function buildTrackMesh(track: Track): THREE.Group {
   }
 
   // guardrail / fence posts
-  const postEvery = style.barrier === 'guardrail' ? 2 : style.barrier === 'safer' ? 3 : 0;
+  const postEvery = style.barrier === 'guardrail' || style.barrier === 'fence' ? 2 : style.barrier === 'safer' ? 3 : 0;
   if (postEvery) {
     const tall = style.barrier === 'safer';
-    const postGeo = new THREE.BoxGeometry(0.14, tall ? 5.5 : 0.9, 0.14);
-    const posts = new THREE.InstancedMesh(postGeo, new THREE.MeshLambertMaterial({ color: tall ? '#9aa0a6' : '#8d949a' }), Math.ceil(track.n / postEvery) * 2);
+    const wooden = style.barrier === 'fence';
+    const postGeo = wooden ? new THREE.BoxGeometry(0.18, 1.2, 0.18) : new THREE.BoxGeometry(0.14, tall ? 5.5 : 0.9, 0.14);
+    const postColor = wooden ? '#6e4a2c' : tall ? '#9aa0a6' : '#8d949a';
+    const posts = new THREE.InstancedMesh(postGeo, new THREE.MeshLambertMaterial({ color: postColor }), Math.ceil(track.n / postEvery) * 2);
     const o = new THREE.Object3D();
     let k = 0;
     for (let i = 0; i < track.n; i += postEvery)
       for (const side of [-1, 1]) {
         if (tall && side !== outerSide) continue;
-        placeAt(track, o, i, side * (hw[i] + W + (tall ? 0.25 : 0.1)), tall ? 2.75 : 0.45);
+        placeAt(track, o, i, side * (hw[i] + W + (tall ? 0.25 : 0.1)), tall ? 2.75 : wooden ? 0.6 : 0.45);
         o.updateMatrix();
         posts.setMatrixAt(k++, o.matrix);
       }
@@ -197,13 +228,33 @@ export function buildTrackMesh(track: Track): THREE.Group {
   return group;
 }
 
+/** Mud, sand and water sections (and the creek at the bottom of jump pits in the forest). */
+function addSurfacePatches(track: Track, group: THREE.Group) {
+  const hw = track.hw;
+  const white = new THREE.Color('#ffffff');
+  const patch = (tex: TextureName, metres: number, dy: number, include: (i: number) => boolean, tint = white) => {
+    if (!Array.from({ length: track.n }, (_, i) => include(i)).some(Boolean)) return;
+    group.add(new THREE.Mesh(strip(track, (i) => [[-hw[i] - 0.6, dy], [0, dy], [hw[i] + 0.6, dy]], () => tint, include), surface(tex, metres)));
+  };
+  patch('mud', 4, 0.03, (i) => track.surfaceAt(i) === 'mud', new THREE.Color('#9a8a78'));
+  patch('dune', 6, 0.03, (i) => track.surfaceAt(i) === 'sand');
+  const forest = track.def.theme === 'forest';
+  const isWater = (i: number) => track.surfaceAt(i) === 'water' || (forest && track.jumpH[i] < -1);
+  if (Array.from({ length: track.n }, (_, i) => isWater(i)).some(Boolean)) {
+    const water = new THREE.MeshPhongMaterial({ color: '#3d6f8a', shininess: 80, specular: '#a8d0e8', transparent: true, opacity: 0.8 });
+    const W = WALL_OFFSET + 3;
+    group.add(new THREE.Mesh(strip(track, (i) => [[-hw[i] - W, 0.25], [hw[i] + W, 0.25]], () => white, isWater), water));
+  }
+}
+
 function addGalleries(track: Track, group: THREE.Group) {
   const has = (i: number) => track.gallery[i] !== 0;
   if (!Array.from(track.gallery).some((g) => g !== 0)) return;
   const hw = track.hw;
-  const textured = !!getTexture('concrete');
+  const tex = STYLES[track.def.theme].galleryTex ?? 'concrete';
+  const textured = !!getTexture(tex);
   const concrete = new THREE.Color(textured ? '#e8e4dc' : '#aaa59b'), under = new THREE.Color(textured ? '#9a968e' : '#6e6a63');
-  const mat = surface('concrete', 4, true);
+  const mat = surface(tex, 4, true);
   const R = (i: number) => hw[i] + WALL_OFFSET + 1.4;
   const H = 6.4;
   group.add(new THREE.Mesh(strip(track, (i) => [[-R(i), H + 0.7], [R(i), H + 0.7]], () => concrete, has), mat));

@@ -1,6 +1,31 @@
 import { clamp, lerp } from './math';
 
-export type TrackTheme = 'alpine' | 'coast' | 'city' | 'speedway';
+export type TrackTheme = 'alpine' | 'coast' | 'city' | 'speedway' | 'desert' | 'forest';
+export type CarClass = 'road' | 'offroad';
+export type Surface = 'asphalt' | 'dirt' | 'sand' | 'mud' | 'water';
+export const SURFACES: Surface[] = ['asphalt', 'dirt', 'sand', 'mud', 'water'];
+
+/** Grip factor, rolling drag (per m/s) and visual roughness of each surface. */
+export const SURFACE_PROPS: Record<Surface, { grip: number; drag: number; rough: number }> = {
+  asphalt: { grip: 1, drag: 0, rough: 0 },
+  dirt: { grip: 0.8, drag: 0.03, rough: 0.6 },
+  sand: { grip: 0.72, drag: 0.07, rough: 0.5 },
+  mud: { grip: 0.55, drag: 0.24, rough: 0.9 },
+  water: { grip: 0.6, drag: 0.24, rough: 0.4 },
+};
+
+/**
+ * A jump: at control-point position u the road rises over `up` metres to `height` (parabolic kicker),
+ * optionally followed by a `gap` (pit `depth` metres deep, e.g. a riverbed) and a landing slope of `land` metres.
+ */
+export interface JumpDef {
+  u: number;
+  up: number;
+  height: number;
+  gap?: number;
+  depth?: number;
+  land: number;
+}
 
 export interface TrackDef {
   id: string;
@@ -17,6 +42,12 @@ export interface TrackDef {
   seed: number;
   /** road banking in corners: slope = -curvature * gain, clamped to ±max (default gain 4, max 0.08) */
   banking?: { gain: number; max: number };
+  /** vehicle class allowed on this track (default 'road') */
+  class?: CarClass;
+  /** default surface (default 'asphalt') and sections with other surfaces: [fromU, toU, surface] */
+  surface?: Surface;
+  surfaces?: [number, number, Surface][];
+  jumps?: JumpDef[];
 }
 
 export interface Projection {
@@ -94,6 +125,11 @@ export class Track {
   readonly bank: Float64Array;
   readonly grade: Float64Array;
   readonly gallery: Int8Array;
+  /** surface index into SURFACES per sample */
+  readonly surface: Uint8Array;
+  /** extra height of jumps/pits per sample (already included in py) */
+  readonly jumpH: Float64Array;
+  readonly u: Float64Array;
   readonly bounds = { minX: Infinity, maxX: -Infinity, minZ: Infinity, maxZ: -Infinity, minY: Infinity, maxY: -Infinity };
 
   constructor(def: TrackDef) {
@@ -127,7 +163,9 @@ export class Track {
     this.tx = alloc(); this.tz = alloc(); this.rx = alloc(); this.rz = alloc();
     this.hw = alloc(); this.curv = alloc(); this.bank = alloc(); this.grade = alloc();
     this.gallery = new Int8Array(n);
-    const u = alloc();
+    this.surface = new Uint8Array(n);
+    this.jumpH = alloc();
+    const u = (this.u = alloc());
 
     let seg = 0;
     for (let j = 0; j < n; j++) {
@@ -147,8 +185,26 @@ export class Track {
       const w1 = def.points[(i0 + 1) % m][3] ?? def.width;
       this.hw[j] = lerp(w0, w1, u[j] - Math.floor(u[j])) / 2;
       for (const g of def.galleries ?? []) if (u[j] >= g[0] && u[j] <= g[1]) this.gallery[j] = g[2] >= 0 ? 1 : -1;
+      this.surface[j] = SURFACES.indexOf(def.surface ?? 'asphalt');
+      for (const [a, b, sf] of def.surfaces ?? []) if (u[j] >= a && u[j] <= b) this.surface[j] = SURFACES.indexOf(sf);
     }
     smoothCircular(this.py, 2, 3);
+    // jumps are added after smoothing so the kicker lip stays sharp
+    for (const jd of def.jumps ?? []) {
+      let start = 0;
+      while (start < n - 1 && u[start] < jd.u) start++;
+      const gap = jd.gap ?? 0, depth = jd.depth ?? 0;
+      const total = jd.up + gap + jd.land;
+      for (let k = 0; k * this.ds <= total; k++) {
+        const d = k * this.ds;
+        let h: number;
+        if (d <= jd.up) h = jd.height * (d / jd.up) ** 2;
+        else if (d <= jd.up + gap) h = -depth;
+        else h = jd.height * 0.7 * (1 + Math.cos(Math.PI * Math.min(1, (d - jd.up - gap) / jd.land))) / 2;
+        this.jumpH[(start + k) % n] += h;
+      }
+    }
+    for (let j = 0; j < n; j++) this.py[j] += this.jumpH[j];
     smoothCircular(this.hw, 3, 2);
 
     for (let j = 0; j < n; j++) {
@@ -176,6 +232,14 @@ export class Track {
       bd.minZ = Math.min(bd.minZ, this.pz[j]); bd.maxZ = Math.max(bd.maxZ, this.pz[j]);
       bd.minY = Math.min(bd.minY, this.py[j]); bd.maxY = Math.max(bd.maxY, this.py[j]);
     }
+  }
+
+  surfaceAt(i: number): Surface {
+    return SURFACES[this.surface[i]];
+  }
+
+  get carClass(): CarClass {
+    return this.def.class ?? 'road';
   }
 
   /** Extra lateral grip (m/s²) from the road's banking at sample i. */

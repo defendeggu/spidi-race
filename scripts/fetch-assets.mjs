@@ -18,7 +18,7 @@ const KENNEY = [
     url: 'https://kenney.nl/media/pages/assets/car-kit/1a312ec241-1775131960/kenney_car-kit.zip',
     dir: 'Models/GLB format/',
     out: 'cars',
-    files: ['sedan-sports.glb', 'race-future.glb', 'race.glb', 'hatchback-sports.glb', 'Textures/colormap.png'],
+    files: ['sedan-sports.glb', 'race-future.glb', 'race.glb', 'hatchback-sports.glb', 'suv.glb', 'suv-luxury.glb', 'truck.glb', 'Textures/colormap.png'],
   },
   {
     name: 'City Kit (Suburban)',
@@ -52,6 +52,10 @@ const KENNEY = [
       'tree_pineTallA.glb', 'tree_pineTallB.glb', 'tree_pineDefaultA.glb', 'tree_pineRoundA.glb', 'tree_pineSmallA.glb',
       'tree_oak.glb', 'tree_default.glb', 'tree_fat.glb', 'tree_thin.glb', 'tree_palmTall.glb', 'tree_palmBend.glb',
       'rock_largeA.glb', 'rock_largeB.glb', 'rock_largeC.glb', 'rock_tallA.glb', 'stone_tallA.glb', 'plant_bushLarge.glb',
+      // offroad scenery
+      'cactus_short.glb', 'cactus_tall.glb', 'cliff_large_rock.glb', 'log.glb', 'log_large.glb', 'log_stack.glb',
+      'stump_old.glb', 'stump_round.glb', 'mushroom_redGroup.glb', 'mushroom_tanGroup.glb', 'tent_detailedOpen.glb',
+      'campfire_logs.glb', 'fence_simple.glb',
     ],
   },
 ];
@@ -64,6 +68,12 @@ const AMBIENTCG = [
   ['Ground080', 'sand'],
   ['Gravel043', 'gravel'],
   ['Concrete034', 'concrete'],
+  ['Ground106', 'dirt'],
+  ['Ground037', 'forestfloor'],
+  ['Ground071', 'mud'],
+  ['Ground093C', 'dune'],
+  ['Rock029', 'redrock'],
+  ['Ground097', 'desertdirt'],
 ];
 
 async function download(url) {

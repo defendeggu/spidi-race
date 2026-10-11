@@ -143,6 +143,52 @@ export const TRACK_DEFS: TrackDef[] = [
     points: speedwayOval(900, 520, 200),
     banking: { gain: 160, max: 0.3 },
   },
+  {
+    id: 'canyon',
+    name: 'Canyon Run',
+    description: 'Offroad: Schotter und Sand durch eine rote Schlucht – drei Sprünge, einer über ein ausgetrocknetes Flussbett.',
+    theme: 'desert',
+    class: 'offroad',
+    width: 14,
+    defaultLaps: 2,
+    seed: 71,
+    surface: 'dirt',
+    surfaces: [[4.2, 4.9, 'sand'], [5.6, 7.6, 'sand'], [13, 14.5, 'sand']],
+    points: [
+      [0, 0, 10], [250, 0, 10], [420, 40, 14], [520, 140, 18], [540, 300, 20], [520, 520, 16],
+      [430, 620, 12], [280, 640, 10], [150, 590, 12], [60, 480, 16], [-60, 440, 18], [-200, 480, 14],
+      [-320, 420, 10], [-360, 280, 8], [-300, 140, 8], [-200, 40, 9], [-100, 0, 10],
+    ],
+    jumps: [
+      { u: 0.3, up: 14, height: 1.8, land: 40 },
+      { u: 4.3, up: 16, height: 2.2, gap: 22, depth: 3, land: 45 },
+      { u: 10.25, up: 12, height: 1.5, land: 35 },
+    ],
+    galleries: [[12.3, 12.7, 1]],
+  },
+  {
+    id: 'waldtrail',
+    name: 'Waldtrail',
+    description: 'Offroad: Waldweg über Kuppen, durch Schlammlöcher und eine Furt – mit Sprung über den Bach.',
+    theme: 'forest',
+    class: 'offroad',
+    width: 12,
+    defaultLaps: 2,
+    seed: 83,
+    surface: 'dirt',
+    surfaces: [[5.3, 5.7, 'mud'], [8.45, 8.6, 'water'], [12.4, 12.7, 'mud']],
+    points: [
+      [0, 0, 20], [200, 10, 22], [330, 60, 26], [380, 170, 30], [340, 280, 26], [240, 330, 22],
+      [120, 320, 20], [40, 380, 18], [60, 500, 16], [180, 580, 18], [320, 600, 22], [440, 560, 26],
+      [520, 460, 24], [560, 320, 22], [560, 160, 20], [500, 40, 18], [420, -60, 16], [250, -120, 16],
+      [60, -110, 18], [-60, -60, 19],
+    ],
+    jumps: [
+      { u: 0.35, up: 12, height: 1.6, land: 30 },
+      { u: 9.3, up: 14, height: 1.8, gap: 16, depth: 2.5, land: 40 },
+      { u: 17.3, up: 12, height: 1.6, land: 35 },
+    ],
+  },
 ];
 
 const cache = new Map<string, Track>();

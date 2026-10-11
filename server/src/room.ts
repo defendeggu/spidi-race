@@ -1,7 +1,7 @@
 import type { WebSocket } from 'ws';
 import type { Leaderboard } from './leaderboard';
 import {
-  AIDriver, applyNetCar, CARS, collideCars, createCarState, getCar, getTrack, gridPosition, idleCar,
+  AIDriver, applyNetCar, CARS, carsForClass, collideCars, createCarState, getCar, getTrack, gridPosition, idleCar,
   MAX_CARS, NO_INPUT, Race, stepCar, toNetCar, TRACK_DEFS,
   type CarState, type ClientMsg, type LobbyPlayer, type LobbySettings, type ServerMsg, type Slot, type Track,
 } from '@spidi/shared';
@@ -132,12 +132,15 @@ export class Room {
     if (joined.length === 0) return;
     const humans = joined.flatMap((c) => c.players.map((p, k) => ({ client: c, p, k })));
     const aiCount = Math.max(0, Math.min(this.settings.aiCount, MAX_CARS - humans.length));
+    // only cars of the track's class may start (offroad tracks: offroad cars, road tracks: road cars)
+    const pool = carsForClass(getTrack(this.settings.trackId).carClass);
     const slots: Slot[] = [];
     for (let i = 0; i < aiCount; i++) {
-      slots.push({ id: `ai${i}`, name: AI_NAMES[i % AI_NAMES.length], carId: CARS[(i + 1) % CARS.length].id, isAI: true, ownerId: '', grid: i });
+      slots.push({ id: `ai${i}`, name: AI_NAMES[i % AI_NAMES.length], carId: pool[(i + 1) % pool.length].id, isAI: true, ownerId: '', grid: i });
     }
     humans.slice(0, MAX_CARS).forEach((h, k) => {
-      slots.push({ id: `${h.client.id}-${h.k + 1}`, name: h.p.name, carId: h.p.carId, isAI: false, ownerId: h.client.id, grid: aiCount + k });
+      const carId = pool.some((c) => c.id === h.p.carId) ? h.p.carId : pool[k % pool.length].id;
+      slots.push({ id: `${h.client.id}-${h.k + 1}`, name: h.p.name, carId, isAI: false, ownerId: h.client.id, grid: aiCount + k });
     });
 
     this.track = getTrack(this.settings.trackId);

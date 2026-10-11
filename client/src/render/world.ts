@@ -17,6 +17,8 @@ const THEMES: Record<TrackTheme, { skyTop: string; horizon: string; fog: string;
   coast: { skyTop: '#2f86d1', horizon: '#f2e7d2', fog: '#e9e3d4', sun: '#fff0d0', ground: '#7d8b4a', fogFar: 1700 },
   city: { skyTop: '#4a6fa8', horizon: '#f0d6b8', fog: '#d9cbbb', sun: '#ffe2b8', ground: '#6b6b66', fogFar: 1300 },
   speedway: { skyTop: '#2a7fd8', horizon: '#dceaf5', fog: '#d4e4f0', sun: '#fff6e0', ground: '#5f8a3c', fogFar: 2600 },
+  desert: { skyTop: '#3d7cc9', horizon: '#f3d6a8', fog: '#e8c9a0', sun: '#fff1d6', ground: '#b0603a', fogFar: 1400 },
+  forest: { skyTop: '#4f7fb5', horizon: '#c9d9c0', fog: '#b4c6ac', sun: '#fff4dc', ground: '#3f5a2e', fogFar: 850 },
 };
 
 function sky(top: string, horizon: string) {

@@ -15,6 +15,8 @@ export interface NetCar {
   g: number;
   sk: number;
   br: boolean;
+  vy: number;
+  air: boolean;
 }
 
 export interface LobbyPlayer {
@@ -59,6 +61,7 @@ export function toNetCar(c: CarState): NetCar {
   return {
     id: c.id, x: r2(c.x), y: r2(c.y), z: r2(c.z), h: Math.round(c.heading * 1000) / 1000,
     vx: r2(c.vx), vz: r2(c.vz), st: r2(c.steer), rpm: Math.round(c.rpm), g: c.gear, sk: r2(c.skid), br: c.braking,
+    vy: r2(c.vy), air: c.airborne,
   };
 }
 
@@ -74,4 +77,6 @@ export function applyNetCar(c: CarState, n: NetCar) {
   c.gear = n.g;
   c.skid = n.sk;
   c.braking = n.br;
+  c.vy = n.vy ?? 0;
+  c.airborne = !!n.air;
 }
