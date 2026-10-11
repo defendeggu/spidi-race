@@ -287,20 +287,44 @@ export class App {
     g.paused = true;
     g.setEngineVolume(0);
     const online = !!this.net;
+    const host = this.isHost();
     this.setScreen('pause', `
       <div class="menu panel overlay">
         <h2>Pause</h2>
         ${online ? '<p class="hint">Im Netzwerkspiel läuft das Rennen weiter.</p>' : ''}
         <button class="big" data-a="resume">Weiter</button>
         ${online ? '' : '<button class="big" data-a="restart">Neustart</button>'}
-        <button class="big secondary" data-a="quit">${online ? 'Rennen verlassen' : 'Hauptmenü'}</button>
+        ${online && host ? '<button class="big danger" data-a="abort">Rennen für alle abbrechen</button>' : ''}
+        <button class="big secondary" data-a="quit">${online ? 'Netzwerkspiel verlassen' : 'Hauptmenü'}</button>
       </div>`);
     this.ui.classList.add('dim');
     this.bind({
       resume: () => this.resume(),
       restart: () => this.lastLocal && this.startLocal(this.lastLocal.mode),
+      abort: (el) => this.confirmAbort(el),
       quit: () => this.quitGame(),
     });
+  }
+
+  private isHost() {
+    return !!this.net && this.lobby?.hostId === this.net.clientId;
+  }
+
+  /** First click asks for confirmation, the second one tells the server to abort the race. */
+  private confirmAbort(el: HTMLElement) {
+    if (el.dataset.armed) {
+      this.net?.send({ type: 'abort' });
+      el.textContent = 'Breche ab…';
+      (el as HTMLButtonElement).disabled = true;
+      return;
+    }
+    el.dataset.armed = '1';
+    el.textContent = 'Wirklich abbrechen? Nochmal klicken';
+    setTimeout(() => {
+      if (!el.isConnected || !el.dataset.armed) return;
+      delete el.dataset.armed;
+      el.textContent = 'Rennen für alle abbrechen';
+    }, 4000);
   }
 
   private resume() {
@@ -385,6 +409,7 @@ export class App {
   }
 
   private submitted: ResultRow[] | null = null;
+  private lobbyNotice = '';
 
   // ---------------------------------------------------------------- leaderboard
 
@@ -497,12 +522,22 @@ export class App {
   }
 
   private leaveNet() {
+    this.lobbyNotice = '';
     this.net?.close();
     this.net = null;
     this.lobby = null;
   }
 
   private onNet(m: ServerMsg) {
+    if (m.type === 'aborted') {
+      this.lobbyNotice = `Das Rennen wurde von ${m.by} abgebrochen.`;
+      if (this.game) {
+        this.game.dispose();
+        this.game = null;
+      }
+      if (this.screen !== 'onlineSetup' && this.screen !== 'main') this.showLobby();
+      return;
+    }
     if (m.type === 'lobby') {
       this.lobby = m;
       if (this.screen === 'lobby' || this.screen === 'connecting') this.showLobby();
@@ -539,16 +574,22 @@ export class App {
           <div><h3>Fahrer (${humans})</h3><ul class="lobby-list">${list}</ul></div>
           <div>${this.settingsBlock(settings, isHost && l.phase === 'lobby', maxAi)}</div>
         </div>
+        ${this.lobbyNotice ? `<div class="notice">${escapeHtml(this.lobbyNotice)}</div>` : ''}
         ${l.phase === 'race' ? '<p class="hint">Ein Rennen läuft gerade – du fährst beim nächsten Rennen mit.</p>' : ''}
         <div class="row">
           <button data-a="leave">Lobby verlassen</button>
+          ${isHost && l.phase === 'race' ? '<button class="danger" data-a="abort">Rennen für alle abbrechen</button>' : ''}
           ${isHost ? `<button class="go" data-a="start" ${l.phase !== 'lobby' ? 'disabled' : ''}>Rennen starten ▶</button>` : '<span class="hint">Warte auf den Host…</span>'}
         </div>
       </div>`);
     this.bind({
       ...this.settingsActions(settings, maxAi, () => net.send({ type: 'settings', settings })),
       leave: () => this.showMain(),
-      start: () => net.send({ type: 'start' }),
+      abort: (el) => this.confirmAbort(el),
+      start: () => {
+        this.lobbyNotice = '';
+        net.send({ type: 'start' });
+      },
     });
   }
 }

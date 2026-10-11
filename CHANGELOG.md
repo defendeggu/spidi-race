@@ -2,6 +2,14 @@
 
 Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.5.0] – 2026-10-11
+
+### Hinzugefügt
+- Netzwerkspiel: Der Host kann ein laufendes Rennen für alle abbrechen – im Pause-Menü (Esc) und in der Lobby, mit Bestätigung per zweitem Klick. Alle Spieler kehren in die Lobby zurück und sehen, wer abgebrochen hat; abgebrochene Rennen zählen nicht für die Rangliste.
+
+### Geändert
+- Im Netzwerk-Pausemenü heisst „Rennen verlassen“ jetzt „Netzwerkspiel verlassen“ (verlässt Rennen und Lobby)
+
 ## [0.4.0] – 2026-10-10
 
 ### Hinzugefügt
@@ -54,6 +62,7 @@ Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog]
 - HUD mit Minimap, synthetischer Sound, 3 Kameras
 - Docker-Image und docker-compose (Port 8090)
 
+[0.5.0]: https://github.com/defendeggu/spidi-race/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/defendeggu/spidi-race/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/defendeggu/spidi-race/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/defendeggu/spidi-race/compare/v0.1.0...v0.2.0
