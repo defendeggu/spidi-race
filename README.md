@@ -111,7 +111,7 @@ Das Image ist zweistufig aufgebaut. Beim Build laufen die Tests und der Produkti
 1. Den Server starten (Docker oder `npm start`).
 2. Alle Mitspieler öffnen `http://<IP-des-Servers>:8090` und wählen **Netzwerkspiel**.
 3. Pro Gerät kann man 1 oder 2 Spieler anmelden. Bei 2 Spielern fahren beide im Splitscreen.
-4. Wer zuerst in der Lobby ist, ist Host: Er wählt Strecke, Runden und KI-Gegner und startet das Rennen.
+4. Wer zuerst in der Lobby ist, ist Host: Er wählt Strecke, Runden und KI-Gegner und startet das Rennen. Gefahren wird immer mit Autos der Streckenklasse (Strasse, Offroad oder Micro); sein Auto dieser Klasse wählt jeder direkt in der Lobby.
 5. Der Host kann ein laufendes Rennen jederzeit für alle abbrechen: im Pause-Menü (`Esc`) oder in der Lobby mit **Rennen für alle abbrechen**, dann ein zweiter Klick zur Bestätigung.
 
 ![Lobby](docs/lobby.jpg)
@@ -181,7 +181,7 @@ Fehlen die Assets oder lassen sie sich nicht laden, startet das Spiel automatisc
 ```
 shared/   Fahrphysik, Strecken (Catmull-Rom-Spline), Autos, Rennlogik, KI, Netzwerkprotokoll
 client/   Vite + Three.js
-  src/render/   Asset-Loader, Gelände (Splat-Shader), Strasse, Szenerie, Automodelle, Kameras
+  src/render/   Asset-Loader, Gelände (Splat-Shader), Strasse, Szenerie, Frühstückstisch/Küche, Automodelle, Kameras
   src/ui/       Menüs, Lobby, Ergebnisse, Menü-Hintergrund
   src/game.ts   Spielschleife (feste 60 Hz), Splitscreen, Interpolation, Netz-Sync
 server/   Node + ws: liefert den Client aus, Lobby, autoritativer Rennstatus, KI-Autos
