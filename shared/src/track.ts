@@ -1,7 +1,8 @@
 import { clamp, lerp } from './math';
 
 export type TrackTheme = 'alpine' | 'coast' | 'city' | 'speedway' | 'desert' | 'forest' | 'table';
-export type CarClass = 'road' | 'offroad' | 'micro';
+/** 'town' cars drive only in the open practice town (no race track has this class) */
+export type CarClass = 'road' | 'offroad' | 'micro' | 'town';
 export type Surface = 'asphalt' | 'dirt' | 'sand' | 'mud' | 'water';
 export const SURFACES: Surface[] = ['asphalt', 'dirt', 'sand', 'mud', 'water'];
 

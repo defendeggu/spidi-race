@@ -141,3 +141,8 @@ function padState(slot: number): PadState | null {
 }
 
 export const input = new InputManager();
+
+/** True if the n-th gamepad is connected (for showing gamepad instead of keyboard hints). */
+export function padConnected(slot: number) {
+  return !!gamepads()[slot];
+}

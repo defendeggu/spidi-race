@@ -45,16 +45,25 @@ export interface CarState {
 }
 
 export const CAR_HALF_WIDTH = 0.95;
-const CIRCLE_R = 1.05;
-const CIRCLE_OFFSET = 1.2;
+export const CIRCLE_R = 1.05;
+export const CIRCLE_OFFSET = 1.2;
 const IDLE_RPM = 900;
 const MAX_RPM = 7600;
 
 export function createCarState(id: string, track: Track, x: number, z: number, heading: number): CarState {
   const p = track.project(x, z);
+  const c = newCarState(id, x, p.y, z, heading);
+  c.idx = p.idx;
+  c.s = p.s;
+  c.lat = p.lat;
+  return c;
+}
+
+/** A car at rest, not tied to any track (idx/s/lat stay 0). */
+export function newCarState(id: string, x: number, y: number, z: number, heading: number): CarState {
   return {
-    id, x, y: p.y, z, heading, vx: 0, vz: 0, steer: 0, rpm: IDLE_RPM, gear: 1,
-    idx: p.idx, s: p.s, lat: p.lat, skid: 0, impact: 0, throttle: 0, braking: false, offroad: false, shiftTimer: 0,
+    id, x, y, z, heading, vx: 0, vz: 0, steer: 0, rpm: IDLE_RPM, gear: 1,
+    idx: 0, s: 0, lat: 0, skid: 0, impact: 0, throttle: 0, braking: false, offroad: false, shiftTimer: 0,
     vy: 0, airborne: false, airTime: 0, landed: 0,
   };
 }
@@ -87,7 +96,24 @@ function surfaceFor(spec: CarSpec, track: Track, i: number) {
   return { grip: sp.grip + (1 - sp.grip) * 0.5, drag: sp.drag * 0.5, rough: sp.rough };
 }
 
-export function stepCar(c: CarState, spec: CarSpec, inp: CarInput, track: Track, dt: number) {
+/** What the car drives on during one step: surface grip/drag, slope and banking along the driving direction. */
+export interface DriveGround {
+  /** surface grip factor and rolling drag (already adjusted for the car class) */
+  grip: number;
+  drag: number;
+  /** off the paved road (less grip, more drag) */
+  offroad: boolean;
+  /** extra lateral grip from banking (m/s²) */
+  bankGrip: number;
+  /** road grade along the driving direction (rise per metre) */
+  slope: number;
+}
+
+/**
+ * Core vehicle dynamics shared by race tracks and the open town: throttle, brakes, lateral grip,
+ * yaw and integration of the horizontal position. Returns the new forward speed.
+ */
+export function driveCar(c: CarState, spec: CarSpec, inp: CarInput, g: DriveGround, dt: number) {
   const steerRate = Math.sign(inp.steer) !== Math.sign(c.steer) || Math.abs(inp.steer) < Math.abs(c.steer) ? 7 : 3.4;
   c.steer = approach(c.steer, inp.steer, steerRate * dt);
   c.throttle = inp.throttle;
@@ -97,10 +123,8 @@ export function stepCar(c: CarState, spec: CarSpec, inp: CarInput, track: Track,
   let vf = c.vx * fx + c.vz * fz;
   let vl = c.vx * rx + c.vz * rz;
 
-  const i = c.idx;
-  c.offroad = Math.abs(c.lat) > track.hw[i] + 0.4;
+  c.offroad = g.offroad;
   const air = c.airborne;
-  const surf = surfaceFor(spec, track, i);
   // in the air the wheels have no traction
   const thr = air ? 0 : inp.throttle, brk = air ? 0 : inp.brake;
   let a = 0;
@@ -119,9 +143,9 @@ export function stepCar(c: CarState, spec: CarSpec, inp: CarInput, track: Track,
   if (!air) {
     if (Math.abs(vf) > 0.1) a -= Math.sign(vf) * 0.25;
     if (c.offroad) a -= vf * 0.15;
-    a -= vf * surf.drag;
+    a -= vf * g.drag;
     // gravity on slopes
-    a -= GRAVITY * 0.7 * track.grade[i] * (fx * track.tx[i] + fz * track.tz[i]);
+    a -= GRAVITY * 0.7 * g.slope;
   }
 
   const vfOld = vf;
@@ -131,7 +155,7 @@ export function stepCar(c: CarState, spec: CarSpec, inp: CarInput, track: Track,
   c.braking = brk > 0 && vfOld > 0.5;
 
   // lateral grip
-  const gripBase = (spec.grip + track.bankGrip(i)) * (c.offroad ? 0.65 : 1) * surf.grip;
+  const gripBase = (spec.grip + g.bankGrip) * (c.offroad ? 0.65 : 1) * g.grip;
   const grip = air ? 0 : gripBase * (inp.handbrake ? 0.3 : 1);
   vl += clamp(-vl * 10, -grip, grip) * dt;
   c.skid = air ? 0 : clamp((Math.abs(vl) - 2) / 6, 0, 1);
@@ -154,6 +178,21 @@ export function stepCar(c: CarState, spec: CarSpec, inp: CarInput, track: Track,
   c.heading = wrapAngle(c.heading - yawRate * dt);
   c.x += c.vx * dt;
   c.z += c.vz * dt;
+  return vf;
+}
+
+const trackGround: DriveGround = { grip: 1, drag: 0, offroad: false, bankGrip: 0, slope: 0 };
+
+export function stepCar(c: CarState, spec: CarSpec, inp: CarInput, track: Track, dt: number) {
+  const fx = Math.sin(c.heading), fz = Math.cos(c.heading);
+  const i = c.idx;
+  const surf = surfaceFor(spec, track, i);
+  trackGround.grip = surf.grip;
+  trackGround.drag = surf.drag;
+  trackGround.offroad = Math.abs(c.lat) > track.hw[i] + 0.4;
+  trackGround.bankGrip = track.bankGrip(i);
+  trackGround.slope = track.grade[i] * (fx * track.tx[i] + fz * track.tz[i]);
+  const vf = driveCar(c, spec, inp, trackGround, dt);
 
   // keep the car between the barriers
   const p = track.project(c.x, c.z, c.idx);
@@ -230,7 +269,7 @@ function updateVertical(c: CarState, ground: number, dt: number, canFly: boolean
   c.y = ground;
 }
 
-function updateGearbox(c: CarState, spec: CarSpec, vf: number, dt: number) {
+export function updateGearbox(c: CarState, spec: CarSpec, vf: number, dt: number) {
   if (c.shiftTimer > 0) c.shiftTimer -= dt;
   let target: number;
   if (c.airborne) {

@@ -28,7 +28,7 @@ export class Backdrop {
         const v = new CarVisual(getCar(id));
         const g = gridPosition(track, carIds.length > 1 ? k : 0);
         const s = createCarState('menu', track, g.x, g.z, g.heading);
-        v.update(track, g.x, g.y, g.z, g.heading, s, 1);
+        v.update(g.x, g.y, g.z, g.heading, s, 1, track.upAt(s.idx, { x: 0, y: 1, z: 0 }), 0);
         this.world!.dynamic.add(v.group);
         this.visuals.push(v);
       });

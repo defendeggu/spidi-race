@@ -1,11 +1,11 @@
 # Spidi Race 🏁
 
-![Version](https://img.shields.io/badge/version-0.8.1-ffcc00)
+![Version](https://img.shields.io/badge/version-0.9.0-ffcc00)
 ![Lizenz Code](https://img.shields.io/badge/code-MIT-blue)
 ![Lizenz Assets](https://img.shields.io/badge/assets-CC0-green)
 ![Docker](https://img.shields.io/badge/docker-ready-2496ED)
 
-Ein Arcade-Rennspiel im Browser im Geist von *Need for Speed II: Special Edition*: Alpenpässe, Küstenstrassen, Stadtkurs, Superspeedway, Offroad-Pisten mit Sprüngen und ein Frühstückstisch im Micro-Machines-Stil, Splitscreen am selben Rechner und Rennen im Heimnetz. Gerendert wird mit Three.js, Modelle und Texturen stammen aus CC0-Paketen von Kenney und ambientCG.
+Ein Arcade-Rennspiel im Browser im Geist von *Need for Speed II: Special Edition*: Alpenpässe, Küstenstrassen, Stadtkurs, Superspeedway, Offroad-Pisten mit Sprüngen und ein Frühstückstisch im Micro-Machines-Stil, Splitscreen am selben Rechner und Rennen im Heimnetz. Dazu kommt eine offene Übungsstadt, in der Kinder ohne Rennstress das Fahren mit Tastatur oder Gamepad lernen. Gerendert wird mit Three.js, Modelle und Texturen stammen aus CC0-Paketen von Kenney und ambientCG.
 
 ![Hauptmenü](docs/menu.jpg)
 
@@ -16,14 +16,15 @@ Ein Arcade-Rennspiel im Browser im Geist von *Need for Speed II: Special Edition
 | ![Speedway](docs/speedway-steilkurve.jpg) | ![Splitscreen](docs/splitscreen.jpg) |
 | **Canyon Run (Offroad)** | **Waldtrail (Offroad)** |
 | ![Canyon Run](docs/canyon.jpg) | ![Waldtrail](docs/waldtrail.jpg) |
-| **Frühstückstisch (Micro)** | |
-| ![Frühstückstisch](docs/fruehstueck.jpg) | |
+| **Frühstückstisch (Micro)** | **Übungsfahrt in der Stadt** |
+| ![Frühstückstisch](docs/fruehstueck.jpg) | ![Übungsstadt](docs/uebungsstadt.jpg) |
 
 ## Inhalt
 
 - [Features](#features)
 - [Schnellstart mit Docker](#schnellstart-mit-docker)
 - [Steuerung](#steuerung)
+- [Übungsfahrt in der Stadt](#übungsfahrt-in-der-stadt)
 - [Netzwerkspiel](#netzwerkspiel)
 - [Rangliste](#rangliste)
 - [Entwicklung](#entwicklung)
@@ -46,7 +47,7 @@ Ein Arcade-Rennspiel im Browser im Geist von *Need for Speed II: Special Edition
   | Waldtrail | Offroad | 2,8 km | Waldweg, Kuppen, Schlammlöcher, Furt, Sprung über den Bach |
   | Frühstückstisch | Micro | 0,9 km | Spielzeugautos auf dem Küchentisch: Müslischale, Kaffeetasse, Croissant, Strohhalme als Banden |
 
-- **10 Autos** mit eigenen Fahrwerten, je nach Streckenklasse:
+- **15 Autos** mit eigenen Fahrwerten, je nach Streckenklasse:
 
   | Auto | Klasse | Modell | Stärke |
   |---|---|---|---|
@@ -60,7 +61,13 @@ Ein Arcade-Rennspiel im Browser im Geist von *Need for Speed II: Special Edition
   | Mini-Blitz | Micro | Spielzeug-Rennwagen | Höchstgeschwindigkeit |
   | Taschen-Flitzer | Micro | Spielzeug-Hatchback | wendig, Beschleunigung |
   | Zwergrakete | Micro | Spielzeug-Prototyp | ausgewogen |
+  | Familienauto | Stadt | Limousine | gemütlich, für die Übungsfahrt |
+  | Taxi | Stadt | Taxi | gemütlich, Originallackierung |
+  | Polizeiauto | Stadt | Streifenwagen | gemütlich, Originallackierung |
+  | Feuerwehr | Stadt | Feuerwehrauto | gross, etwas langsamer |
+  | Kaito ZX | Stadt | Formelwagen | schneller, für Fortgeschrittene |
 
+- **Übungsfahrt**: eine offene Stadt von 1 × 1 km ohne Rennen, mit 4 Alltagsautos und einem Formelwagen, Aufgaben (Sterne sammeln, Einparken) und langsamem Verkehr, siehe [unten](#übungsfahrt-in-der-stadt)
 - **Offroad**: echte Sprünge mit Flugphase, Untergründe Schotter, Sand, Schlamm und Wasser mit eigenem Grip, Federung, Staub- und Schlammpartikel
 - **Micro**: Spielzeugautos im Massstab 1:100 auf einem Frühstückstisch, gefahren aus der Vogelperspektive wie bei *Micro Machines*
 - **KI-Gegner**: 0 bis 7, in den Stärken Leicht, Mittel und Schwer
@@ -100,12 +107,28 @@ Das Image ist zweistufig aufgebaut. Beim Build laufen die Tests und der Produkti
 | Handbremse | `Leertaste` | `Strg rechts` / `Shift rechts` / `Num 0` |
 | Kamera wechseln | `C` | `Enter` / `.` |
 | Pause | `Esc` | |
+| Steuerungshilfe ein/aus (Übungsfahrt) | `H` | |
 | Ton an/aus | `M` | |
 
 - Im Einzelspieler funktionieren WASD und die Pfeiltasten gleichzeitig.
 - Gamepad (Xbox-Layout / PlayStation-Layout): RT/R2 oder A/✕ Gas, LT/L2 oder B/○ Bremse, linker oder rechter Stick oder Steuerkreuz lenken, X/□ oder RB/R1 Handbremse, Y/△ Kamera, Start Pause. Spieler 1 bekommt das erste angeschlossene Gamepad, Spieler 2 das zweite.
 - **PS3-Controller:** Unter Linux per USB oder Bluetooth direkt nutzbar (Treiber `hid-sony` ist im Kernel), in Chrome und Firefox. Unter Windows 11 gibt es keinen eingebauten Treiber: [DsHidMini](https://github.com/nefarius/DsHidMini) installieren und den Controller im *XInput*-Modus betreiben, dann erscheint er als Xbox-Controller. Den Browser erkennt das Gamepad erst nach dem ersten Tastendruck.
 - Viele Tastaturen erkennen nur eine begrenzte Zahl gleichzeitig gedrückter Tasten. Gehen im Splitscreen Eingaben verloren, hilft ein Gamepad für einen der beiden Spieler.
+
+## Übungsfahrt in der Stadt
+
+Hauptmenü → **Übungsfahrt in der Stadt**. Gedacht für Kinder und alle, die erst einmal die Steuerung kennenlernen wollen: kein Rennen, keine Zeit, kein Gegner.
+
+| Was | Details |
+|---|---|
+| Stadt | 1 × 1 km, Strassen alle 100 m mit zwei Spuren (Rechtsverkehr), Häuser, Geschäfte, Hochhäuser, Parks, 5 Parkplätze und ein Übungsplatz mit Pylonen. Gärten und Innenhöfe sind befahrbar, nur aussen steht eine Mauer |
+| Start | auf dem Übungsplatz (gelbe Startfelder) neben Slalom und Pylonenkreis |
+| Autos | Familienauto, Taxi, Polizeiauto, Feuerwehr: gutmütig, viel Grip, Spitze ca. 65 km/h (Feuerwehr etwas langsamer). Kaito ZX: Formelwagen mit ca. 90 km/h für Fortgeschrittene |
+| Spieler | 1 Spieler oder 2 im Splitscreen |
+| Aufgaben | **Frei fahren** · **Sterne sammeln**: ein Stern auf einer Lichtsäule, oben zeigt ein Pfeil die Richtung · **Einparken**: ein Parkfeld leuchtet, meist auf einem anderen der 5 Parkplätze; gerade hineinfahren (vorwärts oder rückwärts) und kurz stehen bleiben |
+| Verkehr | aus, wenig (10 Autos) oder mehr (22 Autos), höchstens 30 km/h; die Autos warten an Kreuzungen und halten hinter den Spielern an |
+| Hilfe | Unten links leuchten die gedrückten Tasten (bzw. Gamepad-Knöpfe) auf, `H` blendet die Hilfe aus. Rechts oben zeigt die Stadtkarte Ziel, Spieler und Verkehr |
+| Pause | `Esc` / Start: Weiter, **Auto zum Start**, Neustart, Hauptmenü |
 
 ## Netzwerkspiel
 
@@ -164,7 +187,7 @@ Alle Modelle und Texturen stehen unter **CC0 (Public Domain)** und liegen in [`c
 
 | Quelle | Paket | Verwendung |
 |---|---|---|
-| [Kenney](https://kenney.nl/assets/car-kit) | Car Kit | 10 Autos (`sedan-sports`, `race-future`, `race`, `hatchback-sports`, `suv`, `suv-luxury`, `truck`) |
+| [Kenney](https://kenney.nl/assets/car-kit) | Car Kit | 14 Autos (`sedan-sports`, `race-future`, `race`, `hatchback-sports`, `suv`, `suv-luxury`, `truck`, `sedan`, `taxi`, `police`, `firetruck`), dazu `van` und `delivery` für den Stadtverkehr |
 | [Kenney](https://kenney.nl/assets/nature-kit) | Nature Kit | Bäume, Felsen, Büsche, Kakteen, Klippen, Baumstämme, Pilze, Zelt, Lagerfeuer |
 | [Kenney](https://kenney.nl/assets/city-kit-suburban) | City Kit (Suburban) | Häuser im Dorf, Chalets |
 | [Kenney](https://kenney.nl/assets/city-kit-commercial) | City Kit (Commercial) | Geschäftshäuser und Hochhäuser in Downtown |
@@ -180,22 +203,24 @@ Fehlen die Assets oder lassen sie sich nicht laden, startet das Spiel automatisc
 ## Architektur
 
 ```
-shared/   Fahrphysik, Strecken (Catmull-Rom-Spline), Autos, Rennlogik, KI, Netzwerkprotokoll
+shared/   Fahrphysik, Strecken (Catmull-Rom-Spline), Autos, Rennlogik, KI, Netzwerkprotokoll,
+          Übungsstadt (town.ts), Stadtverkehr (traffic.ts), Aufgaben (townTasks.ts)
 client/   Vite + Three.js
   src/render/   Asset-Loader, Gelände (Splat-Shader), Strasse, Szenerie, Frühstückstisch/Küche, Automodelle, Kameras
   src/ui/       Menüs, Lobby, Ergebnisse, Menü-Hintergrund
   src/game.ts   Spielschleife (feste 60 Hz), Splitscreen, Interpolation, Netz-Sync
+  src/townGame.ts, townHud.ts, render/townWorld.ts   Übungsfahrt in der Stadt
 server/   Node + ws: liefert den Client aus, Lobby, autoritativer Rennstatus, KI-Autos
 scripts/  Asset-Download
 ```
 
-- **Physik**: ein eigenes, deterministisches Arcade-Modell (Einspurmodell mit Grip-Limit). Derselbe Code läuft im Browser und auf dem Server.
+- **Physik**: ein eigenes, deterministisches Arcade-Modell (Einspurmodell mit Grip-Limit). Derselbe Code läuft im Browser und auf dem Server. Der Fahrkern `driveCar` ist für Strecken und Stadt gleich, nur der Rand unterscheidet sich: Leitplanken entlang des Splines bzw. Gebäude, Bäume und Pylonen in der Stadt.
 - **Strecken**: Die Strasse ist ein Spline mit einem Kontrollpunkt etwa alle 2 m. Strassenbelag, Bankette, Leitplanken und Gelände werden daraus erzeugt, die Szenerie wird mit festem Zufalls-Seed verteilt.
 - **Rendering**: Bäume, Felsen und Häuser sind InstancedMeshes, so bleibt die Zahl der Draw Calls auch mit tausenden Objekten klein. Der Splitscreen nutzt einen einzigen Renderer mit zwei Scissor-Viewports.
 
 ## Versionierung
 
-Das Projekt folgt [Semantic Versioning](https://semver.org/lang/de/). Die aktuelle Version ist **0.8.1**. Änderungen stehen im [CHANGELOG](CHANGELOG.md), Releases sind als Git-Tags `vX.Y.Z` markiert. Die Version steht auch unten rechts im Hauptmenü.
+Das Projekt folgt [Semantic Versioning](https://semver.org/lang/de/). Die aktuelle Version ist **0.9.0**. Änderungen stehen im [CHANGELOG](CHANGELOG.md), Releases sind als Git-Tags `vX.Y.Z` markiert. Die Version steht auch unten rechts im Hauptmenü.
 
 ## Lizenz und Credits
 

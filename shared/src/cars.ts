@@ -37,6 +37,8 @@ export interface CarSpec {
   accent: string;
   /** Kenney Car Kit model used by the client (visual only) */
   model: string;
+  /** keep the model's original livery (taxi, police, fire engine) instead of repainting it */
+  keepPaint?: boolean;
   shape: CarShape;
 }
 
@@ -233,6 +235,94 @@ export const CARS: CarSpec[] = [
   },
 ];
 
+// ---------------------------------------------------------------- practice town: gentle everyday cars
+const TOWN_BASE = {
+  class: 'town' as const,
+  suspension: 0.1,
+  topSpeed: 20,
+  accel: 4.8,
+  brake: 10,
+  grip: 10,
+  steer: 0.65,
+  wheelbase: 2.6,
+  gears: 4,
+  mass: 1400,
+  accent: '#222222',
+};
+
+export const TOWN_CARS: CarSpec[] = [
+  {
+    ...TOWN_BASE,
+    id: 'familie',
+    name: 'Familienauto',
+    description: 'Gemütliche Limousine für die ersten Runden',
+    color: '#2f6fd0',
+    model: 'sedan',
+    shape: { length: 4.3, width: 1.9, height: 0.9, roof: 1.5, cabinShift: -0.1, spoiler: false },
+  },
+  {
+    ...TOWN_BASE,
+    id: 'taxi',
+    name: 'Taxi',
+    description: 'Gelbes Stadttaxi – kennt jede Strasse',
+    color: '#f2c200',
+    model: 'taxi',
+    keepPaint: true,
+    shape: { length: 4.5, width: 1.9, height: 0.9, roof: 1.55, cabinShift: -0.1, spoiler: false },
+  },
+  {
+    ...TOWN_BASE,
+    id: 'polizei',
+    name: 'Polizeiauto',
+    description: 'Streifenwagen auf Patrouille',
+    color: '#f4f4f4',
+    model: 'police',
+    keepPaint: true,
+    wheelbase: 2.8,
+    shape: { length: 4.8, width: 1.95, height: 0.9, roof: 1.5, cabinShift: -0.1, spoiler: false },
+  },
+  {
+    ...TOWN_BASE,
+    id: 'feuerwehr',
+    name: 'Feuerwehr',
+    description: 'Grosses Feuerwehrauto – langsamer, aber unübersehbar',
+    color: '#d42020',
+    model: 'firetruck',
+    keepPaint: true,
+    topSpeed: 17,
+    accel: 4,
+    brake: 8.5,
+    grip: 9,
+    steer: 0.6,
+    wheelbase: 3.6,
+    mass: 3500,
+    shape: { length: 6, width: 2.3, height: 1.4, roof: 2.6, cabinShift: 1.6, spoiler: false },
+  },
+  {
+    ...TOWN_BASE,
+    id: 'kaito-stadt',
+    name: 'Kaito ZX',
+    description: 'Formelwagen – flinker und schneller, für Fortgeschrittene',
+    color: '#f2c500',
+    model: 'race',
+    suspension: 0.06,
+    topSpeed: 27,
+    accel: 7,
+    brake: 13,
+    grip: 13,
+    steer: 0.66,
+    wheelbase: 2.45,
+    gears: 5,
+    mass: 1250,
+    shape: { length: 4.2, width: 1.86, height: 0.84, roof: 1.2, cabinShift: 0.05, spoiler: true },
+  },
+];
+
+CARS.push(...TOWN_CARS);
+
+/** Parked and passing cars in the town (visual only). */
+export const TRAFFIC_MODELS = ['sedan', 'hatchback-sports', 'suv', 'van', 'delivery', 'taxi', 'sedan-sports'];
+
 export function carsForClass(cls: CarClass) {
   return CARS.filter((c) => c.class === cls);
 }
@@ -246,11 +336,11 @@ export function carRatings(c: CarSpec) {
   const norm = (v: number, lo: number, hi: number) => Math.max(0.1, Math.min(1, (v - lo) / (hi - lo)));
   // micro cars are compared among themselves: they are all quicker off the line and grippier
   const micro = c.class === 'micro';
-  const speed = { road: [70, 96], offroad: [56, 74], micro: [50, 62] }[c.class];
+  const speed = { road: [70, 96], offroad: [56, 74], micro: [50, 62], town: [15, 22] }[c.class];
   return {
     speed: norm(c.topSpeed, speed[0], speed[1]),
-    accel: micro ? norm(c.accel, 10, 13.5) : norm(c.accel, 7, 11.5),
-    handling: micro ? norm(c.grip + c.steer * 5, 18, 24.5) : norm(c.grip + c.steer * 5, 13, 18.6),
-    brakes: norm(c.brake, 12, 18),
+    accel: micro ? norm(c.accel, 10, 13.5) : c.class === 'town' ? norm(c.accel, 3, 5.5) : norm(c.accel, 7, 11.5),
+    handling: micro ? norm(c.grip + c.steer * 5, 18, 24.5) : c.class === 'town' ? norm(c.grip + c.steer * 5, 9, 14) : norm(c.grip + c.steer * 5, 13, 18.6),
+    brakes: c.class === 'town' ? norm(c.brake, 7, 11) : norm(c.brake, 12, 18),
   };
 }
