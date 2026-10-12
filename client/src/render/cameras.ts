@@ -4,6 +4,27 @@ import { lerpAngle } from '@spidi/shared';
 export const CAMERA_MODES = ['Verfolger', 'Verfolger weit', 'Stossstange', 'Vogelperspektive'] as const;
 export const TOPDOWN_MODE = 3;
 
+/** Where the chase camera sits for a car: behind (dist), above the ground (height), looking at lookY. */
+export interface ChaseView {
+  dist: number;
+  height: number;
+  lookY: number;
+  /** bumper camera: distance in front of the car centre */
+  bumperAhead: number;
+}
+
+const DEFAULT_VIEW: ChaseView = { dist: 6.4, height: 2.3, lookY: 1.1, bumperAhead: 0.5 };
+
+/** A higher and further view for tall vehicles (Kenney town cars are up to 3 m high). */
+export function viewForCar(length: number, roof: number): Partial<ChaseView> {
+  return {
+    dist: Math.max(7.5, length * 1.2 + roof * 1.2),
+    height: roof + 1.5,
+    lookY: roof * 0.7,
+    bumperAhead: length / 2 + 0.3,
+  };
+}
+
 export class ChaseCamera {
   readonly camera = new THREE.PerspectiveCamera(68, 1, 0.3, 9000);
   mode = 0;
@@ -13,11 +34,10 @@ export class ChaseCamera {
   private first = true;
   private lead = new THREE.Vector3();
 
-  /**
-   * bumperAhead: bumper camera distance in front of the car centre (tall town cars need it at the very front);
-   * size: scales distance and height of the chase cameras for big vehicles.
-   */
-  constructor(mode = 0, private bumperAhead = 0.5, private size = 1) {
+  private view: ChaseView;
+
+  constructor(mode = 0, view: Partial<ChaseView> = {}) {
+    this.view = { ...DEFAULT_VIEW, ...view };
     this.mode = mode;
   }
 
@@ -44,7 +64,8 @@ export class ChaseCamera {
       this.camera.updateProjectionMatrix();
     }
     if (this.mode === 2) {
-      this.pos.set(target.x + fx * this.bumperAhead + up.x * 1.05, target.y + up.y * 1.05, target.z + fz * this.bumperAhead + up.z * 1.05);
+      const ahead = this.view.bumperAhead;
+      this.pos.set(target.x + fx * ahead + up.x * 1.05, target.y + up.y * 1.05, target.z + fz * ahead + up.z * 1.05);
       this.look.set(target.x + fx * 30, target.y + 1.0, target.z + fz * 30);
       this.camera.position.copy(this.pos);
       this.camera.up.copy(up);
@@ -52,14 +73,16 @@ export class ChaseCamera {
       this.first = false;
       return;
     }
-    const dist = (this.mode === 0 ? 6.4 : 10) * this.size;
-    const height = (this.mode === 0 ? 2.3 : 3.6) * this.size;
+    // the wide chase view is the normal one scaled up
+    const far = this.mode === 0 ? 1 : 1.56;
+    const dist = this.view.dist * far;
+    const height = this.view.height * far;
     const desired = new THREE.Vector3(target.x - fx * dist, target.y + height, target.z - fz * dist);
     if (this.first) this.pos.copy(desired);
     else this.pos.lerp(desired, k);
     // stay above the road surface level of the car
     if (this.pos.y < target.y + 1.0) this.pos.y = target.y + 1.0;
-    this.look.set(target.x + fx * 4, target.y + 1.1, target.z + fz * 4);
+    this.look.set(target.x + fx * 4, target.y + this.view.lookY, target.z + fz * 4);
     this.camera.position.copy(this.pos);
     this.camera.up.set(0, 1, 0);
     this.camera.lookAt(this.look);

@@ -5,8 +5,8 @@ import {
   type CarInput, type CarSpec, type CarState, type TownTask, type TrafficCar,
 } from '@spidi/shared';
 import { audio, EngineVoice } from './audio';
-import { input, padConnected, type KeyMap } from './input';
-import { ChaseCamera, TOPDOWN_MODE } from './render/cameras';
+import { input, padKindAt, type KeyMap } from './input';
+import { ChaseCamera, TOPDOWN_MODE, viewForCar } from './render/cameras';
 import { carColor, CarVisual } from './render/carModel';
 import { getTownWorld, type TownWorld } from './render/townWorld';
 import { renderViewports, type Viewport } from './renderer';
@@ -140,7 +140,7 @@ export class TownGame {
       this.players.push({
         cfg, spec, state, visual, color: carColor(spec), renderHeading: state.heading,
         prev: { x: state.x, z: state.z, heading: state.heading },
-        cam: new ChaseCamera(0, spec.shape.length / 2 + 0.3, Math.max(1, spec.shape.length / 4.5)),
+        cam: new ChaseCamera(0, viewForCar(spec.shape.length, visual.height)),
         hud: new TownHud(holder, town, opts.task, cfg.keymap, split),
         voice: audio.ctx ? new EngineVoice(split ? (k === 0 ? -0.45 : 0.45) : 0, split ? 0.75 : 1, pitch) : null,
         tasks: new TaskTracker(town, opts.task, Math.floor(Math.random() * 1e9)),
@@ -293,7 +293,7 @@ export class TownGame {
         }
         myDots.push({ x: t.x, z: t.z, color: GOAL_COLORS[k], kind: 'target' });
       }
-      p.hud.update(v, s.gear, p.tasks.count, arrow, dist, p.tasks.parkProgress, p.lastInput, padConnected(p.cfg.pad), myDots, dt);
+      p.hud.update(v, s.gear, p.tasks.count, arrow, dist, p.tasks.parkProgress, p.lastInput, padKindAt(p.cfg.pad), myDots, dt);
 
       p.voice?.update(s.rpm, s.throttle, s.skid * Math.min(1, Math.abs(v) / 8), 0);
       p.impactCooldown -= dt;

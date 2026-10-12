@@ -1,6 +1,7 @@
 import { LINES, TOWN_HALF, type CarInput, type TownMap, type TownTask } from '@spidi/shared';
 import { CAMERA_MODES } from './render/cameras';
 import type { KeyMap } from './input';
+import type { PadKind } from './padMapping';
 
 export interface TownDot {
   x: number;
@@ -26,7 +27,7 @@ export class TownHud {
   private msgTimer = 0;
   private scale = 1;
   private help = true;
-  private padMode: boolean | null = null;
+  private padMode: PadKind | null | undefined = undefined;
 
   constructor(parent: HTMLElement, private town: TownMap, private task: TownTask, private keymap: KeyMap, compact: boolean) {
     this.root = document.createElement('div');
@@ -113,7 +114,7 @@ export class TownHud {
    * arrow: direction to the goal in screen terms (radians, clockwise from up) or null without a goal.
    */
   update(speed: number, gear: number, count: number, arrow: number | null, dist: number, park: number,
-    inp: CarInput, pad: boolean, dots: TownDot[], dt: number) {
+    inp: CarInput, pad: PadKind | null, dots: TownDot[], dt: number) {
     this.el.speed.textContent = String(Math.round(Math.abs(speed) * 3.6));
     this.el.gear.textContent = gear === 0 ? 'R' : String(gear);
     if (this.task !== 'free') this.el.count.textContent = `${this.task === 'stars' ? '★' : 'P'} ${count}`;
@@ -152,16 +153,17 @@ export class TownHud {
   }
 
   /** Keys (or gamepad controls) light up while they are used. */
-  private updateHelp(inp: CarInput, pad: boolean) {
+  private updateHelp(inp: CarInput, pad: PadKind | null) {
     if (pad !== this.padMode) {
       this.padMode = pad;
       const k = this.keymap;
+      const ps = pad === 'playstation';
       this.el.help.innerHTML = pad
-        ? `<div class="th-title">Gamepad</div>
-           <div class="th-row"><b data-h="throttle">RT / R2 · A / ✕</b><span>Gas</span></div>
-           <div class="th-row"><b data-h="brake">LT / L2 · B / ○</b><span>Bremse / Rückwärts</span></div>
+        ? `<div class="th-title">${ps ? 'PlayStation-Controller' : 'Gamepad'}</div>
+           <div class="th-row"><b data-h="throttle">${ps ? 'R2 · □' : 'RT · A'}</b><span>Gas</span></div>
+           <div class="th-row"><b data-h="brake">${ps ? 'L2 · ○' : 'LT · B'}</b><span>Bremse / Rückwärts</span></div>
            <div class="th-row"><b data-h="left">◀ Stick</b><b data-h="right">Stick ▶</b><span>Lenken</span></div>
-           <div class="th-row"><b data-h="hand">X / □</b><span>Handbremse</span></div>
+           <div class="th-row"><b data-h="hand">${ps ? '✕ · R1' : 'X · RB'}</b><span>Handbremse</span></div>
            <div class="th-foot">H = Hilfe aus</div>`
         : `<div class="th-title">Tastatur</div>
            <div class="th-keys">
