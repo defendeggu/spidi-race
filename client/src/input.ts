@@ -123,7 +123,9 @@ function padState(slot: number): PadState | null {
   const [south, east, west, north, r1, l2, r2, start, dl, dr] = isRawPs3(p)
     ? [0, 1, 3, 2, 5, 6, 7, 9, 15, 16]
     : [0, 1, 2, 3, 5, 6, 7, 9, 14, 15];
-  const ax = p.axes[0] ?? 0;
+  // either stick steers, whichever is deflected further (right stick X: axis 2, raw PS3: axis 3)
+  const left = p.axes[0] ?? 0, right = p.axes[isRawPs3(p) ? 3 : 2] ?? 0;
+  const ax = Math.abs(right) > Math.abs(left) ? right : left;
   let steer = Math.abs(ax) > 0.15 ? Math.max(-1, Math.min(1, ax)) : 0;
   if (b(dl) || b(dr)) steer = (b(dr) ? 1 : 0) - (b(dl) ? 1 : 0);
   const trig = (i: number) => Math.max(v(i), b(i) ? 1 : 0);

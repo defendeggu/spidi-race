@@ -2,6 +2,11 @@
 
 Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.8.1] – 2026-10-12
+
+### Hinzugefügt
+- Gamepad: Auch der rechte Stick lenkt (es zählt der weiter ausgelenkte Stick)
+
 ## [0.8.0] – 2026-10-12
 
 ### Hinzugefügt
@@ -99,6 +104,7 @@ Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog]
 - Docker-Image und docker-compose (Port 8090)
 
 [0.6.0]: https://github.com/defendeggu/spidi-race/compare/v0.5.0...v0.6.0
+[0.8.1]: https://github.com/defendeggu/spidi-race/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/defendeggu/spidi-race/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/defendeggu/spidi-race/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/defendeggu/spidi-race/compare/v0.5.0...v0.6.0
