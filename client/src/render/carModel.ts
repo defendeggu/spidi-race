@@ -190,6 +190,8 @@ export class CarVisual {
   private tailMat: THREE.MeshLambertMaterial;
   private spin = 0;
   readonly up = new THREE.Vector3(0, 1, 0);
+  /** height of the roof above the ground (m), for the camera */
+  height: number;
   private tmpUp = { x: 0, y: 1, z: 0 };
   private label?: THREE.Sprite;
   private ownedMaterials: THREE.Material[] = [];
@@ -197,6 +199,7 @@ export class CarVisual {
   constructor(readonly spec: CarSpec, name?: string, variant = 0) {
     this.tailMat = new THREE.MeshLambertMaterial({ color: '#7a0d0d', emissive: '#300000' });
     this.ownedMaterials.push(this.tailMat);
+    this.height = spec.shape.roof;
     const color = carColor(spec, variant);
     const model = assetsReady() ? getModel(spec.model) : undefined;
     if (model) this.buildFromModel(model, color);
@@ -221,6 +224,7 @@ export class CarVisual {
     const root = src.clone(true);
     const box = new THREE.Box3().setFromObject(root);
     const s = this.spec.shape.length / (box.max.z - box.min.z);
+    this.height = (box.max.y - box.min.y) * s;
     const scaled = new THREE.Group();
     scaled.scale.setScalar(s);
     this.body.add(scaled);

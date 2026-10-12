@@ -176,9 +176,15 @@ export class App {
           <tr><td>Ton an/aus</td><td colspan="2"><kbd>M</kbd></td></tr>
           <tr><td>Steuerungshilfe (Übungsfahrt)</td><td colspan="2"><kbd>H</kbd></td></tr>
         </table>
-        <p class="hint">Im Einzelspieler funktionieren WASD und die Pfeiltasten. Gamepads werden ebenfalls unterstützt
-        (RT/R2 oder A/✕ Gas, LT/L2 oder B/○ Bremse, linker oder rechter Stick oder Steuerkreuz lenken, X/□ oder RB/R1 Handbremse,
-        Y/△ Kamera, Start Pause), auch der PS3-Controller. Spieler 1 bekommt das erste angeschlossene Gamepad, Spieler 2 das zweite.</p>
+        <p class="hint">Im Einzelspieler funktionieren WASD und die Pfeiltasten. Spieler 1 bekommt das erste angeschlossene Gamepad, Spieler 2 das zweite.</p>
+        <table class="keys">
+          <tr><th></th><th>Xbox / Standard-Gamepad</th><th>PlayStation (auch PS3)</th></tr>
+          <tr><td>Gas</td><td>RT oder A</td><td>R2 oder □</td></tr>
+          <tr><td>Bremse / Rückwärts</td><td>LT oder B</td><td>L2 oder ○</td></tr>
+          <tr><td>Lenken</td><td colspan="2">linker oder rechter Stick, Steuerkreuz</td></tr>
+          <tr><td>Handbremse</td><td>X oder RB</td><td>✕ oder R1</td></tr>
+          <tr><td>Kamera / Pause</td><td>Y / Start</td><td>△ / Start</td></tr>
+        </table>
         <p class="hint">Hinweis: Manche Tastaturen erkennen nicht beliebig viele gleichzeitig gedrückte Tasten.
         Falls im Splitscreen Eingaben verloren gehen, hilft ein Gamepad für einen der beiden Spieler.</p>
         <div class="row"><button data-a="back">Zurück</button></div>
