@@ -170,10 +170,10 @@ export class TownHud {
       const ps = pad === 'playstation';
       this.el.help.innerHTML = pad
         ? `<div class="th-title">${ps ? 'PlayStation-Controller' : 'Gamepad'}</div>
-           <div class="th-row"><b data-h="throttle">${ps ? 'R2 · □' : 'RT · A'}</b><span>Gas</span></div>
+           <div class="th-row"><b data-h="throttle">${ps ? 'R2 · ✕' : 'RT · A'}</b><span>Gas</span></div>
            <div class="th-row"><b data-h="brake">${ps ? 'L2 · ○' : 'LT · B'}</b><span>Bremse / Rückwärts</span></div>
            <div class="th-row"><b data-h="left">◀ Stick</b><b data-h="right">Stick ▶</b><span>Lenken</span></div>
-           <div class="th-row"><b data-h="hand">${ps ? '✕ · R1' : 'X · RB'}</b><span>Handbremse</span></div>
+           <div class="th-row"><b data-h="hand">${ps ? '□ · R1' : 'X · RB'}</b><span>Handbremse</span></div>
            <div class="th-foot">H = Hilfe aus</div>`
         : `<div class="th-title">Tastatur</div>
            <div class="th-keys">

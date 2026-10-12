@@ -57,19 +57,19 @@ describe('Xbox / standard gamepad', () => {
 });
 
 describe('PlayStation controller', () => {
-  it('standard mapping: ✕ is the handbrake, □ or R2 accelerate, ○ or L2 brake', () => {
+  it('standard mapping: ✕ or R2 accelerate, □ or R1 is the handbrake, ○ or L2 brake', () => {
     const cross = readPad(pad(PS3, 'standard', 17, 4, [0]));
     expect(cross.kind).toBe('playstation');
-    expect(cross.handbrake).toBe(true);
-    expect(cross.throttle).toBe(0);
-    expect(readPad(pad(PS3, 'standard', 17, 4, [2]))).toMatchObject({ throttle: 1, handbrake: false });
+    expect(cross).toMatchObject({ throttle: 1, handbrake: false });
+    expect(readPad(pad(PS3, 'standard', 17, 4, [2]))).toMatchObject({ throttle: 0, handbrake: true });
+    expect(readPad(pad(PS3, 'standard', 17, 4, [5])).handbrake).toBe(true);
     expect(readPad(pad(PS3, 'standard', 17, 4, [7])).throttle).toBe(1);
     expect(readPad(pad(PS3, 'standard', 17, 4, [1])).brake).toBe(1);
   });
 
-  it('raw DualShock 3 layout: ✕ (0) is the handbrake, □ (3) accelerates, △ (2) camera', () => {
-    expect(readPad(pad(PS3_RAW, '', 17, 4, [0]))).toMatchObject({ handbrake: true, throttle: 0 });
-    expect(readPad(pad(PS3_RAW, '', 17, 4, [3]))).toMatchObject({ handbrake: false, throttle: 1 });
+  it('raw DualShock 3 layout: ✕ (0) accelerates, □ (3) is the handbrake, △ (2) camera', () => {
+    expect(readPad(pad(PS3_RAW, '', 17, 4, [0]))).toMatchObject({ handbrake: false, throttle: 1 });
+    expect(readPad(pad(PS3_RAW, '', 17, 4, [3]))).toMatchObject({ handbrake: true, throttle: 0 });
     expect(readPad(pad(PS3_RAW, '', 17, 4, [2])).camera).toBe(true);
     expect(readPad(pad(PS3_RAW, '', 17, 4, [16])).steer).toBe(1);
   });

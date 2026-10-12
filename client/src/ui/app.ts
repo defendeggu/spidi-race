@@ -181,10 +181,10 @@ export class App {
         <p class="hint">Im Einzelspieler funktionieren WASD und die Pfeiltasten. Spieler 1 bekommt das erste angeschlossene Gamepad, Spieler 2 das zweite.</p>
         <table class="keys">
           <tr><th></th><th>Xbox / Standard-Gamepad</th><th>PlayStation (auch PS3)</th></tr>
-          <tr><td>Gas</td><td>RT oder A</td><td>R2 oder □</td></tr>
+          <tr><td>Gas</td><td>RT oder A</td><td>R2 oder ✕</td></tr>
           <tr><td>Bremse / Rückwärts</td><td>LT oder B</td><td>L2 oder ○</td></tr>
           <tr><td>Lenken</td><td colspan="2">linker oder rechter Stick, Steuerkreuz</td></tr>
-          <tr><td>Handbremse</td><td>X oder RB</td><td>✕ oder R1</td></tr>
+          <tr><td>Handbremse</td><td>X oder RB</td><td>□ oder R1</td></tr>
           <tr><td>Kamera / Pause</td><td>Y / Start</td><td>△ / Start</td></tr>
         </table>
         <p class="hint">Hinweis: Manche Tastaturen erkennen nicht beliebig viele gleichzeitig gedrückte Tasten.

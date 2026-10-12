@@ -92,16 +92,14 @@ export function readPad(p: PadLike): PadState {
   let steer = dead(Math.abs(r) > Math.abs(l) ? r : l);
   if (dpad !== 0) steer = dpad;
 
-  // PlayStation: ✕ is the handbrake and □ accelerates; Xbox: A accelerates and X is the handbrake
-  const gasButton = kind === 'playstation' ? west : south;
-  const handButton = kind === 'playstation' ? south : west;
+  // the bottom face button (A / ✕) accelerates, the left one (X / □) is the handbrake
   return {
     index: p.index,
     kind,
     steer,
-    throttle: Math.max(rt, gasButton ? 1 : 0),
+    throttle: Math.max(rt, south ? 1 : 0),
     brake: Math.max(lt, east ? 1 : 0),
-    handbrake: handButton || bumper,
+    handbrake: west || bumper,
     camera: north,
     pause: start,
   };
