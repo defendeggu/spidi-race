@@ -5,6 +5,7 @@ import {
   type CarInput, type CarSpec, type CarState, type TaskTracker, type TownResult, type TownTask, type TrafficCar,
 } from '@spidi/shared';
 import { audio, EngineVoice } from './audio';
+import { townSpec } from './cheats';
 import { input, padKindAt, type KeyMap } from './input';
 import { ChaseCamera, TOPDOWN_MODE, viewForCar } from './render/cameras';
 import { carColor, CarVisual } from './render/carModel';
@@ -121,6 +122,8 @@ export class TownGame {
   private lastBeep = -1;
   private finishTimer = -1;
   readonly session: TownSession;
+  /** a cheat changed a car: such runs stay out of the leaderboard */
+  cheated = false;
   paused = false;
   onPause: (() => void) | null = null;
   /** called a moment after a solo run or duel has ended */
@@ -133,7 +136,8 @@ export class TownGame {
     this.session = new TownSession(town, opts.task, opts.players.length, opts.goals, Math.floor(Math.random() * 1e9));
     const duel = this.session.mode === 'duel';
     opts.players.forEach((cfg, k) => {
-      const spec = getCar(cfg.carId);
+      const spec = townSpec(getCar(cfg.carId));
+      if (spec !== getCar(cfg.carId)) this.cheated = true;
       const state = createTownCar(`p${k + 1}`, this.session.spawn(k));
       const visual = new CarVisual(spec);
       this.world.dynamic.add(visual.group);

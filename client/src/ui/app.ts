@@ -11,6 +11,7 @@ import { input, KEYMAPS, SOLO_KEYMAP } from '../input';
 import { fetchLeaderboard, submitResults } from '../leaderboardApi';
 import { Net } from '../net';
 import { TownGame } from '../townGame';
+import { typeCheat } from '../cheats';
 import { Backdrop } from './backdrop';
 
 /** a player's preferences: carId is the road car, offroadCarId / microCarId / townCarId the cars of the other classes */
@@ -89,6 +90,9 @@ export class App {
     const unlock = () => audio.unlock();
     window.addEventListener('pointerdown', unlock);
     window.addEventListener('keydown', unlock);
+    window.addEventListener('keydown', (e) => {
+      if (this.screen === 'main' && !e.repeat && typeCheat(e.key)) audio.crash(14);
+    });
     this.showMain();
   }
 
@@ -427,7 +431,7 @@ export class App {
       board: () => this.showLeaderboard({ trackId: board.id, sort: 'time', laps: game.opts.goals }, back),
       menu: () => this.quitGame(),
     });
-    if (r.mode !== 'solo' || this.townSubmitted === r) return;
+    if (r.mode !== 'solo' || game.cheated || this.townSubmitted === r) return;
     this.townSubmitted = r;
     const p = game.opts.players[0];
     submitResults([{ name: p.name, carId: p.carId, trackId: board.id, laps: game.opts.goals, time: r.time, bestLap: r.fastest[0], mode: 'solo' }])
