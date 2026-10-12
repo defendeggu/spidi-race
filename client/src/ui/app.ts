@@ -154,7 +154,7 @@ export class App {
           <tr><td>Ton an/aus</td><td colspan="2"><kbd>M</kbd></td></tr>
         </table>
         <p class="hint">Im Einzelspieler funktionieren WASD und die Pfeiltasten. Gamepads werden ebenfalls unterstützt
-        (RT/R2 oder A/✕ Gas, LT/L2 oder B/○ Bremse, linker Stick oder Steuerkreuz lenken, X/□ oder RB/R1 Handbremse,
+        (RT/R2 oder A/✕ Gas, LT/L2 oder B/○ Bremse, linker oder rechter Stick oder Steuerkreuz lenken, X/□ oder RB/R1 Handbremse,
         Y/△ Kamera, Start Pause), auch der PS3-Controller. Spieler 1 bekommt das erste angeschlossene Gamepad, Spieler 2 das zweite.</p>
         <p class="hint">Hinweis: Manche Tastaturen erkennen nicht beliebig viele gleichzeitig gedrückte Tasten.
         Falls im Splitscreen Eingaben verloren gehen, hilft ein Gamepad für einen der beiden Spieler.</p>
