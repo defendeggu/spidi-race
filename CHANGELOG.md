@@ -2,6 +2,11 @@
 
 Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.10.1] – 2026-10-12
+
+### Geändert
+- PlayStation-Controller: Handbremse wieder auf □ (wie vor 0.9.1), ✕ gibt wieder Gas
+
 ## [0.10.0] – 2026-10-12
 
 ### Hinzugefügt
@@ -141,6 +146,7 @@ Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog]
 - Docker-Image und docker-compose (Port 8090)
 
 [0.6.0]: https://github.com/defendeggu/spidi-race/compare/v0.5.0...v0.6.0
+[0.10.1]: https://github.com/defendeggu/spidi-race/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/defendeggu/spidi-race/compare/v0.9.1...v0.10.0
 [0.9.1]: https://github.com/defendeggu/spidi-race/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/defendeggu/spidi-race/compare/v0.8.1...v0.9.0

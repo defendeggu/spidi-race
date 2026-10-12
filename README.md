@@ -1,6 +1,6 @@
 # Spidi Race 🏁
 
-![Version](https://img.shields.io/badge/version-0.10.0-ffcc00)
+![Version](https://img.shields.io/badge/version-0.10.1-ffcc00)
 ![Lizenz Code](https://img.shields.io/badge/code-MIT-blue)
 ![Lizenz Assets](https://img.shields.io/badge/assets-CC0-green)
 ![Docker](https://img.shields.io/badge/docker-ready-2496ED)
@@ -115,14 +115,14 @@ Das Image ist zweistufig aufgebaut. Beim Build laufen die Tests und der Produkti
 
   | Aktion | Xbox / Standard-Gamepad | PlayStation (PS3, PS4, PS5) |
   |---|---|---|
-  | Gas | RT oder A | R2 oder □ |
+  | Gas | RT oder A | R2 oder ✕ |
   | Bremse / Rückwärts | LT oder B | L2 oder ○ |
   | Lenken | linker oder rechter Stick, Steuerkreuz | linker oder rechter Stick, Steuerkreuz |
-  | Handbremse | X oder RB | ✕ oder R1 |
+  | Handbremse | X oder RB | □ oder R1 |
   | Kamera / Pause | Y / Start | △ / Start |
 
   Erkannt werden sowohl Gamepads mit Standard-Belegung als auch die rohe Linux-Belegung, die Firefox für manche Controller meldet (Xbox-Controller mit Triggern als Achsen, DualShock 3).
-- **PS3-Controller:** Unter Linux per USB oder Bluetooth direkt nutzbar (Treiber `hid-sony` ist im Kernel), in Chrome und Firefox. Unter Windows 11 gibt es keinen eingebauten Treiber: [DsHidMini](https://github.com/nefarius/DsHidMini) installieren und den Controller im *XInput*-Modus betreiben, dann erscheint er als Xbox-Controller und nutzt die Xbox-Belegung (Handbremse dann auf □, der Position von X). Den Browser erkennt das Gamepad erst nach dem ersten Tastendruck.
+- **PS3-Controller:** Unter Linux per USB oder Bluetooth direkt nutzbar (Treiber `hid-sony` ist im Kernel), in Chrome und Firefox. Unter Windows 11 gibt es keinen eingebauten Treiber: [DsHidMini](https://github.com/nefarius/DsHidMini) installieren und den Controller im *XInput*-Modus betreiben, dann erscheint er als Xbox-Controller. Den Browser erkennt das Gamepad erst nach dem ersten Tastendruck.
 - Viele Tastaturen erkennen nur eine begrenzte Zahl gleichzeitig gedrückter Tasten. Gehen im Splitscreen Eingaben verloren, hilft ein Gamepad für einen der beiden Spieler.
 
 ## Übungsfahrt in der Stadt
@@ -233,7 +233,7 @@ scripts/  Asset-Download
 
 ## Versionierung
 
-Das Projekt folgt [Semantic Versioning](https://semver.org/lang/de/). Die aktuelle Version ist **0.10.0**. Änderungen stehen im [CHANGELOG](CHANGELOG.md), Releases sind als Git-Tags `vX.Y.Z` markiert. Die Version steht auch unten rechts im Hauptmenü.
+Das Projekt folgt [Semantic Versioning](https://semver.org/lang/de/). Die aktuelle Version ist **0.10.1**. Änderungen stehen im [CHANGELOG](CHANGELOG.md), Releases sind als Git-Tags `vX.Y.Z` markiert. Die Version steht auch unten rechts im Hauptmenü.
 
 ## Lizenz und Credits
 
