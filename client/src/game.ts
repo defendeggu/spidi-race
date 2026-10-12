@@ -25,6 +25,7 @@ const INTERP_DELAY = 110;
 export interface LocalPlayerCfg {
   slotId: string;
   keymap: KeyMap;
+  /** n-th connected gamepad (not the raw Gamepad.index) */
   pad: number;
 }
 
@@ -172,13 +173,14 @@ export class Game {
   }
 
   private frame(dt: number, now: number) {
-    if (input.consume(['Escape'])) this.onPause?.();
+    const padPause = this.players.map((p) => input.consumePad(p.cfg.pad, 'pause')).some(Boolean);
+    if (input.consume(['Escape']) || padPause) this.onPause?.();
     if (input.consume(['KeyM'])) {
       const m = audio.toggleMute();
       for (const p of this.players) p.hud.flash(m ? 'Ton aus' : 'Ton an', 1);
     }
     for (const p of this.players) {
-      if (input.consume(p.cfg.keymap.camera)) {
+      if (input.consume(p.cfg.keymap.camera) || input.consumePad(p.cfg.pad, 'camera')) {
         p.cam.cycle();
         p.hud.showCameraMode(p.cam.mode);
       }

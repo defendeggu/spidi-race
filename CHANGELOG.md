@@ -2,6 +2,15 @@
 
 Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.8.0] – 2026-10-12
+
+### Hinzugefügt
+- Gamepad: Steuerkreuz lenkt, Y/△ wechselt die Kamera, Start pausiert
+- PS3-Controller (DualShock 3) auch ohne Standard-Mapping des Browsers (Firefox unter Linux); Hinweis zu DsHidMini für Windows 11
+
+### Behoben
+- Gamepads werden nach Anschlussreihenfolge den Spielern zugeordnet; reine Sensor-Geräte (z. B. „Motion Sensors“ des PS3-Controllers unter Linux) belegen keinen Platz mehr
+
 ## [0.7.0] – 2026-10-12
 
 ### Hinzugefügt
@@ -89,6 +98,9 @@ Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog]
 - HUD mit Minimap, synthetischer Sound, 3 Kameras
 - Docker-Image und docker-compose (Port 8090)
 
+[0.6.0]: https://github.com/defendeggu/spidi-race/compare/v0.5.0...v0.6.0
+[0.8.0]: https://github.com/defendeggu/spidi-race/compare/v0.7.0...v0.8.0
+[0.7.0]: https://github.com/defendeggu/spidi-race/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/defendeggu/spidi-race/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/defendeggu/spidi-race/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/defendeggu/spidi-race/compare/v0.3.0...v0.4.0
