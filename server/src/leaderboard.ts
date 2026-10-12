@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { rankEntries, sanitizeSubmission, type LeaderboardEntry, type LeaderboardSubmission } from '@spidi/shared';
+import { boardSort, rankEntries, sanitizeSubmission, type LeaderboardEntry, type LeaderboardSubmission } from '@spidi/shared';
 
 /** Keep at most this many entries per track (the slowest by best lap are dropped). */
 const MAX_PER_TRACK = 2000;
@@ -33,7 +33,7 @@ export class Leaderboard {
     return this.entries.filter((e) => e.trackId === trackId);
   }
 
-  /** Adds valid submissions and returns each one's best-lap rank on its track (0 = rejected). */
+  /** Adds valid submissions and returns each one's rank on its track (0 = rejected): best lap, or total time on town boards. */
   add(subs: Partial<LeaderboardSubmission>[]): number[] {
     const added: (LeaderboardEntry | null)[] = subs.map((s) => {
       const clean = sanitizeSubmission(s);
@@ -46,12 +46,13 @@ export class Leaderboard {
       this.trim();
       this.save();
     }
-    return added.map((e) => (e ? rankEntries(this.entries, e.trackId, 'bestLap').findIndex((r) => r.id === e.id) + 1 : 0));
+    return added.map((e) => (e ? rankEntries(this.entries, e.trackId, boardSort(e.trackId), e.laps).findIndex((r) => r.id === e.id) + 1 : 0));
   }
 
   private trim() {
     const tracks = new Set(this.entries.map((e) => e.trackId));
     for (const t of tracks) {
+      // town boards rank by time per goal count; dropping by fastest goal keeps the strongest runs overall
       const ranked = rankEntries(this.entries, t, 'bestLap');
       if (ranked.length <= MAX_PER_TRACK) continue;
       const drop = new Set(ranked.slice(MAX_PER_TRACK).map((e) => e.id));

@@ -1,8 +1,8 @@
 import {
-  carRatings, carsForClass, formatTime, getCar, getTrack, MAX_CARS, rankEntries, TRACK_DEFS,
+  carRatings, carsForClass, formatTime, getCar, getTrack, MAX_CARS, rankEntries, TOWN_BOARDS, TOWN_GOAL_COUNTS, townBoard, TRACK_DEFS,
   type CarClass,
   type LeaderboardEntry, type LeaderboardSort,
-  type LobbyClient, type LobbyPlayer, type LobbySettings, type ResultRow, type ServerMsg, type Slot, type TownTask,
+  type LobbyClient, type LobbyPlayer, type LobbySettings, type ResultRow, type ServerMsg, type Slot, type TownResult, type TownTask,
 } from '@spidi/shared';
 import { audio } from '../audio';
 import { Game, type LocalPlayerCfg } from '../game';
@@ -30,6 +30,8 @@ interface Prefs {
   townPlayers: number;
   townTask: TownTask;
   townTraffic: TrafficLevel;
+  /** goals of a solo run (5 / 10 / 20) */
+  townGoals: number;
 }
 
 type TrafficLevel = 'off' | 'few' | 'many';
@@ -57,7 +59,7 @@ function loadPrefs(): Prefs {
       { name: 'Spieler 2', carId: 'kaito', offroadCarId: 'raider', microCarId: 'flitzer', townCarId: 'polizei' },
     ],
     trackId: TRACK_DEFS[0].id, laps: 2, aiCount: 4, aiSkill: 0.93, onlineLocal: 1,
-    townPlayers: 1, townTask: 'stars', townTraffic: 'few',
+    townPlayers: 1, townTask: 'stars', townTraffic: 'few', townGoals: 10,
   };
   try {
     const raw = localStorage.getItem('spidi-race-prefs');
@@ -345,11 +347,15 @@ export class App {
     this.setScreen('town', `
       <div class="menu panel wide">
         <h2>Übungsfahrt</h2>
-        <p class="hint">Eine ganze Stadt zum Herumfahren – ohne Rennen und ohne Zeitdruck. Ideal, um Tastatur oder Gamepad kennenzulernen.</p>
+        <p class="hint">Eine ganze Stadt zum Herumfahren – ideal, um Tastatur oder Gamepad kennenzulernen. Mit Sternen oder Einparken gibt es Zeit und Rangliste, zu zweit ein Duell.</p>
         <div class="toggle town-row">${choice('players', [{ id: '1', label: '1 Spieler' }, { id: '2', label: '2 Spieler (Splitscreen)' }], String(humans))}</div>
         <div class="players">${this.playerPanel(0, 'town')}${humans > 1 ? this.playerPanel(1, 'town') : ''}</div>
         <div class="toggle town-row">${choice('task', TASKS, pr.townTask)}</div>
         <p class="hint">${TASKS.find((t) => t.id === pr.townTask)?.hint ?? ''}</p>
+        ${pr.townTask === 'free' ? '' : humans > 1
+          ? `<p class="hint duel-hint"><b>Duell:</b> Ihr startet in entgegengesetzten Ecken der Stadt und jagt dasselbe Ziel. Wer zuerst dort ist, bekommt den Punkt. Nach 3 Minuten gewinnt, wer mehr Punkte hat.</p>`
+          : `<div class="toggle town-row">${choice('goals', TOWN_GOAL_COUNTS.map((n) => ({ id: String(n), label: `${n} ${pr.townTask === 'stars' ? 'Sterne' : 'Parkfelder'}` })), String(this.townGoals()))}</div>
+             <p class="hint">Die Zeit läuft, bis alle geschafft sind – die besten Zeiten kommen in die Rangliste.</p>`}
         <div class="toggle town-row">${choice('traffic', TRAFFIC, pr.townTraffic)}</div>
         <div class="row"><button data-a="back">Zurück</button><button class="go" data-a="start">Losfahren ▶</button></div>
       </div>`);
@@ -359,6 +365,7 @@ export class App {
       players: (el) => set(() => (pr.townPlayers = Number(el.dataset.id)))(),
       task: (el) => set(() => (pr.townTask = el.dataset.id as TownTask))(),
       traffic: (el) => set(() => (pr.townTraffic = el.dataset.id as TrafficLevel))(),
+      goals: (el) => set(() => (pr.townGoals = Number(el.dataset.id)))(),
       back: () => this.showMain(),
       start: () => this.startTown(),
     });
@@ -375,8 +382,66 @@ export class App {
       })),
       task: pr.townTask,
       traffic: TRAFFIC.find((t) => t.id === pr.townTraffic)?.cars ?? 10,
+      goals: this.townGoals(),
     }));
   }
+
+  private townGoals() {
+    return TOWN_GOAL_COUNTS.includes(this.prefs.townGoals) ? this.prefs.townGoals : 10;
+  }
+
+  /** End of a solo run (time, leaderboard) or a duel (winner). */
+  private showTownResults(game: TownGame, r: TownResult) {
+    game.setEngineVolume(0.25);
+    const names = game.opts.players.map((p) => p.name);
+    const unit = r.task === 'stars' ? 'Sterne' : 'Parkfelder';
+    const board = TOWN_BOARDS.find((b) => b.task === r.task)!;
+    let body: string;
+    if (r.mode === 'duel') {
+      const [a, b] = r.scores;
+      const title = r.winner < 0 ? 'Unentschieden!' : `${escapeHtml(names[r.winner])} gewinnt!`;
+      body = `<h2>${title}</h2>
+        <table class="results"><tr><th>Fahrer</th><th>${unit}</th><th>Schnellstes Ziel</th></tr>
+          ${[0, 1].map((k) => `<tr class="${k === r.winner ? 'me' : ''}"><td>${escapeHtml(names[k])}</td><td>${r.scores[k]}</td><td>${formatTime(r.fastest[k])}</td></tr>`).join('')}
+        </table>
+        <p class="hint">${a} : ${b} nach 3 Minuten</p>`;
+    } else {
+      body = `<h2>Geschafft!</h2>
+        <p class="town-result">${r.scores[0]} ${unit} in <b>${formatTime(r.time)}</b></p>
+        <p class="hint">Schnellstes Ziel: ${formatTime(r.fastest[0])}</p>
+        <div class="lb-info" id="lb-info"></div>`;
+    }
+    this.setScreen('results', `
+      <div class="menu panel overlay">
+        ${body}
+        <div class="row">
+          <button class="go" data-a="again">Nochmal</button>
+          ${r.mode === 'solo' ? '<button data-a="board">Rangliste</button>' : ''}
+          <button data-a="menu">Hauptmenü</button>
+        </div>
+      </div>`);
+    this.ui.classList.add('dim');
+    const back = () => this.showTownResults(game, r);
+    this.bind({
+      again: () => this.startTown(),
+      board: () => this.showLeaderboard({ trackId: board.id, sort: 'time', laps: game.opts.goals }, back),
+      menu: () => this.quitGame(),
+    });
+    if (r.mode !== 'solo' || this.townSubmitted === r) return;
+    this.townSubmitted = r;
+    const p = game.opts.players[0];
+    submitResults([{ name: p.name, carId: p.carId, trackId: board.id, laps: game.opts.goals, time: r.time, bestLap: r.fastest[0], mode: 'solo' }])
+      .then(([rank]) => {
+        const el = document.getElementById('lb-info');
+        if (el && rank > 0) el.innerHTML = `🏆 <b>${escapeHtml(p.name)}</b>: Platz ${rank} der Rangliste (${game.opts.goals} ${unit})`;
+      })
+      .catch(() => {
+        const el = document.getElementById('lb-info');
+        if (el) el.textContent = 'Rangliste nicht erreichbar – Ergebnis wurde nicht gespeichert.';
+      });
+  }
+
+  private townSubmitted: TownResult | null = null;
 
   private runGame(game: Game | TownGame) {
     this.backdrop.hide();
@@ -386,6 +451,7 @@ export class App {
     this.ui.innerHTML = '';
     this.screen = 'game';
     if (game instanceof Game) game.onFinish = (results, ranks) => this.showResults(results, ranks);
+    else game.onFinish = (r) => this.showTownResults(game, r);
     game.onPause = () => this.togglePause();
     game.start();
   }
@@ -546,9 +612,12 @@ export class App {
         });
       return;
     }
+    const town = townBoard(view.trackId);
+    // town boards: total time for a fixed number of goals
+    if (town) view.sort = 'time';
     const onTrack = entries.filter((e) => e.trackId === view.trackId);
-    const lapOptions = [...new Set(onTrack.map((e) => e.laps))].sort((a, b) => a - b);
-    if (view.sort === 'time' && !lapOptions.includes(view.laps ?? -1)) view.laps = lapOptions[0];
+    const lapOptions = town ? TOWN_GOAL_COUNTS : [...new Set(onTrack.map((e) => e.laps))].sort((a, b) => a - b);
+    if (view.sort === 'time' && !lapOptions.includes(view.laps ?? -1)) view.laps = town ? 10 : lapOptions[0];
     const ranked = rankEntries(entries, view.trackId, view.sort, view.laps).slice(0, 50);
     const modes: Record<string, string> = { solo: 'Einzel', split: 'Splitscreen', online: 'Netzwerk' };
     const date = (iso: string) => new Date(iso).toLocaleDateString('de-CH', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -558,7 +627,7 @@ export class App {
         <td>${i + 1}</td><td>${escapeHtml(e.name)}</td>
         <td><i class="dot" style="background:${car.color}"></i>${car.name}</td>
         <td class="${view.sort === 'bestLap' ? 'key' : ''}">${formatTime(e.bestLap)}</td>
-        <td class="${view.sort === 'time' ? 'key' : ''}">${formatTime(e.time)} <small>(${e.laps} Rd.)</small></td>
+        <td class="${view.sort === 'time' ? 'key' : ''}">${formatTime(e.time)} <small>(${e.laps} ${town ? town.unit : 'Rd.'})</small></td>
         <td><small>${modes[e.mode] ?? e.mode}</small></td><td><small>${date(e.date)}</small></td>
       </tr>`;
     }).join('');
@@ -566,21 +635,21 @@ export class App {
       <div class="menu panel wide">
         <h2>Rangliste</h2>
         <div class="toggle">
-          ${TRACK_DEFS.map((t) => `<button class="${t.id === view.trackId ? 'sel' : ''}" data-a="track" data-id="${t.id}">${t.name}</button>`).join('')}
+          ${[...TRACK_DEFS, ...TOWN_BOARDS].map((t) => `<button class="${t.id === view.trackId ? 'sel' : ''}" data-a="track" data-id="${t.id}">${t.name}</button>`).join('')}
         </div>
         <div class="opts">
-          <label>Wertung
+          ${town ? '' : `<label>Wertung
             <select data-a="sort">
               <option value="bestLap" ${view.sort === 'bestLap' ? 'selected' : ''}>Beste Runde</option>
               <option value="time" ${view.sort === 'time' ? 'selected' : ''}>Rennzeit</option>
             </select>
-          </label>
-          ${view.sort === 'time' && lapOptions.length ? `<label>Runden <select data-a="laps">${lapOptions.map((l) => `<option ${l === view.laps ? 'selected' : ''}>${l}</option>`).join('')}</select></label>` : ''}
-          <span class="hint">${onTrack.length} Rennen gespeichert</span>
+          </label>`}
+          ${view.sort === 'time' && lapOptions.length ? `<label>${town ? town.unit : 'Runden'} <select data-a="laps">${lapOptions.map((l) => `<option ${l === view.laps ? 'selected' : ''}>${l}</option>`).join('')}</select></label>` : ''}
+          <span class="hint">${onTrack.length} ${town ? (onTrack.length === 1 ? 'Fahrt' : 'Fahrten') : 'Rennen'} gespeichert</span>
         </div>
         ${ranked.length
-          ? `<div class="board-wrap"><table class="results board"><tr><th>#</th><th>Fahrer</th><th>Auto</th><th>Beste Runde</th><th>Rennzeit</th><th>Modus</th><th>Datum</th></tr>${rows}</table></div>`
-          : '<p class="hint">Noch keine Zeiten auf dieser Strecke – fahr die erste!</p>'}
+          ? `<div class="board-wrap"><table class="results board"><tr><th>#</th><th>Fahrer</th><th>Auto</th><th>${town ? 'Schnellstes Ziel' : 'Beste Runde'}</th><th>${town ? 'Zeit' : 'Rennzeit'}</th><th>Modus</th><th>Datum</th></tr>${rows}</table></div>`
+          : `<p class="hint">${town ? `Noch keine Zeiten für ${view.laps} ${town.unit} – fahr die erste!` : 'Noch keine Zeiten auf dieser Strecke – fahr die erste!'}</p>`}
         <div class="row"><button data-a="back">Zurück</button></div>
       </div>`);
     const again = (v: typeof view) => this.showLeaderboard(v, back, entries);

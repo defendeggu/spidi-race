@@ -16,7 +16,7 @@ const KEY_LABEL: Record<string, string> = {
 };
 const label = (codes: string[]) => codes.map((c) => KEY_LABEL[c] ?? c).slice(0, 2).join(' / ');
 
-const TASK_TITLE: Record<TownTask, string> = { free: 'FREIE FAHRT', stars: 'STERNE', parking: 'EINGEPARKT' };
+const TASK_TITLE: Record<TownTask, string> = { free: 'FREIE FAHRT', stars: 'STERNE', parking: 'EINPARKEN' };
 
 /** HTML overlay for one player in the practice town: speed, goal arrow, town map and a controls helper. */
 export class TownHud {
@@ -28,15 +28,18 @@ export class TownHud {
   private scale = 1;
   private help = true;
   private padMode: PadKind | null | undefined = undefined;
+  private lastCenter = '';
 
-  constructor(parent: HTMLElement, private town: TownMap, private task: TownTask, private keymap: KeyMap, compact: boolean) {
+  constructor(parent: HTMLElement, private town: TownMap, task: TownTask, duel: boolean, private keymap: KeyMap, compact: boolean) {
     this.root = document.createElement('div');
     this.root.className = 'hud town-hud' + (compact ? ' compact' : '');
     this.root.innerHTML = `
       <div class="hud-tl">
-        <div class="town-task">${TASK_TITLE[task]}</div>
-        <div class="town-count" data-k="count">${task === 'free' ? '' : '0'}</div>
+        <div class="town-task">${duel ? 'DUELL · ' : ''}${TASK_TITLE[task]}</div>
+        <div class="town-count" data-k="count"></div>
+        <div class="town-time" data-k="time"></div>
       </div>
+      <div class="hud-center" data-k="center"></div>
       <div class="town-goal" data-k="goal">
         <svg viewBox="-20 -20 40 40" data-k="arrow"><path d="M0,-17 L13,9 L0,3 L-13,9 Z" /></svg>
         <div data-k="dist"></div>
@@ -113,11 +116,18 @@ export class TownHud {
   /**
    * arrow: direction to the goal in screen terms (radians, clockwise from up) or null without a goal.
    */
-  update(speed: number, gear: number, count: number, arrow: number | null, dist: number, park: number,
+  update(speed: number, gear: number, status: { count: string; time: string; center: string }, arrow: number | null, dist: number, park: number,
     inp: CarInput, pad: PadKind | null, dots: TownDot[], dt: number) {
     this.el.speed.textContent = String(Math.round(Math.abs(speed) * 3.6));
     this.el.gear.textContent = gear === 0 ? 'R' : String(gear);
-    if (this.task !== 'free') this.el.count.textContent = `${this.task === 'stars' ? '★' : 'P'} ${count}`;
+    this.el.count.textContent = status.count;
+    this.el.time.textContent = status.time;
+    if (status.center !== this.lastCenter) {
+      this.lastCenter = status.center;
+      this.el.center.textContent = status.center;
+      this.el.center.className = 'hud-center' + (status.center ? ' show' : '');
+    }
+    this.el.goal.style.visibility = arrow === null ? 'hidden' : 'visible';
     if (arrow !== null) {
       this.el.arrow.style.transform = `rotate(${arrow}rad)`;
       this.el.dist.textContent = dist < 15 ? 'fast da!' : `${Math.round(dist / 5) * 5} m`;

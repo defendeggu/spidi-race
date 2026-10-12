@@ -315,6 +315,17 @@ export class TownMap {
     return { x: p.cx - 30, z: p.cz - 32 + k * 7, heading: Math.PI / 2 };
   }
 
+  /**
+   * Duel start positions in opposite corners of the town, on the right lane of the outer street
+   * (point-symmetric, so neither player has an advantage).
+   */
+  duelSpawn(k: number): Spot {
+    const e = LINES[LINE_COUNT - 1], start = e - 30;
+    return k === 0
+      ? { x: -e - LANE_OFFSET, z: -start, heading: 0 }
+      : { x: e + LANE_OFFSET, z: start, heading: Math.PI };
+  }
+
   blockAt(x: number, z: number): Block | undefined {
     const i = Math.floor((x - LINES[0]) / GRID), j = Math.floor((z - LINES[0]) / GRID);
     if (i < 0 || j < 0 || i >= LINE_COUNT - 1 || j >= LINE_COUNT - 1) return undefined;

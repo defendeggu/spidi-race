@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { carsForClass, getCar } from './cars';
 import { forwardSpeed, NO_INPUT, type CarInput } from './physics';
 import { BLOCK_INNER, createTownCar, getTown, stepCarTown, TOWN_HALF } from './town';
-import { TaskTracker } from './townTasks';
+import { DUEL_SECONDS, TaskTracker, TownSession } from './townTasks';
+import { sanitizeSubmission } from './leaderboard';
 import { TRACK_DEFS } from './tracks';
 import { Traffic } from './traffic';
 
@@ -180,5 +181,96 @@ describe('practice tasks', () => {
     expect(t.target).toBeNull();
     expect(t.update(createTownCar('t', town.spawn(0)), DT)).toBe(false);
     void NO_INPUT;
+  });
+});
+
+describe('practice session', () => {
+  const at = (c: ReturnType<typeof createTownCar>, x: number, z: number, heading = c.heading) => Object.assign(c, { x, z, heading, vx: 0, vz: 0 });
+
+  it('solo: countdown, then the run ends after the chosen number of stars', () => {
+    const s = new TownSession(town, 'stars', 1, 5, 1);
+    const car = createTownCar('p1', s.spawn(0));
+    s.begin([car]);
+    expect(s.phase).toBe('countdown');
+    for (let i = 0; i <= 60 * 3; i++) s.step(DT, [car]);
+    expect(s.phase).toBe('running');
+    for (let g = 0; g < 5; g++) {
+      for (let i = 0; i < 60 * 4; i++) s.step(DT, [car]);
+      const t = s.trackers[0].target!;
+      at(car, t.x, t.z);
+      expect(s.step(DT, [car])).toEqual([0]);
+    }
+    expect(s.phase).toBe('finished');
+    const r = s.result();
+    expect(r.scores).toEqual([5]);
+    expect(r.time).toBeGreaterThan(20);
+    expect(r.fastest[0]).toBeGreaterThan(3.9);
+    expect(sanitizeSubmission({ name: 'Lea', carId: 'familie', trackId: 'town-stars', laps: 5, time: r.time, bestLap: r.fastest[0], mode: 'solo' })).not.toBeNull();
+  });
+
+  it('free driving has no countdown and never ends', () => {
+    const s = new TownSession(town, 'free', 2, 5, 1);
+    expect(s.phase).toBe('running');
+    const cars = [0, 1].map((k) => createTownCar(`p${k}`, s.spawn(k)));
+    s.begin(cars);
+    for (let i = 0; i < 60 * 10; i++) s.step(DT, cars);
+    expect(s.phase).toBe('running');
+    expect(s.trackers[0].target).toBeNull();
+  });
+
+  it('duel: opposite corners, fair shared goals, 3 minutes, more goals wins', () => {
+    const s = new TownSession(town, 'stars', 2, 5, 3);
+    const a = s.spawn(0), b = s.spawn(1);
+    // point-symmetric start in opposite corners
+    expect(a.x).toBeCloseTo(-b.x);
+    expect(a.z).toBeCloseTo(-b.z);
+    expect(Math.hypot(a.x - b.x, a.z - b.z)).toBeGreaterThan(1000);
+    const cars = [createTownCar('p1', a), createTownCar('p2', b)];
+    for (const c of cars) expect(town.isFree(c.x, c.z, 2)).toBe(true);
+    s.begin(cars);
+    for (let i = 0; i <= 60 * 3; i++) s.step(DT, cars);
+    for (let g = 0; g < 3; g++) {
+      const t = s.trackers[0].target!;
+      expect(s.trackers[1].target).toEqual(t);
+      const da = Math.abs(t.x - cars[0].x) + Math.abs(t.z - cars[0].z), db = Math.abs(t.x - cars[1].x) + Math.abs(t.z - cars[1].z);
+      expect(Math.abs(da - db)).toBeLessThan(60);
+      // player 1 wins the first two goals, player 2 the third
+      const k = g < 2 ? 0 : 1;
+      at(cars[k], t.x, t.z);
+      for (let i = 0; i < 60; i++) s.step(DT, cars);
+    }
+    expect(s.scores).toEqual([2, 1]);
+    for (let i = 0; i < 60 * DUEL_SECONDS; i++) s.step(DT, cars);
+    expect(s.phase).toBe('finished');
+    expect(s.result()).toMatchObject({ mode: 'duel', winner: 0, time: DUEL_SECONDS });
+  });
+
+  it('duel parking: both chase the same free bay, a goal counts once', () => {
+    const s = new TownSession(town, 'parking', 2, 5, 4);
+    const cars = [0, 1].map((k) => createTownCar(`p${k}`, s.spawn(k)));
+    s.begin(cars);
+    for (let i = 0; i <= 60 * 3; i++) s.step(DT, cars);
+    const t = s.trackers[0].target!;
+    expect(town.bays[t.bay].parked).toBe(-1);
+    // both stand perfectly in the bay at the same time: only the first scores
+    for (const c of cars) at(c, t.x, t.z, t.heading);
+    let total = 0;
+    for (let i = 0; i < 90; i++) total += s.step(DT, cars).length;
+    expect(total).toBe(1);
+    expect(s.scores[0] + s.scores[1]).toBe(1);
+  });
+});
+
+describe('town leaderboard', () => {
+  const ok = { name: 'Lea', carId: 'taxi', trackId: 'town-parking', laps: 10, time: 300, bestLap: 12, mode: 'solo' as const };
+  it('accepts plausible runs with a town car and a known goal count', () => {
+    expect(sanitizeSubmission(ok)).toMatchObject({ trackId: 'town-parking', laps: 10, time: 300 });
+  });
+  it('rejects race cars, odd goal counts and impossible times', () => {
+    expect(sanitizeSubmission({ ...ok, carId: 'falcone' })).toBeNull();
+    expect(sanitizeSubmission({ ...ok, laps: 7 })).toBeNull();
+    expect(sanitizeSubmission({ ...ok, bestLap: 1 })).toBeNull();
+    expect(sanitizeSubmission({ ...ok, time: 50 })).toBeNull();
+    expect(sanitizeSubmission({ ...ok, trackId: 'town-nonsense' })).toBeNull();
   });
 });

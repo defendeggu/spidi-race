@@ -272,3 +272,8 @@ button.big.practice { border-left-color: #3ad16b; }
 .hud.compact .town-count { font-size: 38px; }
 .hud.compact .town-goal svg { width: 44px; height: 44px; }
 .hud.compact .town-help { transform: scale(0.8); transform-origin: left bottom; }
+.town-time { font-size: 22px; margin-top: 2px; color: #fff; }
+.town-hud .hud-center { top: 30%; }
+.town-result { font-size: 22px; margin: 6px 0; }
+.town-result b { color: var(--gold); font-size: 30px; }
+.duel-hint b { color: var(--gold); }
