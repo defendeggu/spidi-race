@@ -66,6 +66,21 @@ export function chevronTexture() {
   });
 }
 
+/** Kitchen floor: 2×2 checkered tiles with grout lines (repeat it with RepeatWrapping). */
+export function floorTileTexture() {
+  const t = canvasTexture(256, 256, (g) => {
+    g.fillStyle = '#8f8579';
+    g.fillRect(0, 0, 256, 256);
+    for (let y = 0; y < 2; y++)
+      for (let x = 0; x < 2; x++) {
+        g.fillStyle = (x + y) % 2 ? '#2f3a44' : '#ebe4d6';
+        g.fillRect(x * 128 + 3, y * 128 + 3, 122, 122);
+      }
+  });
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  return t;
+}
+
 export function blobShadowTexture() {
   const c = document.createElement('canvas');
   c.width = c.height = 64;

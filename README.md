@@ -1,11 +1,11 @@
 # Spidi Race 🏁
 
-![Version](https://img.shields.io/badge/version-0.6.0-ffcc00)
+![Version](https://img.shields.io/badge/version-0.7.0-ffcc00)
 ![Lizenz Code](https://img.shields.io/badge/code-MIT-blue)
 ![Lizenz Assets](https://img.shields.io/badge/assets-CC0-green)
 ![Docker](https://img.shields.io/badge/docker-ready-2496ED)
 
-Ein Arcade-Rennspiel im Browser im Geist von *Need for Speed II: Special Edition*: Alpenpässe, Küstenstrassen, Stadtkurs, Superspeedway und Offroad-Pisten mit Sprüngen, Splitscreen am selben Rechner und Rennen im Heimnetz. Gerendert wird mit Three.js, Modelle und Texturen stammen aus CC0-Paketen von Kenney und ambientCG.
+Ein Arcade-Rennspiel im Browser im Geist von *Need for Speed II: Special Edition*: Alpenpässe, Küstenstrassen, Stadtkurs, Superspeedway, Offroad-Pisten mit Sprüngen und ein Frühstückstisch im Micro-Machines-Stil, Splitscreen am selben Rechner und Rennen im Heimnetz. Gerendert wird mit Three.js, Modelle und Texturen stammen aus CC0-Paketen von Kenney und ambientCG.
 
 ![Hauptmenü](docs/menu.jpg)
 
@@ -16,6 +16,8 @@ Ein Arcade-Rennspiel im Browser im Geist von *Need for Speed II: Special Edition
 | ![Speedway](docs/speedway-steilkurve.jpg) | ![Splitscreen](docs/splitscreen.jpg) |
 | **Canyon Run (Offroad)** | **Waldtrail (Offroad)** |
 | ![Canyon Run](docs/canyon.jpg) | ![Waldtrail](docs/waldtrail.jpg) |
+| **Frühstückstisch (Micro)** | |
+| ![Frühstückstisch](docs/fruehstueck.jpg) | |
 
 ## Inhalt
 
@@ -32,7 +34,7 @@ Ein Arcade-Rennspiel im Browser im Geist von *Need for Speed II: Special Edition
 
 ## Features
 
-- **6 Strecken** in zwei Klassen
+- **7 Strecken** in drei Klassen
 
   | Strecke | Klasse | Länge | Charakter |
   |---|---|---|---|
@@ -42,8 +44,9 @@ Ein Arcade-Rennspiel im Browser im Geist von *Need for Speed II: Special Edition
   | Speedway | Strasse | 5,5 km | Superspeedway-Oval mit Steilkurven: fast permanent Vollgas, über 280 km/h Schnitt |
   | Canyon Run | Offroad | 2,6 km | Schotter und Sand in einer roten Schlucht, 3 Sprünge, einer über ein Flussbett |
   | Waldtrail | Offroad | 2,8 km | Waldweg, Kuppen, Schlammlöcher, Furt, Sprung über den Bach |
+  | Frühstückstisch | Micro | 0,9 km | Spielzeugautos auf dem Küchentisch: Müslischale, Kaffeetasse, Croissant, Strohhalme als Banden |
 
-- **7 Autos** mit eigenen Fahrwerten, je nach Streckenklasse:
+- **10 Autos** mit eigenen Fahrwerten, je nach Streckenklasse:
 
   | Auto | Klasse | Modell | Stärke |
   |---|---|---|---|
@@ -54,8 +57,12 @@ Ein Arcade-Rennspiel im Browser im Geist von *Need for Speed II: Special Edition
   | Bergziege 4x4 | Offroad | Geländewagen | wendig, viel Grip |
   | Baron V8 | Offroad | Luxus-SUV | schnell, schwer |
   | Sahara Raider | Offroad | Pickup | Beschleunigung |
+  | Mini-Blitz | Micro | Spielzeug-Rennwagen | Höchstgeschwindigkeit |
+  | Taschen-Flitzer | Micro | Spielzeug-Hatchback | wendig, Beschleunigung |
+  | Zwergrakete | Micro | Spielzeug-Prototyp | ausgewogen |
 
 - **Offroad**: echte Sprünge mit Flugphase, Untergründe Schotter, Sand, Schlamm und Wasser mit eigenem Grip, Federung, Staub- und Schlammpartikel
+- **Micro**: Spielzeugautos im Massstab 1:100 auf einem Frühstückstisch, gefahren aus der Vogelperspektive wie bei *Micro Machines*
 - **KI-Gegner**: 0 bis 7, in den Stärken Leicht, Mittel und Schwer
 - **Splitscreen** für 2 Spieler an einer Tastatur, Gamepads werden ebenfalls unterstützt
 - **LAN-Multiplayer** mit bis zu 8 Autos, auch zusammen mit Splitscreen
@@ -63,7 +70,7 @@ Ein Arcade-Rennspiel im Browser im Geist von *Need for Speed II: Special Edition
 - **HUD** mit Platzierung, Runden- und Bestzeiten, Tacho, Drehzahl und Minimap
 - **Arcade-Fahrphysik** mit Drift, Handbremse, Automatikgetriebe, Steigungen und Abprall an Leitplanken
 - **Sound**: Motor, Reifenquietschen und Crash werden live mit WebAudio erzeugt
-- **3 Kameras**: Verfolger, Verfolger weit und Stossstange
+- **4 Kameras**: Verfolger, Verfolger weit, Stossstange und Vogelperspektive (auf Micro-Strecken voreingestellt)
 
 ## Schnellstart mit Docker
 
@@ -146,7 +153,7 @@ npm run assets       # CC0-Assets neu herunterladen (siehe unten)
 ```
 
 **Neue Strecke anlegen:**
-1. In `shared/src/tracks.ts` eine Liste von Kontrollpunkten `[x, z, höhe, breite?]` hinzufügen. Dazu ein Theme wählen (`alpine`, `coast`, `city`, `speedway`, `desert`, `forest`). Optional kommen dazu: Galerien/Unterführungen, eine Kurvenüberhöhung (`banking`) und für Offroad `class: 'offroad'`, Untergründe (`surface`, `surfaces`) sowie Sprünge (`jumps`).
+1. In `shared/src/tracks.ts` eine Liste von Kontrollpunkten `[x, z, höhe, breite?]` hinzufügen. Dazu ein Theme wählen (`alpine`, `coast`, `city`, `speedway`, `desert`, `forest`, `table`). Optional kommen dazu: Galerien/Unterführungen, eine Kurvenüberhöhung (`banking`) für Micro `class: 'micro'` (mit `camera: 'topdown'`) und für Offroad `class: 'offroad'`, Untergründe (`surface`, `surfaces`) sowie Sprünge (`jumps`).
 2. `npm test` ausführen. Der Test prüft, dass sich die Strecke nicht selbst schneidet und dass KI-Fahrer sie komplett befahren können.
 3. Mit `http://localhost:5173/?view=<strecken-id>@<meter>` fährt die Kamera langsam ab der gewünschten Stelle über die Strecke, das ist praktisch zum Begutachten der Szenerie.
 
@@ -156,12 +163,14 @@ Alle Modelle und Texturen stehen unter **CC0 (Public Domain)** und liegen in [`c
 
 | Quelle | Paket | Verwendung |
 |---|---|---|
-| [Kenney](https://kenney.nl/assets/car-kit) | Car Kit | 7 Autos (`sedan-sports`, `race-future`, `race`, `hatchback-sports`, `suv`, `suv-luxury`, `truck`) |
+| [Kenney](https://kenney.nl/assets/car-kit) | Car Kit | 10 Autos (`sedan-sports`, `race-future`, `race`, `hatchback-sports`, `suv`, `suv-luxury`, `truck`) |
 | [Kenney](https://kenney.nl/assets/nature-kit) | Nature Kit | Bäume, Felsen, Büsche, Kakteen, Klippen, Baumstämme, Pilze, Zelt, Lagerfeuer |
 | [Kenney](https://kenney.nl/assets/city-kit-suburban) | City Kit (Suburban) | Häuser im Dorf, Chalets |
 | [Kenney](https://kenney.nl/assets/city-kit-commercial) | City Kit (Commercial) | Geschäftshäuser und Hochhäuser in Downtown |
+| [Kenney](https://kenney.nl/assets/food-kit) | Food Kit | Frühstückstisch: Müslischale, Tassen, Teller, Croissant, Besteck, Obst |
 | [ambientCG](https://ambientcg.com) | Asphalt031, Grass004, Rock064, Snow010A, Ground080, Gravel043, Concrete034 | Strasse, Gelände, Bankett, Mauern |
 | [ambientCG](https://ambientcg.com) | Ground106, Ground037, Ground071, Ground093C, Rock029, Ground097 | Offroad: Waldweg, Waldboden, Schlamm, Dünen, roter Fels, Wüstenpiste |
+| [ambientCG](https://ambientcg.com) | Wood049 | Micro: Holztisch |
 
 `npm run assets` ([scripts/fetch-assets.mjs](scripts/fetch-assets.mjs)) lädt die Original-Pakete herunter und kopiert nur die benötigten Dateien nach `client/public/cc0/`. Dabei entsteht auch die Datei `CREDITS.md` neu.
 
@@ -185,7 +194,7 @@ scripts/  Asset-Download
 
 ## Versionierung
 
-Das Projekt folgt [Semantic Versioning](https://semver.org/lang/de/). Die aktuelle Version ist **0.6.0**. Änderungen stehen im [CHANGELOG](CHANGELOG.md), Releases sind als Git-Tags `vX.Y.Z` markiert. Die Version steht auch unten rechts im Hauptmenü.
+Das Projekt folgt [Semantic Versioning](https://semver.org/lang/de/). Die aktuelle Version ist **0.7.0**. Änderungen stehen im [CHANGELOG](CHANGELOG.md), Releases sind als Git-Tags `vX.Y.Z` markiert. Die Version steht auch unten rechts im Hauptmenü.
 
 ## Lizenz und Credits
 

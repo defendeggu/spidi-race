@@ -1,7 +1,7 @@
 import { clamp, lerp } from './math';
 
-export type TrackTheme = 'alpine' | 'coast' | 'city' | 'speedway' | 'desert' | 'forest';
-export type CarClass = 'road' | 'offroad';
+export type TrackTheme = 'alpine' | 'coast' | 'city' | 'speedway' | 'desert' | 'forest' | 'table';
+export type CarClass = 'road' | 'offroad' | 'micro';
 export type Surface = 'asphalt' | 'dirt' | 'sand' | 'mud' | 'water';
 export const SURFACES: Surface[] = ['asphalt', 'dirt', 'sand', 'mud', 'water'];
 
@@ -48,6 +48,8 @@ export interface TrackDef {
   surface?: Surface;
   surfaces?: [number, number, Surface][];
   jumps?: JumpDef[];
+  /** initial camera: behind the car (default) or bird's-eye view */
+  camera?: 'chase' | 'topdown';
 }
 
 export interface Projection {

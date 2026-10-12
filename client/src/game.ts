@@ -9,7 +9,7 @@ import { audio, EngineVoice } from './audio';
 import { Hud, type MapDot } from './hud';
 import { input, type KeyMap } from './input';
 import type { Net } from './net';
-import { ChaseCamera } from './render/cameras';
+import { ChaseCamera, TOPDOWN_MODE } from './render/cameras';
 import { Particles } from './render/particles';
 import { carColor, CarVisual } from './render/carModel';
 import { getWorld, type World } from './render/world';
@@ -121,8 +121,9 @@ export class Game {
       holder.style.height = split ? '50%' : '100%';
       hudLayer.appendChild(holder);
       const hud = new Hud(holder, this.track, cfg.slotId, split);
-      const voice = audio.ctx ? new EngineVoice(split ? (k === 0 ? -0.45 : 0.45) : 0, split ? 0.75 : 1) : null;
-      this.players.push({ car, cfg, cam: new ChaseCamera(), hud, voice, wrongWay: 0, impactCooldown: 0 });
+      const pitch = car.spec.class === 'micro' ? 1.7 : 1;
+      const voice = audio.ctx ? new EngineVoice(split ? (k === 0 ? -0.45 : 0.45) : 0, split ? 0.75 : 1, pitch) : null;
+      this.players.push({ car, cfg, cam: new ChaseCamera(this.track.def.camera === 'topdown' ? TOPDOWN_MODE : 0), hud, voice, wrongWay: 0, impactCooldown: 0 });
     });
 
     if (opts.net) {

@@ -174,6 +174,63 @@ export const CARS: CarSpec[] = [
     model: 'truck',
     shape: { length: 5.0, width: 2.05, height: 1.0, roof: 1.6, cabinShift: 0.4, spoiler: false },
   },
+  {
+    id: 'blitz',
+    class: 'micro',
+    suspension: 0.04,
+    name: 'Mini-Blitz',
+    description: 'Spielzeug-Rennwagen – höchste Spitze, rutscht gern',
+    topSpeed: 60,
+    accel: 11.4,
+    brake: 16.5,
+    grip: 17,
+    steer: 0.75,
+    wheelbase: 2.3,
+    gears: 5,
+    mass: 900,
+    color: '#ffd400',
+    accent: '#e0242b',
+    model: 'race',
+    shape: { length: 4.2, width: 1.9, height: 0.75, roof: 1.05, cabinShift: -0.2, spoiler: true },
+  },
+  {
+    id: 'flitzer',
+    class: 'micro',
+    suspension: 0.04,
+    name: 'Taschen-Flitzer',
+    description: 'Kleiner Hatchback zum Aufziehen – wieselflink',
+    topSpeed: 54,
+    accel: 13,
+    brake: 18,
+    grip: 19.5,
+    steer: 0.85,
+    wheelbase: 2.2,
+    gears: 4,
+    mass: 800,
+    color: '#19b5e6',
+    accent: '#ffffff',
+    model: 'hatchback-sports',
+    shape: { length: 3.9, width: 1.85, height: 0.85, roof: 1.2, cabinShift: -0.3, spoiler: false },
+  },
+  {
+    id: 'rakete',
+    class: 'micro',
+    suspension: 0.04,
+    name: 'Zwergrakete',
+    description: 'Zukunfts-Flitzer aus dem Überraschungsei – ausgewogen',
+    topSpeed: 57,
+    accel: 12.2,
+    brake: 17.2,
+    grip: 18.2,
+    steer: 0.8,
+    wheelbase: 2.3,
+    gears: 5,
+    mass: 850,
+    color: '#e8368f',
+    accent: '#2a2a2a',
+    model: 'race-future',
+    shape: { length: 4.1, width: 1.9, height: 0.7, roof: 1.0, cabinShift: -0.1, spoiler: true },
+  },
 ];
 
 export function carsForClass(cls: CarClass) {
@@ -187,11 +244,13 @@ export function getCar(id: string): CarSpec {
 /** Display ratings 0..1 for the menu. */
 export function carRatings(c: CarSpec) {
   const norm = (v: number, lo: number, hi: number) => Math.max(0.1, Math.min(1, (v - lo) / (hi - lo)));
-  const off = c.class === 'offroad';
+  // micro cars are compared among themselves: they are all quicker off the line and grippier
+  const micro = c.class === 'micro';
+  const speed = { road: [70, 96], offroad: [56, 74], micro: [50, 62] }[c.class];
   return {
-    speed: off ? norm(c.topSpeed, 56, 74) : norm(c.topSpeed, 70, 96),
-    accel: norm(c.accel, 7, 11.5),
-    handling: norm(c.grip + c.steer * 5, 13, 18.6),
+    speed: norm(c.topSpeed, speed[0], speed[1]),
+    accel: micro ? norm(c.accel, 10, 13.5) : norm(c.accel, 7, 11.5),
+    handling: micro ? norm(c.grip + c.steer * 5, 18, 24.5) : norm(c.grip + c.steer * 5, 13, 18.6),
     brakes: norm(c.brake, 12, 18),
   };
 }

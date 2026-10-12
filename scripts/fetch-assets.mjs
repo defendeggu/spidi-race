@@ -58,6 +58,20 @@ const KENNEY = [
       'campfire_logs.glb', 'fence_simple.glb',
     ],
   },
+  {
+    name: 'Food Kit',
+    page: 'https://kenney.nl/assets/food-kit',
+    url: 'https://kenney.nl/media/pages/assets/food-kit/83086fa91c-1719418518/kenney_food-kit.zip',
+    dir: 'Models/GLB format/',
+    out: 'food',
+    files: [
+      'bowl-cereal.glb', 'cup-saucer.glb', 'cup-coffee.glb', 'mug.glb', 'plate.glb', 'croissant.glb', 'bread.glb',
+      'egg-cup.glb', 'carton.glb', 'honey.glb', 'peanut-butter.glb', 'utensil-knife.glb', 'utensil-spoon.glb',
+      'utensil-fork.glb', 'cutting-board.glb', 'pancakes.glb', 'banana.glb', 'apple.glb', 'orange.glb',
+      'shaker-salt.glb', 'donut-sprinkles.glb', 'muffin.glb', 'glass.glb', 'strawberry.glb', 'waffle.glb',
+      'Textures/colormap.png',
+    ],
+  },
 ];
 
 const AMBIENTCG = [
@@ -74,6 +88,7 @@ const AMBIENTCG = [
   ['Ground093C', 'dune'],
   ['Rock029', 'redrock'],
   ['Ground097', 'desertdirt'],
+  ['Wood049', 'wood'],
 ];
 
 async function download(url) {

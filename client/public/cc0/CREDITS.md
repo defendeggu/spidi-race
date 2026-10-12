@@ -7,6 +7,7 @@ Sie wurden mit `npm run assets` (scripts/fetch-assets.mjs) heruntergeladen. Dank
 - **City Kit (Suburban)** von Kenney (www.kenney.nl), CC0 – https://kenney.nl/assets/city-kit-suburban → `buildings/`
 - **City Kit (Commercial)** von Kenney (www.kenney.nl), CC0 – https://kenney.nl/assets/city-kit-commercial → `city/`
 - **Nature Kit** von Kenney (www.kenney.nl), CC0 – https://kenney.nl/assets/nature-kit → `nature/`
+- **Food Kit** von Kenney (www.kenney.nl), CC0 – https://kenney.nl/assets/food-kit → `food/`
 - **Asphalt031** von ambientCG (ambientcg.com), CC0 – https://ambientcg.com/view?id=Asphalt031 → `textures/asphalt.jpg`
 - **Grass004** von ambientCG (ambientcg.com), CC0 – https://ambientcg.com/view?id=Grass004 → `textures/grass.jpg`
 - **Rock064** von ambientCG (ambientcg.com), CC0 – https://ambientcg.com/view?id=Rock064 → `textures/rock.jpg`
@@ -20,3 +21,4 @@ Sie wurden mit `npm run assets` (scripts/fetch-assets.mjs) heruntergeladen. Dank
 - **Ground093C** von ambientCG (ambientcg.com), CC0 – https://ambientcg.com/view?id=Ground093C → `textures/dune.jpg`
 - **Rock029** von ambientCG (ambientcg.com), CC0 – https://ambientcg.com/view?id=Rock029 → `textures/redrock.jpg`
 - **Ground097** von ambientCG (ambientcg.com), CC0 – https://ambientcg.com/view?id=Ground097 → `textures/desertdirt.jpg`
+- **Wood049** von ambientCG (ambientcg.com), CC0 – https://ambientcg.com/view?id=Wood049 → `textures/wood.jpg`

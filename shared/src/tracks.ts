@@ -189,6 +189,24 @@ export const TRACK_DEFS: TrackDef[] = [
       { u: 17.3, up: 12, height: 1.6, land: 35 },
     ],
   },
+  {
+    // built at ~1:100 – 1 m in the game is 1 cm on the real table
+    id: 'fruehstueck',
+    name: 'Frühstückstisch',
+    description: 'Micro: Spielzeugautos zwischen Müslischale, Kaffeetasse und Croissant – enge Haarnadeln über den Küchentisch.',
+    theme: 'table',
+    class: 'micro',
+    camera: 'topdown',
+    width: 10,
+    defaultLaps: 3,
+    seed: 97,
+    points: [
+      [0, 0, 0], [70, 0, 0], [140, 0, 0], [185, 8, 0], [208, 35, 0], [214, 75, 0], [206, 112, 0], [185, 134, 0],
+      [150, 142, 0], [122, 130, 0], [96, 144, 0], [66, 134, 0], [36, 138, 0], [12, 124, 0], [14, 100, 0], [50, 96, 0],
+      [98, 98, 0], [126, 92, 0], [136, 74, 0], [124, 56, 0], [96, 52, 0], [55, 55, 0], [20, 52, 0], [-10, 42, 0],
+      [-22, 20, 0], [-14, 4, 0],
+    ],
+  },
 ];
 
 const cache = new Map<string, Track>();

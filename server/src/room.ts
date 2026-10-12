@@ -132,7 +132,7 @@ export class Room {
     if (joined.length === 0) return;
     const humans = joined.flatMap((c) => c.players.map((p, k) => ({ client: c, p, k })));
     const aiCount = Math.max(0, Math.min(this.settings.aiCount, MAX_CARS - humans.length));
-    // only cars of the track's class may start (offroad tracks: offroad cars, road tracks: road cars)
+    // only cars of the track's class may start (road, offroad or micro)
     const pool = carsForClass(getTrack(this.settings.trackId).carClass);
     const slots: Slot[] = [];
     for (let i = 0; i < aiCount; i++) {

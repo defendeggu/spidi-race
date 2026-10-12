@@ -12,8 +12,11 @@ import { fetchLeaderboard, submitResults } from '../leaderboardApi';
 import { Net } from '../net';
 import { Backdrop } from './backdrop';
 
-/** a player's preferences: carId is the road car, offroadCarId the offroad car */
-type PlayerPref = LobbyPlayer & { offroadCarId?: string };
+/** a player's preferences: carId is the road car, offroadCarId / microCarId the cars of the other classes */
+type PlayerPref = LobbyPlayer & { offroadCarId?: string; microCarId?: string };
+
+/** the preference field holding the player's car for each class */
+const CAR_PREF = { road: 'carId', offroad: 'offroadCarId', micro: 'microCarId' } as const satisfies Record<CarClass, keyof PlayerPref>;
 
 interface Prefs {
   players: PlayerPref[];
@@ -33,8 +36,8 @@ const SKILLS = [
 function loadPrefs(): Prefs {
   const def: Prefs = {
     players: [
-      { name: 'Spieler 1', carId: 'falcone', offroadCarId: 'bergziege' },
-      { name: 'Spieler 2', carId: 'kaito', offroadCarId: 'raider' },
+      { name: 'Spieler 1', carId: 'falcone', offroadCarId: 'bergziege', microCarId: 'blitz' },
+      { name: 'Spieler 2', carId: 'kaito', offroadCarId: 'raider', microCarId: 'flitzer' },
     ],
     trackId: TRACK_DEFS[0].id, laps: 2, aiCount: 4, aiSkill: 0.93, onlineLocal: 1,
   };
@@ -92,7 +95,7 @@ export class App {
 
   showMain(error = '') {
     this.leaveNet();
-    this.backdrop.show(this.prefs.trackId, [this.prefs.players[0].carId]);
+    this.backdrop.show(this.prefs.trackId, [this.carOf(0, this.classOf(this.prefs.trackId))]);
     this.setScreen('main', `
       <div class="menu main">
         <h1 class="logo">SPIDI<span>RACE</span></h1>
@@ -168,14 +171,13 @@ export class App {
   /** the car player k drives in the given class (falls back to a car of that class) */
   private carOf(k: number, cls: CarClass) {
     const p = this.prefs.players[k];
-    const id = cls === 'offroad' ? p.offroadCarId : p.carId;
+    const id = p[CAR_PREF[cls]];
     const pool = carsForClass(cls);
     return pool.some((c) => c.id === id) ? id! : pool[k % pool.length].id;
   }
 
   private setCarOf(k: number, cls: CarClass, id: string) {
-    if (cls === 'offroad') this.prefs.players[k].offroadCarId = id;
-    else this.prefs.players[k].carId = id;
+    this.prefs.players[k][CAR_PREF[cls]] = id;
     this.savePrefs();
   }
 
@@ -205,7 +207,7 @@ export class App {
         </div>
         <div class="car-desc">${car.description}</div>
         ${bar('Tempo', r.speed)}${bar('Beschl.', r.accel)}${bar('Handling', r.handling)}${bar('Bremsen', r.brakes)}
-        <div class="car-top">${cls === 'offroad' ? 'Offroad · ' : ''}Spitze ca. ${Math.round(car.topSpeed * 3.6 * 0.92)} km/h</div>
+        <div class="car-top">${cls === 'offroad' ? 'Offroad · ' : cls === 'micro' ? 'Micro · ' : ''}Spitze ca. ${Math.round(car.topSpeed * 3.6 * 0.92)} km/h</div>
       </div>`;
   }
 
@@ -232,7 +234,7 @@ export class App {
         <div class="tracks">
           ${TRACK_DEFS.map((t) => `
             <button class="track ${t.id === s.trackId ? 'sel' : ''} ${t.theme}" data-a="track" data-id="${t.id}" ${dis}>
-              <b>${t.name}${t.class === 'offroad' ? ' <em class="badge">OFFROAD</em>' : ''}</b><span>${t.description}</span>
+              <b>${t.name}${t.class === 'offroad' ? ' <em class="badge">OFFROAD</em>' : t.class === 'micro' ? ' <em class="badge micro">MICRO</em>' : ''}</b><span>${t.description}</span>
             </button>`).join('')}
         </div>
         <div class="opts">
@@ -525,7 +527,7 @@ export class App {
           <button class="${n === 2 ? 'sel' : ''}" data-a="two">2 Spieler (Splitscreen)</button>
         </div>
         <div class="players">${this.playerPanel(0, 'road')}${n > 1 ? this.playerPanel(1, 'road') : ''}</div>
-        <p class="hint">Wählt der Host eine Offroad-Strecke, suchst du dein Offroad-Auto direkt in der Lobby aus.</p>
+        <p class="hint">Wählt der Host eine Offroad- oder Micro-Strecke, suchst du dein Auto dieser Klasse direkt in der Lobby aus.</p>
         <div class="row"><button data-a="back">Zurück</button><button class="go" data-a="connect">Lobby betreten ▶</button></div>
       </div>`);
     this.bind({

@@ -66,10 +66,11 @@ function placeAt(track: Track, obj: THREE.Object3D, i: number, lat: number, dy: 
 interface TrackStyle {
   /** asphalt tint with texture / flat colour without */
   asphalt: [string, string];
-  centre: 'dashed-white' | 'dashed-yellow' | 'lanes' | 'none';
+  /** centre marking; 'edges' = only the two edge lines */
+  centre: 'dashed-white' | 'dashed-yellow' | 'lanes' | 'edges' | 'none';
   shoulder: [string, string];
   curbs: 'redwhite' | 'kerb' | 'none';
-  barrier: 'guardrail' | 'stonewall' | 'jersey' | 'safer' | 'fence' | 'berm';
+  barrier: 'guardrail' | 'stonewall' | 'jersey' | 'safer' | 'fence' | 'berm' | 'straw';
   verge: [string, string];
   vergeTex: TextureName;
   chevrons: boolean;
@@ -92,6 +93,11 @@ const STYLES: Record<TrackTheme, TrackStyle> = {
     asphalt: ['#e6dccc', '#6b5236'], centre: 'none', shoulder: ['#e0d8c8', '#5e4a32'], curbs: 'none', barrier: 'fence', verge: ['#e0e8d0', '#4a5e32'],
     vergeTex: 'forestfloor', chevrons: true, roadTex: 'dirt', shoulderTex: 'forestfloor',
   },
+  // micro track: a darker lane on the wooden table, edged with icing lines and drinking straws
+  table: {
+    asphalt: ['#b98d62', '#8a6440'], centre: 'edges', shoulder: ['#f2d6b0', '#b88a5a'], curbs: 'none', barrier: 'straw', verge: ['#f2d6b0', '#b88a5a'],
+    vergeTex: 'wood', chevrons: false, roadTex: 'wood', shoulderTex: 'wood',
+  },
 };
 
 export function buildTrackMesh(track: Track): THREE.Group {
@@ -112,7 +118,7 @@ export function buildTrackMesh(track: Track): THREE.Group {
   const roadShades = Array.from({ length: track.n }, (_, i) =>
     asphalt.clone().multiplyScalar((0.94 + rand() * 0.08) * (track.jumpH[i] > 0.15 ? 0.72 : 1)));
   const road = strip(track, (i) => [[-hw[i], 0], [0, 0], [hw[i], 0]], (i) => roadShades[i]);
-  group.add(new THREE.Mesh(road, surface(style.roadTex ?? 'asphalt', style.roadTex ? 5 : 7)));
+  group.add(new THREE.Mesh(road, surface(style.roadTex ?? 'asphalt', style.roadTex === 'wood' ? 40 : style.roadTex ? 5 : 7)));
   addSurfacePatches(track, group);
 
   // markings
@@ -137,7 +143,7 @@ export function buildTrackMesh(track: Track): THREE.Group {
   for (const side of [-1, 1]) {
     group.add(new THREE.Mesh(
       strip(track, (i) => (side < 0 ? [[-hw[i] - W, 0], [-hw[i], 0.01]] : [[hw[i], 0.01], [hw[i] + W, 0]]), () => shoulder),
-      surface(style.shoulderTex ?? (style.curbs === 'none' ? 'asphalt' : 'gravel'), style.curbs === 'none' && !style.shoulderTex ? 7 : 3),
+      surface(style.shoulderTex ?? (style.curbs === 'none' ? 'asphalt' : 'gravel'), style.shoulderTex === 'wood' ? 40 : style.curbs === 'none' && !style.shoulderTex ? 7 : 3),
     ));
     const curbProfile = (i: number) => (side < 0 ? [[-hw[i] - 0.9, 0.03], [-hw[i], 0.03]] : [[hw[i], 0.03], [hw[i] + 0.9, 0.03]]);
     if (style.curbs === 'redwhite') group.add(new THREE.Mesh(strip(track, curbProfile, (i) => (i % 2 ? red : curbWhite), inCorner), vc));
@@ -180,6 +186,22 @@ export function buildTrackMesh(track: Track): THREE.Group {
         // low sand berm; rocks along it come from the scenery
         group.add(new THREE.Mesh(strip(track, (i) => [[L(i) - side * 0.3, 0], [L(i) + side * 0.6, 0.7], [L(i) + side * 1.6, 0]], () => verge), surface(style.vergeTex, 4, true)));
         break;
+      case 'straw': {
+        // a drinking straw lying on the table: round cross-section, white stripes, colour changes every ~70 m
+        const r = 0.42, segs = 8;
+        const colours = ['#e0242b', '#1f8fd6', '#2fa84a', '#f2b81c'].map(C);
+        const stripe = C('#fafafa');
+        const sectionLen = Math.round(70 / track.ds);
+        const tone = Math.floor(rand() * colours.length);
+        group.add(new THREE.Mesh(
+          strip(track, (i) => Array.from({ length: segs + 1 }, (_, k) => {
+            const a = (k / segs) * Math.PI * 2;
+            return [L(i) + side * (r + Math.cos(a) * r), r + Math.sin(a) * r];
+          }), (i) => (Math.floor((i * track.ds) / 1.4) % 2 ? stripe : colours[(tone + Math.floor(i / sectionLen) + (side > 0 ? 2 : 0)) % colours.length])),
+          new THREE.MeshPhongMaterial({ vertexColors: true, shininess: 60, specular: '#555555', side: THREE.DoubleSide }),
+        ));
+        break;
+      }
       case 'safer':
         wall(1.3, 0.5, ['#f6f6f6', '#d8d8d8'], 3);
         if (side === outerSide) {
@@ -191,7 +213,9 @@ export function buildTrackMesh(track: Track): THREE.Group {
     }
     // deeper where the road is banked or raised by a jump
     const drop = (i: number) => 2.2 + Math.abs(track.bank[i]) * 14 + Math.max(0, track.jumpH[i]) * 1.5;
-    if (style.barrier === 'jersey') {
+    if (style.barrier === 'straw') {
+      // the lane lies flat on the table: no embankment
+    } else if (style.barrier === 'jersey') {
       // city: raised sidewalk behind the barrier, then down to the ground
       group.add(new THREE.Mesh(strip(track, (i) => [[L(i), 0.15], [L(i) + side * 5, 0.15]], () => verge), surface('concrete', 3, true)));
       group.add(new THREE.Mesh(strip(track, (i) => [[L(i) + side * 5, 0.15], [L(i) + side * 6, -drop(i)]], () => verge), surface('concrete', 3, true)));
