@@ -1,6 +1,6 @@
 # Spidi Race 🏁
 
-![Version](https://img.shields.io/badge/version-0.9.1-ffcc00)
+![Version](https://img.shields.io/badge/version-0.10.0-ffcc00)
 ![Lizenz Code](https://img.shields.io/badge/code-MIT-blue)
 ![Lizenz Assets](https://img.shields.io/badge/assets-CC0-green)
 ![Docker](https://img.shields.io/badge/docker-ready-2496ED)
@@ -134,7 +134,9 @@ Hauptmenü → **Übungsfahrt in der Stadt**. Gedacht für Kinder und alle, die 
 | Stadt | 1 × 1 km, Strassen alle 100 m mit zwei Spuren (Rechtsverkehr), Häuser, Geschäfte, Hochhäuser, Parks, 5 Parkplätze und ein Übungsplatz mit Pylonen. Gärten und Innenhöfe sind befahrbar, nur aussen steht eine Mauer |
 | Start | auf dem Übungsplatz (gelbe Startfelder) neben Slalom und Pylonenkreis |
 | Autos | Familienauto, Taxi, Polizeiauto, Feuerwehr: gutmütig, viel Grip, Spitze ca. 65 km/h (Feuerwehr etwas langsamer). Kaito ZX: Formelwagen mit ca. 90 km/h für Fortgeschrittene |
-| Spieler | 1 Spieler oder 2 im Splitscreen |
+| Allein | Bei Sterne sammeln und Einparken wählt man **5, 10 oder 20 Ziele**. Nach einem Countdown läuft die Zeit, bis alle geschafft sind. Die Zeit kommt in die **Rangliste** („Stadt: Sterne“ bzw. „Stadt: Einparken“, getrennt nach Anzahl) |
+| Duell | Zu zweit im Splitscreen mit Sternen oder Einparken: Start in **entgegengesetzten Ecken** der Stadt, beide jagen **dasselbe Ziel**, das ungefähr gleich weit (Strassenweg) von beiden entfernt erscheint. Wer zuerst dort ist, bekommt den Punkt. Nach **3 Minuten** gewinnt, wer mehr Punkte hat (kein Eintrag in der Rangliste) |
+| Frei fahren | allein oder zu zweit ohne Ziel und ohne Zeit |
 | Aufgaben | **Frei fahren** · **Sterne sammeln**: ein Stern auf einer Lichtsäule, oben zeigt ein Pfeil die Richtung · **Einparken**: ein Parkfeld leuchtet, meist auf einem anderen der 5 Parkplätze; gerade hineinfahren (vorwärts oder rückwärts) und kurz stehen bleiben |
 | Verkehr | aus, wenig (10 Autos) oder mehr (22 Autos), höchstens 30 km/h; die Autos warten an Kreuzungen und halten hinter den Spielern an |
 | Hilfe | Unten links leuchten die gedrückten Tasten (bzw. Gamepad-Knöpfe) auf, `H` blendet die Hilfe aus. Rechts oben zeigt die Stadtkarte Ziel, Spieler und Verkehr |
@@ -167,6 +169,7 @@ Jedes beendete Rennen eines menschlichen Fahrers landet in der permanenten Rangl
 | Modus, Datum | Einzel, Splitscreen oder Netzwerk; Tag des Rennens |
 
 - Die Wertung gilt pro Strecke. Angezeigt werden die Top 50, gespeichert bis zu 2000 Rennen pro Strecke.
+- Für die Übungsfahrt gibt es zwei eigene Listen, **Stadt: Sterne** und **Stadt: Einparken**. Gewertet wird die Gesamtzeit für 5, 10 oder 20 Ziele, dazu wird das schnellste einzelne Ziel angezeigt. Erlaubt sind nur Stadtautos.
 - Der Server speichert alles in `data/leaderboard.json`. Diese Datei ist **git-ignoriert**. Im Repo liegt nur die leere Vorlage `data/leaderboard.template.json`, mit der ein neuer Server startet.
 - Mit Docker wird `./data` in den Container eingebunden. Die Rangliste übersteht Neustarts und Image-Updates und lässt sich einfach sichern.
 - Zurücksetzen: `data/leaderboard.json` löschen und den Server neu starten.
@@ -230,7 +233,7 @@ scripts/  Asset-Download
 
 ## Versionierung
 
-Das Projekt folgt [Semantic Versioning](https://semver.org/lang/de/). Die aktuelle Version ist **0.9.1**. Änderungen stehen im [CHANGELOG](CHANGELOG.md), Releases sind als Git-Tags `vX.Y.Z` markiert. Die Version steht auch unten rechts im Hauptmenü.
+Das Projekt folgt [Semantic Versioning](https://semver.org/lang/de/). Die aktuelle Version ist **0.10.0**. Änderungen stehen im [CHANGELOG](CHANGELOG.md), Releases sind als Git-Tags `vX.Y.Z` markiert. Die Version steht auch unten rechts im Hauptmenü.
 
 ## Lizenz und Credits
 

@@ -78,3 +78,141 @@ export class TaskTracker {
     return this.parkProgress >= 1;
   }
 }
+
+/** Goal counts a solo run can be played to (each count has its own leaderboard). */
+export const TOWN_GOAL_COUNTS = [5, 10, 20];
+/** Length of a split-screen duel in seconds. */
+export const DUEL_SECONDS = 180;
+const COUNTDOWN = 3;
+
+/** free: no goals; solo: reach N goals as fast as possible; duel: two players chase the same goal for 3 minutes. */
+export type TownMode = 'free' | 'solo' | 'duel';
+export type TownPhase = 'countdown' | 'running' | 'finished';
+
+export interface TownResult {
+  mode: TownMode;
+  task: TownTask;
+  /** solo: time for all goals; duel: DUEL_SECONDS */
+  time: number;
+  scores: number[];
+  /** fastest single goal per player (0 if none) */
+  fastest: number[];
+  /** duel: index of the winner, -1 for a draw */
+  winner: number;
+}
+
+/** Street distance in a grid town (Manhattan) – fairer than straight-line distance for picking duel goals. */
+const street = (ax: number, az: number, bx: number, bz: number) => Math.abs(ax - bx) + Math.abs(az - bz);
+
+/**
+ * Rules of a practice-town session: countdown, timer, goals and scores for 1–2 players.
+ * The client steps it with the car states and shows the targets; tests can drive it directly.
+ */
+export class TownSession {
+  readonly mode: TownMode;
+  phase: TownPhase;
+  countdown: number;
+  time = 0;
+  readonly trackers: TaskTracker[];
+  readonly scores: number[];
+  readonly fastest: number[];
+  private goalStart: number[];
+  private rnd: () => number;
+
+  constructor(private town: TownMap, readonly task: TownTask, players: number, readonly goals: number, seed: number) {
+    this.mode = task === 'free' ? 'free' : players > 1 ? 'duel' : 'solo';
+    this.phase = this.mode === 'free' ? 'running' : 'countdown';
+    this.countdown = this.mode === 'free' ? 0 : COUNTDOWN;
+    this.rnd = mulberry32(seed);
+    this.trackers = Array.from({ length: players }, (_, k) => new TaskTracker(town, task, seed + 17 * (k + 1)));
+    this.scores = this.trackers.map(() => 0);
+    this.fastest = this.trackers.map(() => 0);
+    this.goalStart = this.trackers.map(() => 0);
+  }
+
+  /** Where player k starts: the practice square, or opposite corners in a duel. */
+  spawn(k: number) {
+    return this.mode === 'duel' ? this.town.duelSpawn(k) : this.town.spawn(k);
+  }
+
+  /** Seconds left in a duel. */
+  get remaining() {
+    return Math.max(0, DUEL_SECONDS - this.time);
+  }
+
+  /** Choose the first goals (call once with the start positions). */
+  begin(cars: CarState[]) {
+    if (this.mode === 'duel') this.fairGoal(cars);
+    else this.trackers.forEach((t, k) => t.next(cars[k], this.trackers.filter((o) => o !== t).map((o) => o.target)));
+  }
+
+  /** A goal about equally far (by street) from both players, not right next to either of them. */
+  private fairGoal(cars: CarState[]) {
+    const [a, b] = cars;
+    const cands = this.task === 'stars'
+      ? this.town.starSpots.map((s) => ({ x: s.x, z: s.z, heading: s.heading, bay: -1 }))
+      : this.town.bays.map((s, i) => ({ x: s.x, z: s.z, heading: s.heading, bay: i })).filter((s) => this.town.bays[s.bay].parked < 0);
+    const prev = this.trackers[0].target;
+    const scored = cands
+      .filter((c) => !prev || c.x !== prev.x || c.z !== prev.z)
+      .map((c) => {
+        const da = street(a.x, a.z, c.x, c.z), db = street(b.x, b.z, c.x, c.z);
+        return { c, da, db, cost: Math.abs(da - db) };
+      })
+      .filter((s) => Math.min(s.da, s.db) > 80);
+    const pool = (scored.length ? scored : cands.map((c) => ({ c, cost: 0 }))).sort((x, y) => x.cost - y.cost).slice(0, 6);
+    const pick = pool[Math.floor(this.rnd() * pool.length)].c;
+    for (const t of this.trackers) {
+      t.target = { ...pick };
+      t.parkProgress = 0;
+    }
+  }
+
+  /**
+   * Advance by dt. Returns the indices of the players that reached a goal in this step.
+   */
+  step(dt: number, cars: CarState[]): number[] {
+    if (this.phase === 'countdown') {
+      this.countdown -= dt;
+      if (this.countdown <= 0) {
+        this.phase = 'running';
+        this.countdown = 0;
+      }
+      return [];
+    }
+    if (this.phase === 'finished') return [];
+    this.time += dt;
+    const scored: number[] = [];
+    this.trackers.forEach((t, k) => {
+      if (!t.update(cars[k], dt)) return;
+      scored.push(k);
+      // in a duel only the first one counts when both arrive in the same step
+      if (this.mode === 'duel' && scored.length > 1) return;
+      this.scores[k]++;
+      t.count = this.scores[k];
+      const took = this.time - this.goalStart[k];
+      this.fastest[k] = this.fastest[k] > 0 ? Math.min(this.fastest[k], took) : took;
+      if (this.mode === 'duel') {
+        // both chase the next goal from now on
+        this.goalStart = this.goalStart.map(() => this.time);
+      } else {
+        this.goalStart[k] = this.time;
+        t.next(cars[k], this.trackers.filter((o) => o !== t).map((o) => o.target));
+      }
+    });
+    if (this.mode === 'duel' && scored.length > 0) this.fairGoal(cars);
+    if (this.mode === 'duel') scored.splice(1);
+    if (this.mode === 'solo' && this.scores[0] >= this.goals) this.phase = 'finished';
+    if (this.mode === 'duel' && this.time >= DUEL_SECONDS) {
+      this.time = DUEL_SECONDS;
+      this.phase = 'finished';
+    }
+    return scored;
+  }
+
+  result(): TownResult {
+    const [a, b] = this.scores;
+    const winner = this.mode !== 'duel' ? 0 : a === b ? -1 : a > b ? 0 : 1;
+    return { mode: this.mode, task: this.task, time: this.time, scores: [...this.scores], fastest: [...this.fastest], winner };
+  }
+}

@@ -2,6 +2,16 @@
 
 Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.10.0] – 2026-10-12
+
+### Hinzugefügt
+- **Übungsfahrt mit Ende und Rangliste**: Bei Sterne sammeln und Einparken wählt man 5, 10 oder 20 Ziele; nach einem Countdown läuft die Zeit, bis alle geschafft sind. Ergebnis mit schnellstem Ziel und Eintrag in die neuen Ranglisten **Stadt: Sterne** und **Stadt: Einparken** (je Anzahl Ziele)
+- **Splitscreen-Duell** in der Stadt: Start in entgegengesetzten Ecken, beide jagen dasselbe Ziel, das ungefähr gleich weit von beiden entfernt erscheint; Punkt für den Schnelleren, nach 3 Minuten gewinnt, wer mehr Punkte hat
+- HUD der Übungsfahrt mit Zähler, Uhr bzw. Restzeit und Countdown
+
+### Geändert
+- Der bisherige 2-Spieler-Modus mit getrennten Zielen entfällt; zu zweit gibt es „Frei fahren“ oder das Duell
+
 ## [0.9.1] – 2026-10-12
 
 ### Geändert
@@ -131,6 +141,7 @@ Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog]
 - Docker-Image und docker-compose (Port 8090)
 
 [0.6.0]: https://github.com/defendeggu/spidi-race/compare/v0.5.0...v0.6.0
+[0.10.0]: https://github.com/defendeggu/spidi-race/compare/v0.9.1...v0.10.0
 [0.9.1]: https://github.com/defendeggu/spidi-race/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/defendeggu/spidi-race/compare/v0.8.1...v0.9.0
 [0.8.1]: https://github.com/defendeggu/spidi-race/compare/v0.8.0...v0.8.1
