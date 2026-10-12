@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { type CarSpec, type CarState, forwardSpeed, SURFACE_PROPS, type Track } from '@spidi/shared';
+import { type CarSpec, type CarState, forwardSpeed } from '@spidi/shared';
 import { assetsReady, carColormapImage, getModel } from './assets';
 import { blobShadowTexture } from './textures';
 
@@ -228,7 +228,10 @@ export class CarVisual {
     const bodyParts = root.children.filter((o) => !o.name.startsWith('wheel'));
     const paint = new THREE.Group();
     bodyParts.forEach((o) => paint.add(o));
-    const map = paintTexture(this.spec.model, paint, color);
+    const srcBody = bodyParts.find((o) => o instanceof THREE.Mesh) as THREE.Mesh | undefined;
+    const original = (srcBody?.material as THREE.MeshStandardMaterial | undefined)?.map ?? null;
+    // taxi, police and fire engine keep their livery
+    const map = this.spec.keepPaint && original ? original : paintTexture(this.spec.model, paint, color);
     const mat = new THREE.MeshLambertMaterial({ map });
     this.ownedMaterials.push(mat);
     paint.traverse((o) => {
@@ -365,7 +368,8 @@ export class CarVisual {
   private roughPhase = Math.random() * 10;
   private wheelBaseY: number[] = [];
 
-  update(track: Track, x: number, y: number, z: number, heading: number, c: CarState, dt: number) {
+  /** `up` is the ground normal under the car, `rough` the roughness of its surface (0..1). */
+  update(x: number, y: number, z: number, heading: number, c: CarState, dt: number, up: { x: number; y: number; z: number }, rough: number) {
     this.group.position.set(x, y, z);
     let k = 1 - Math.exp(-dt * 10);
     if (c.airborne) {
@@ -379,7 +383,9 @@ export class CarVisual {
       this.tmpUp.z = rx * dy;
       k = 1 - Math.exp(-dt * 3);
     } else {
-      track.upAt(c.idx, this.tmpUp);
+      this.tmpUp.x = up.x;
+      this.tmpUp.y = up.y;
+      this.tmpUp.z = up.z;
     }
     this.up.x += (this.tmpUp.x - this.up.x) * k;
     this.up.y += (this.tmpUp.y - this.up.y) * k;
@@ -398,7 +404,7 @@ export class CarVisual {
     if (c.landed > 0) this.suspV -= Math.min(c.landed, 15) * travel * 0.9;
     this.suspV += (-160 * this.suspY - 14 * this.suspV) * dt;
     this.suspY = THREE.MathUtils.clamp(this.suspY + this.suspV * dt, -travel * 1.5, travel * 1.5);
-    const rough = c.airborne ? 0 : SURFACE_PROPS[track.surfaceAt(c.idx)].rough;
+    if (c.airborne) rough = 0;
     this.roughPhase += Math.abs(v) * dt * 1.4;
     const jitter = rough * travel * 0.35 * Math.min(1, Math.abs(v) / 15) * (Math.sin(this.roughPhase) * 0.6 + Math.sin(this.roughPhase * 2.7) * 0.4);
     this.body.position.y = this.suspY + jitter;

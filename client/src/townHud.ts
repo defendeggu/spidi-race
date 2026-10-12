@@ -1,0 +1,193 @@
+import { LINES, TOWN_HALF, type CarInput, type TownMap, type TownTask } from '@spidi/shared';
+import { CAMERA_MODES } from './render/cameras';
+import type { KeyMap } from './input';
+
+export interface TownDot {
+  x: number;
+  z: number;
+  color: string;
+  kind: 'self' | 'player' | 'traffic' | 'target';
+}
+
+const KEY_LABEL: Record<string, string> = {
+  KeyW: 'W', KeyA: 'A', KeyS: 'S', KeyD: 'D', ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→',
+  Space: 'Leertaste', ControlRight: 'Strg', ShiftRight: 'Shift', Numpad0: 'Num 0',
+};
+const label = (codes: string[]) => codes.map((c) => KEY_LABEL[c] ?? c).slice(0, 2).join(' / ');
+
+const TASK_TITLE: Record<TownTask, string> = { free: 'FREIE FAHRT', stars: 'STERNE', parking: 'EINGEPARKT' };
+
+/** HTML overlay for one player in the practice town: speed, goal arrow, town map and a controls helper. */
+export class TownHud {
+  readonly root: HTMLDivElement;
+  private el: Record<string, HTMLElement> = {};
+  private map: HTMLCanvasElement;
+  private mapBg: HTMLCanvasElement;
+  private msgTimer = 0;
+  private scale = 1;
+  private help = true;
+  private padMode: boolean | null = null;
+
+  constructor(parent: HTMLElement, private town: TownMap, private task: TownTask, private keymap: KeyMap, compact: boolean) {
+    this.root = document.createElement('div');
+    this.root.className = 'hud town-hud' + (compact ? ' compact' : '');
+    this.root.innerHTML = `
+      <div class="hud-tl">
+        <div class="town-task">${TASK_TITLE[task]}</div>
+        <div class="town-count" data-k="count">${task === 'free' ? '' : '0'}</div>
+      </div>
+      <div class="town-goal" data-k="goal">
+        <svg viewBox="-20 -20 40 40" data-k="arrow"><path d="M0,-17 L13,9 L0,3 L-13,9 Z" /></svg>
+        <div data-k="dist"></div>
+        <div class="town-park"><div data-k="park"></div></div>
+      </div>
+      <div class="hud-msg" data-k="msg"></div>
+      <div class="town-help" data-k="help"></div>
+      <div class="hud-br">
+        <div class="hud-speed"><span data-k="speed">0</span><small>km/h</small></div>
+        <div class="hud-gear">GANG <span data-k="gear">1</span></div>
+      </div>`;
+    this.root.querySelectorAll<HTMLElement>('[data-k]').forEach((e) => (this.el[e.dataset.k!] = e));
+    if (task === 'free') this.el.goal.style.display = 'none';
+    const size = compact ? 140 : 200;
+    this.mapBg = document.createElement('canvas');
+    this.map = document.createElement('canvas');
+    this.map.className = 'hud-map';
+    this.map.width = this.map.height = this.mapBg.width = this.mapBg.height = size;
+    this.root.appendChild(this.map);
+    parent.appendChild(this.root);
+    this.drawMapBackground(size);
+  }
+
+  private toMap(x: number, z: number): [number, number] {
+    // same orientation as the race minimap: x flipped, +z up
+    const h = this.map.width / 2;
+    return [h - x * this.scale, h - z * this.scale];
+  }
+
+  private drawMapBackground(size: number) {
+    this.scale = (size - 8) / (2 * TOWN_HALF);
+    const g = this.mapBg.getContext('2d')!;
+    const colors: Record<string, string> = {
+      house: 'rgba(200,190,170,0.55)', shop: 'rgba(170,170,180,0.6)', tower: 'rgba(120,130,150,0.7)',
+      park: 'rgba(80,160,70,0.75)', parking: 'rgba(90,140,220,0.75)', practice: 'rgba(240,200,40,0.75)',
+    };
+    for (const b of this.town.blocks) {
+      const [x0, y0] = this.toMap(b.cx + 45, b.cz + 45);
+      g.fillStyle = colors[b.kind];
+      g.fillRect(x0, y0, 90 * this.scale, 90 * this.scale);
+    }
+    g.strokeStyle = 'rgba(255,255,255,0.85)';
+    g.lineWidth = Math.max(1.5, 10 * this.scale);
+    const ext = LINES[LINES.length - 1] + 5;
+    g.beginPath();
+    for (const L of LINES) {
+      let [a, b] = this.toMap(-ext, L);
+      let [c, d] = this.toMap(ext, L);
+      g.moveTo(a, b);
+      g.lineTo(c, d);
+      [a, b] = this.toMap(L, -ext);
+      [c, d] = this.toMap(L, ext);
+      g.moveTo(a, b);
+      g.lineTo(c, d);
+    }
+    g.stroke();
+  }
+
+  flash(text: string, seconds = 2) {
+    this.el.msg.textContent = text;
+    this.el.msg.classList.add('show');
+    this.msgTimer = seconds;
+  }
+
+  toggleHelp() {
+    this.help = !this.help;
+    this.el.help.style.display = this.help ? '' : 'none';
+  }
+
+  showCameraMode(mode: number) {
+    this.flash(`Kamera: ${CAMERA_MODES[mode]}`, 1.2);
+  }
+
+  /**
+   * arrow: direction to the goal in screen terms (radians, clockwise from up) or null without a goal.
+   */
+  update(speed: number, gear: number, count: number, arrow: number | null, dist: number, park: number,
+    inp: CarInput, pad: boolean, dots: TownDot[], dt: number) {
+    this.el.speed.textContent = String(Math.round(Math.abs(speed) * 3.6));
+    this.el.gear.textContent = gear === 0 ? 'R' : String(gear);
+    if (this.task !== 'free') this.el.count.textContent = `${this.task === 'stars' ? '★' : 'P'} ${count}`;
+    if (arrow !== null) {
+      this.el.arrow.style.transform = `rotate(${arrow}rad)`;
+      this.el.dist.textContent = dist < 15 ? 'fast da!' : `${Math.round(dist / 5) * 5} m`;
+      this.el.park.style.width = `${park * 100}%`;
+      this.el.park.parentElement!.style.visibility = park > 0 ? 'visible' : 'hidden';
+    }
+    if (this.msgTimer > 0) {
+      this.msgTimer -= dt;
+      if (this.msgTimer <= 0) this.el.msg.classList.remove('show');
+    }
+    this.updateHelp(inp, pad);
+
+    const g = this.map.getContext('2d')!;
+    g.clearRect(0, 0, this.map.width, this.map.height);
+    g.drawImage(this.mapBg, 0, 0);
+    const order = { traffic: 0, player: 1, target: 2, self: 3 };
+    for (const d of [...dots].sort((a, b) => order[a.kind] - order[b.kind])) {
+      const [x, y] = this.toMap(d.x, d.z);
+      g.beginPath();
+      if (d.kind === 'target') {
+        star(g, x, y, 7, 3);
+      } else {
+        g.arc(x, y, d.kind === 'self' ? 5 : d.kind === 'player' ? 4 : 2.2, 0, Math.PI * 2);
+      }
+      g.fillStyle = d.color;
+      g.fill();
+      if (d.kind !== 'traffic') {
+        g.lineWidth = d.kind === 'self' ? 2 : 1;
+        g.strokeStyle = d.kind === 'self' ? '#fff' : '#000';
+        g.stroke();
+      }
+    }
+  }
+
+  /** Keys (or gamepad controls) light up while they are used. */
+  private updateHelp(inp: CarInput, pad: boolean) {
+    if (pad !== this.padMode) {
+      this.padMode = pad;
+      const k = this.keymap;
+      this.el.help.innerHTML = pad
+        ? `<div class="th-title">Gamepad</div>
+           <div class="th-row"><b data-h="throttle">RT / R2 · A / ✕</b><span>Gas</span></div>
+           <div class="th-row"><b data-h="brake">LT / L2 · B / ○</b><span>Bremse / Rückwärts</span></div>
+           <div class="th-row"><b data-h="left">◀ Stick</b><b data-h="right">Stick ▶</b><span>Lenken</span></div>
+           <div class="th-row"><b data-h="hand">X / □</b><span>Handbremse</span></div>
+           <div class="th-foot">H = Hilfe aus</div>`
+        : `<div class="th-title">Tastatur</div>
+           <div class="th-keys">
+             <div></div><b data-h="throttle">${label(k.up)}<small>Gas</small></b><div></div>
+             <b data-h="left">${label(k.left)}<small>Links</small></b><b data-h="brake">${label(k.down)}<small>Bremse</small></b><b data-h="right">${label(k.right)}<small>Rechts</small></b>
+           </div>
+           <div class="th-row"><b data-h="hand">${label(k.handbrake)}</b><span>Handbremse</span></div>
+           <div class="th-foot">H = Hilfe aus</div>`;
+    }
+    const on: Record<string, boolean> = {
+      throttle: inp.throttle > 0.05, brake: inp.brake > 0.05, left: inp.steer < -0.1, right: inp.steer > 0.1, hand: inp.handbrake,
+    };
+    this.el.help.querySelectorAll<HTMLElement>('[data-h]').forEach((e) => e.classList.toggle('on', on[e.dataset.h!]));
+  }
+
+  dispose() {
+    this.root.remove();
+  }
+}
+
+function star(g: CanvasRenderingContext2D, x: number, y: number, r: number, ri: number) {
+  for (let k = 0; k < 10; k++) {
+    const a = (k / 10) * Math.PI * 2 - Math.PI / 2;
+    const rr = k % 2 ? ri : r;
+    if (k === 0) g.moveTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr);
+    else g.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr);
+  }
+  g.closePath();
+}

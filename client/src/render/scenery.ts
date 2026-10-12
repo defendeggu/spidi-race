@@ -20,7 +20,7 @@ export function colored(geo: THREE.BufferGeometry, color: string) {
   return g;
 }
 
-const fallback = {
+export const fallback = {
   pine: () => mergeGeometries([
     colored(new THREE.CylinderGeometry(0.25, 0.35, 2, 5).translate(0, 1, 0), '#5a3e28'),
     colored(new THREE.ConeGeometry(2.4, 4.5, 7).translate(0, 3.8, 0), '#2f5a32'),
@@ -280,7 +280,7 @@ function buildingRows(
   return group;
 }
 
-const towerGeo = (h: number, color: string) => () =>
+export const towerGeo = (h: number, color: string) => () =>
   mergeGeometries([
     colored(new THREE.BoxGeometry(14, h, 14).translate(0, h / 2, 0), color),
     colored(new THREE.BoxGeometry(14.4, 0.8, 14.4).translate(0, h, 0), '#555a60'),

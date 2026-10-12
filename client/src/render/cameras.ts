@@ -13,7 +13,11 @@ export class ChaseCamera {
   private first = true;
   private lead = new THREE.Vector3();
 
-  constructor(mode = 0) {
+  /**
+   * bumperAhead: bumper camera distance in front of the car centre (tall town cars need it at the very front);
+   * size: scales distance and height of the chase cameras for big vehicles.
+   */
+  constructor(mode = 0, private bumperAhead = 0.5, private size = 1) {
     this.mode = mode;
   }
 
@@ -40,7 +44,7 @@ export class ChaseCamera {
       this.camera.updateProjectionMatrix();
     }
     if (this.mode === 2) {
-      this.pos.set(target.x + fx * 0.5 + up.x * 1.05, target.y + up.y * 1.05, target.z + fz * 0.5 + up.z * 1.05);
+      this.pos.set(target.x + fx * this.bumperAhead + up.x * 1.05, target.y + up.y * 1.05, target.z + fz * this.bumperAhead + up.z * 1.05);
       this.look.set(target.x + fx * 30, target.y + 1.0, target.z + fz * 30);
       this.camera.position.copy(this.pos);
       this.camera.up.copy(up);
@@ -48,8 +52,8 @@ export class ChaseCamera {
       this.first = false;
       return;
     }
-    const dist = this.mode === 0 ? 6.4 : 10;
-    const height = this.mode === 0 ? 2.3 : 3.6;
+    const dist = (this.mode === 0 ? 6.4 : 10) * this.size;
+    const height = (this.mode === 0 ? 2.3 : 3.6) * this.size;
     const desired = new THREE.Vector3(target.x - fx * dist, target.y + height, target.z - fz * dist);
     if (this.first) this.pos.copy(desired);
     else this.pos.lerp(desired, k);

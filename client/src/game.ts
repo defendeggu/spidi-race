@@ -277,10 +277,13 @@ export class Game {
 
   private render(alpha: number, dt: number) {
     const tmp = new THREE.Vector3();
+    const up = { x: 0, y: 1, z: 0 };
     for (const c of this.cars) {
       const s = c.state, p = c.prev;
       c.renderHeading = lerpAngle(p.heading, s.heading, alpha);
-      c.visual.update(this.track, lerp(p.x, s.x, alpha), lerp(p.y, s.y, alpha), lerp(p.z, s.z, alpha), c.renderHeading, s, dt);
+      this.track.upAt(s.idx, up);
+      const rough = SURFACE_PROPS[this.track.surfaceAt(s.idx)].rough;
+      c.visual.update(lerp(p.x, s.x, alpha), lerp(p.y, s.y, alpha), lerp(p.z, s.z, alpha), c.renderHeading, s, dt, up, rough);
       this.emitDust(c, dt);
     }
     for (const l of this.landings) {

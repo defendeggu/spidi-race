@@ -2,6 +2,23 @@
 
 Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.9.0] – 2026-10-12
+
+### Hinzugefügt
+- **Übungsfahrt in der Stadt**: offene Stadt von 1 × 1 km zum freien Herumfahren, ohne Rennen und ohne Zeitdruck – gedacht zum Kennenlernen von Tastatur und Gamepad
+  - Strassenraster mit zweispurigen Strassen, Zebrastreifen, Trottoirs, Einfamilienhäusern, Geschäften, Hochhäusern, Parks, fünf Parkplätzen und einem Übungsplatz mit Pylonen-Slalom und -Kreis
+  - Gärten und Innenhöfe sind befahrbar: Jedes Gebäude hat eine eigene Kollision, nur die Stadt selbst ist von einer Mauer umgeben
+  - Aufgaben: **Frei fahren**, **Sterne sammeln** (Stern auf Lichtsäule, Richtungspfeil und Distanz) oder **Einparken** (leuchtendes Parkfeld, vorwärts oder rückwärts; das nächste Feld liegt meist auf einem anderen Parkplatz)
+  - Langsamer **Verkehr** (aus / wenig / mehr): Autos fahren rechts, warten an Kreuzungen und halten Abstand, auch zu den Spielern
+  - 1 oder 2 Spieler (Splitscreen), Stadtkarte mit Ziel, **Steuerungshilfe** mit Tasten bzw. Gamepad-Knöpfen, die beim Drücken aufleuchten (`H` blendet sie aus)
+  - Pause-Menü mit „Auto zum Start“
+- Neue Fahrzeugklasse **Stadt** mit gemütlichen Alltagsautos (Spitze ca. 65 km/h): **Familienauto**, **Taxi**, **Polizeiauto**, **Feuerwehr**; dazu der Formelwagen **Kaito ZX** (ca. 90 km/h) für Fortgeschrittene
+- Neue CC0-Modelle aus dem Kenney Car Kit: `sedan`, `taxi`, `police`, `firetruck`, `van`, `delivery`
+
+### Geändert
+- Die Fahrphysik ist in einen gemeinsamen Kern (`driveCar`) und den Streckenrand bzw. die Stadt-Kollision aufgeteilt
+- Die Verfolgerkamera rückt bei grossen Fahrzeugen weiter weg, die Stossstangenkamera sitzt vorne am Auto
+
 ## [0.8.1] – 2026-10-12
 
 ### Hinzugefügt
@@ -104,6 +121,7 @@ Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog]
 - Docker-Image und docker-compose (Port 8090)
 
 [0.6.0]: https://github.com/defendeggu/spidi-race/compare/v0.5.0...v0.6.0
+[0.9.0]: https://github.com/defendeggu/spidi-race/compare/v0.8.1...v0.9.0
 [0.8.1]: https://github.com/defendeggu/spidi-race/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/defendeggu/spidi-race/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/defendeggu/spidi-race/compare/v0.6.0...v0.7.0

@@ -18,7 +18,10 @@ const KENNEY = [
     url: 'https://kenney.nl/media/pages/assets/car-kit/1a312ec241-1775131960/kenney_car-kit.zip',
     dir: 'Models/GLB format/',
     out: 'cars',
-    files: ['sedan-sports.glb', 'race-future.glb', 'race.glb', 'hatchback-sports.glb', 'suv.glb', 'suv-luxury.glb', 'truck.glb', 'Textures/colormap.png'],
+    files: [
+      'sedan-sports.glb', 'race-future.glb', 'race.glb', 'hatchback-sports.glb', 'suv.glb', 'suv-luxury.glb', 'truck.glb',
+      'sedan.glb', 'taxi.glb', 'police.glb', 'firetruck.glb', 'van.glb', 'delivery.glb', 'Textures/colormap.png',
+    ],
   },
   {
     name: 'City Kit (Suburban)',

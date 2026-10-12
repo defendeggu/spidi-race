@@ -3,7 +3,10 @@ import { GLTFLoader, type GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js'
 
 const BASE = `${import.meta.env.BASE_URL}cc0/`;
 
-export const CAR_MODELS = ['sedan-sports', 'race-future', 'race', 'hatchback-sports', 'suv', 'suv-luxury', 'truck'];
+export const CAR_MODELS = [
+  'sedan-sports', 'race-future', 'race', 'hatchback-sports', 'suv', 'suv-luxury', 'truck',
+  'sedan', 'taxi', 'police', 'firetruck', 'van', 'delivery',
+];
 export const NATURE_MODELS = [
   'tree_pineTallA', 'tree_pineTallB', 'tree_pineDefaultA', 'tree_pineRoundA', 'tree_pineSmallA',
   'tree_oak', 'tree_default', 'tree_fat', 'tree_thin', 'tree_palmTall', 'tree_palmBend',

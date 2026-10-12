@@ -7,3 +7,6 @@ export * from './race';
 export * from './ai';
 export * from './protocol';
 export * from './leaderboard';
+export * from './town';
+export * from './traffic';
+export * from './townTasks';

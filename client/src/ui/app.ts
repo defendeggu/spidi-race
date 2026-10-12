@@ -2,7 +2,7 @@ import {
   carRatings, carsForClass, formatTime, getCar, getTrack, MAX_CARS, rankEntries, TRACK_DEFS,
   type CarClass,
   type LeaderboardEntry, type LeaderboardSort,
-  type LobbyClient, type LobbyPlayer, type LobbySettings, type ResultRow, type ServerMsg, type Slot,
+  type LobbyClient, type LobbyPlayer, type LobbySettings, type ResultRow, type ServerMsg, type Slot, type TownTask,
 } from '@spidi/shared';
 import { audio } from '../audio';
 import { Game, type LocalPlayerCfg } from '../game';
@@ -10,13 +10,14 @@ import { escapeHtml } from '../hud';
 import { input, KEYMAPS, SOLO_KEYMAP } from '../input';
 import { fetchLeaderboard, submitResults } from '../leaderboardApi';
 import { Net } from '../net';
+import { TownGame } from '../townGame';
 import { Backdrop } from './backdrop';
 
-/** a player's preferences: carId is the road car, offroadCarId / microCarId the cars of the other classes */
-type PlayerPref = LobbyPlayer & { offroadCarId?: string; microCarId?: string };
+/** a player's preferences: carId is the road car, offroadCarId / microCarId / townCarId the cars of the other classes */
+type PlayerPref = LobbyPlayer & { offroadCarId?: string; microCarId?: string; townCarId?: string };
 
 /** the preference field holding the player's car for each class */
-const CAR_PREF = { road: 'carId', offroad: 'offroadCarId', micro: 'microCarId' } as const satisfies Record<CarClass, keyof PlayerPref>;
+const CAR_PREF = { road: 'carId', offroad: 'offroadCarId', micro: 'microCarId', town: 'townCarId' } as const satisfies Record<CarClass, keyof PlayerPref>;
 
 interface Prefs {
   players: PlayerPref[];
@@ -25,7 +26,23 @@ interface Prefs {
   aiCount: number;
   aiSkill: number;
   onlineLocal: number;
+  /** practice town: players (1/2), task and traffic level */
+  townPlayers: number;
+  townTask: TownTask;
+  townTraffic: TrafficLevel;
 }
+
+type TrafficLevel = 'off' | 'few' | 'many';
+const TRAFFIC: { id: TrafficLevel; label: string; cars: number }[] = [
+  { id: 'off', label: 'Kein Verkehr', cars: 0 },
+  { id: 'few', label: 'Wenig Verkehr', cars: 10 },
+  { id: 'many', label: 'Mehr Verkehr', cars: 22 },
+];
+const TASKS: { id: TownTask; label: string; hint: string }[] = [
+  { id: 'free', label: 'Frei fahren', hint: 'Einfach durch die Stadt fahren, ohne Ziel.' },
+  { id: 'stars', label: 'Sterne sammeln', hint: 'Ein Stern auf einer Lichtsäule zeigt das Ziel, der Pfeil oben zeigt die Richtung.' },
+  { id: 'parking', label: 'Einparken', hint: 'Auf dem Parkplatz leuchtet ein Feld. Gerade hineinfahren (vorwärts oder rückwärts) und kurz stehen bleiben.' },
+];
 
 const SKILLS = [
   { v: 0.86, label: 'Leicht' },
@@ -36,10 +53,11 @@ const SKILLS = [
 function loadPrefs(): Prefs {
   const def: Prefs = {
     players: [
-      { name: 'Spieler 1', carId: 'falcone', offroadCarId: 'bergziege', microCarId: 'blitz' },
-      { name: 'Spieler 2', carId: 'kaito', offroadCarId: 'raider', microCarId: 'flitzer' },
+      { name: 'Spieler 1', carId: 'falcone', offroadCarId: 'bergziege', microCarId: 'blitz', townCarId: 'familie' },
+      { name: 'Spieler 2', carId: 'kaito', offroadCarId: 'raider', microCarId: 'flitzer', townCarId: 'polizei' },
     ],
     trackId: TRACK_DEFS[0].id, laps: 2, aiCount: 4, aiSkill: 0.93, onlineLocal: 1,
+    townPlayers: 1, townTask: 'stars', townTraffic: 'few',
   };
   try {
     const raw = localStorage.getItem('spidi-race-prefs');
@@ -57,11 +75,13 @@ export class App {
   private hudLayer = document.getElementById('hud')!;
   private backdrop = new Backdrop();
   private prefs = loadPrefs();
-  private game: Game | null = null;
+  private game: Game | TownGame | null = null;
   private net: Net | null = null;
   private lobby: { hostId: string; phase: 'lobby' | 'race'; settings: LobbySettings; clients: LobbyClient[] } | null = null;
   private screen = '';
   private lastLocal: { mode: Mode } | null = null;
+  /** starts the current local session again (pause menu) */
+  private restart: (() => void) | null = null;
 
   constructor() {
     const unlock = () => audio.unlock();
@@ -104,6 +124,7 @@ export class App {
         <button class="big" data-a="single">Einzelrennen</button>
         <button class="big" data-a="split">Splitscreen · 2 Spieler</button>
         <button class="big" data-a="online">Netzwerkspiel</button>
+        <button class="big practice" data-a="town">Übungsfahrt in der Stadt</button>
         <button class="big" data-a="board">Rangliste</button>
         <button class="big secondary" data-a="controls">Steuerung</button>
         <button class="big secondary" data-a="credits">Credits</button>
@@ -113,6 +134,7 @@ export class App {
       single: () => this.showSetup('single'),
       split: () => this.showSetup('split'),
       online: () => this.showOnlineSetup(),
+      town: () => this.showTownSetup(),
       board: () => this.showLeaderboard({ trackId: this.prefs.trackId, sort: 'bestLap' }, () => this.showMain()),
       controls: () => this.showControls(),
       credits: () => this.showCredits(),
@@ -152,6 +174,7 @@ export class App {
           <tr><td>Kamera wechseln</td><td><kbd>C</kbd></td><td><kbd>Enter</kbd> / <kbd>.</kbd></td></tr>
           <tr><td>Pause</td><td colspan="2"><kbd>Esc</kbd></td></tr>
           <tr><td>Ton an/aus</td><td colspan="2"><kbd>M</kbd></td></tr>
+          <tr><td>Steuerungshilfe (Übungsfahrt)</td><td colspan="2"><kbd>H</kbd></td></tr>
         </table>
         <p class="hint">Im Einzelspieler funktionieren WASD und die Pfeiltasten. Gamepads werden ebenfalls unterstützt
         (RT/R2 oder A/✕ Gas, LT/L2 oder B/○ Bremse, linker oder rechter Stick oder Steuerkreuz lenken, X/□ oder RB/R1 Handbremse,
@@ -208,7 +231,7 @@ export class App {
         </div>
         <div class="car-desc">${car.description}</div>
         ${bar('Tempo', r.speed)}${bar('Beschl.', r.accel)}${bar('Handling', r.handling)}${bar('Bremsen', r.brakes)}
-        <div class="car-top">${cls === 'offroad' ? 'Offroad · ' : cls === 'micro' ? 'Micro · ' : ''}Spitze ca. ${Math.round(car.topSpeed * 3.6 * 0.92)} km/h</div>
+        <div class="car-top">${cls === 'offroad' ? 'Offroad · ' : cls === 'micro' ? 'Micro · ' : cls === 'town' ? 'Stadt · ' : ''}Spitze ca. ${Math.round(car.topSpeed * 3.6 * 0.92)} km/h</div>
       </div>`;
   }
 
@@ -282,6 +305,7 @@ export class App {
 
   private startLocal(mode: Mode) {
     this.lastLocal = { mode };
+    this.restart = () => this.startLocal(mode);
     const humans = mode === 'split' ? 2 : 1;
     const ai = Math.min(this.prefs.aiCount, MAX_CARS - humans);
     const names = ['Rossi', 'Lindqvist', 'Tanaka', 'Moreau', 'Becker', 'Okafor', 'Silva', 'Novak'];
@@ -302,14 +326,60 @@ export class App {
     }));
   }
 
-  private runGame(game: Game) {
+  // ---------------------------------------------------------------- practice town
+
+  private showTownSetup() {
+    const pr = this.prefs;
+    const humans = pr.townPlayers === 2 ? 2 : 1;
+    const refresh = () => this.showTownSetup();
+    const city = TRACK_DEFS.find((t) => t.theme === 'city')?.id ?? pr.trackId;
+    this.backdrop.show(city, Array.from({ length: humans }, (_, k) => this.carOf(k, 'town')));
+    const choice = <T extends string>(action: string, items: { id: T; label: string }[], cur: T) =>
+      items.map((i) => `<button class="${i.id === cur ? 'sel' : ''}" data-a="${action}" data-id="${i.id}">${i.label}</button>`).join('');
+    this.setScreen('town', `
+      <div class="menu panel wide">
+        <h2>Übungsfahrt</h2>
+        <p class="hint">Eine ganze Stadt zum Herumfahren – ohne Rennen und ohne Zeitdruck. Ideal, um Tastatur oder Gamepad kennenzulernen.</p>
+        <div class="toggle town-row">${choice('players', [{ id: '1', label: '1 Spieler' }, { id: '2', label: '2 Spieler (Splitscreen)' }], String(humans))}</div>
+        <div class="players">${this.playerPanel(0, 'town')}${humans > 1 ? this.playerPanel(1, 'town') : ''}</div>
+        <div class="toggle town-row">${choice('task', TASKS, pr.townTask)}</div>
+        <p class="hint">${TASKS.find((t) => t.id === pr.townTask)?.hint ?? ''}</p>
+        <div class="toggle town-row">${choice('traffic', TRAFFIC, pr.townTraffic)}</div>
+        <div class="row"><button data-a="back">Zurück</button><button class="go" data-a="start">Losfahren ▶</button></div>
+      </div>`);
+    const set = (fn: () => void) => () => { fn(); this.savePrefs(); refresh(); };
+    this.bind({
+      ...this.playerActions(refresh, () => 'town'),
+      players: (el) => set(() => (pr.townPlayers = Number(el.dataset.id)))(),
+      task: (el) => set(() => (pr.townTask = el.dataset.id as TownTask))(),
+      traffic: (el) => set(() => (pr.townTraffic = el.dataset.id as TrafficLevel))(),
+      back: () => this.showMain(),
+      start: () => this.startTown(),
+    });
+  }
+
+  private startTown() {
+    const pr = this.prefs;
+    const humans = pr.townPlayers === 2 ? 2 : 1;
+    this.lastLocal = null;
+    this.restart = () => this.startTown();
+    this.runGame(new TownGame(this.hudLayer, {
+      players: Array.from({ length: humans }, (_, k) => ({
+        name: pr.players[k].name, carId: this.carOf(k, 'town'), keymap: humans === 1 ? SOLO_KEYMAP : KEYMAPS[k], pad: k,
+      })),
+      task: pr.townTask,
+      traffic: TRAFFIC.find((t) => t.id === pr.townTraffic)?.cars ?? 10,
+    }));
+  }
+
+  private runGame(game: Game | TownGame) {
     this.backdrop.hide();
     this.game?.dispose();
     this.game = game;
     this.ui.className = 'hidden';
     this.ui.innerHTML = '';
     this.screen = 'game';
-    game.onFinish = (results, ranks) => this.showResults(results, ranks);
+    if (game instanceof Game) game.onFinish = (results, ranks) => this.showResults(results, ranks);
     game.onPause = () => this.togglePause();
     game.start();
   }
@@ -331,6 +401,7 @@ export class App {
         <h2>Pause</h2>
         ${online ? '<p class="hint">Im Netzwerkspiel läuft das Rennen weiter.</p>' : ''}
         <button class="big" data-a="resume">Weiter</button>
+        ${g instanceof TownGame ? '<button class="big" data-a="reset">Auto zum Start</button>' : ''}
         ${online ? '' : '<button class="big" data-a="restart">Neustart</button>'}
         ${online && host ? '<button class="big danger" data-a="abort">Rennen für alle abbrechen</button>' : ''}
         <button class="big secondary" data-a="quit">${online ? 'Netzwerkspiel verlassen' : 'Hauptmenü'}</button>
@@ -338,7 +409,11 @@ export class App {
     this.ui.classList.add('dim');
     this.bind({
       resume: () => this.resume(),
-      restart: () => this.lastLocal && this.startLocal(this.lastLocal.mode),
+      reset: () => {
+        if (g instanceof TownGame) g.resetCars();
+        this.resume();
+      },
+      restart: () => this.restart?.(),
       abort: (el) => this.confirmAbort(el),
       quit: () => this.quitGame(),
     });
@@ -384,7 +459,7 @@ export class App {
   private showResults(results: ResultRow[], ranks?: Record<string, number>) {
     this.game?.setEngineVolume(0.25);
     const online = !!this.net;
-    const game = this.game;
+    const game = this.game instanceof Game ? this.game : null;
     const trackId = game?.track.def.id ?? this.prefs.trackId;
     const myIds = new Set(game ? game.race.entries.filter((e) => !e.isAI && (!online || e.ownerId === this.net!.clientId)).map((e) => e.id) : []);
     const rows = results.map((r) => `
