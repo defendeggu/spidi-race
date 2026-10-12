@@ -12,7 +12,8 @@ describe('track', () => {
   for (const def of TRACK_DEFS) {
     it(`${def.id}: builds and projects consistently`, () => {
       const t = getTrack(def.id);
-      expect(t.length).toBeGreaterThan(1500);
+      // micro tracks on a table are short by nature
+      expect(t.length).toBeGreaterThan(def.class === 'micro' ? 600 : 1500);
       for (const s of [0, 123.4, t.length / 2, t.length - 1]) {
         const p = t.pointAt(s, 3);
         const pr = t.project(p.x, p.z);
@@ -141,7 +142,9 @@ describe('offroad', () => {
   it('every track class has cars and the classes are disjoint', () => {
     expect(carsForClass('road').length).toBe(4);
     expect(carsForClass('offroad').length).toBe(3);
+    expect(carsForClass('micro').length).toBe(3);
     expect(TRACK_DEFS.filter((d) => d.class === 'offroad').map((d) => d.id)).toEqual(['canyon', 'waldtrail']);
+    expect(TRACK_DEFS.filter((d) => d.class === 'micro').map((d) => d.id)).toEqual(['fruehstueck']);
   });
 });
 

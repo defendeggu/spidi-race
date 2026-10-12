@@ -6,7 +6,7 @@ import { coastline, type Terrain } from './terrain';
 
 // ------------------------------------------------------------------ procedural fallback geometry
 
-function colored(geo: THREE.BufferGeometry, color: string) {
+export function colored(geo: THREE.BufferGeometry, color: string) {
   const g = geo.index ? geo.toNonIndexed() : geo;
   const c = new THREE.Color(color);
   const arr = new Float32Array(g.attributes.position.count * 3);
@@ -44,7 +44,7 @@ const fallback = {
 // ------------------------------------------------------------------ instancing
 
 /** One kind of object: a Kenney model (scaled) or a procedural fallback geometry. */
-interface Variant {
+export interface Variant {
   model?: string;
   geo?: () => THREE.BufferGeometry;
   /** scale applied to the Kenney model (its units are ~1 m) */
@@ -90,7 +90,7 @@ function lambertFrom(m: THREE.Material) {
   return l;
 }
 
-function instanced(variant: Variant, matrices: THREE.Matrix4[]): THREE.Object3D[] {
+export function instanced(variant: Variant, matrices: THREE.Matrix4[]): THREE.Object3D[] {
   if (matrices.length === 0) return [];
   const scaleM = new THREE.Matrix4().makeScale(variant.scale, variant.scale, variant.scale);
   const model = variant.model && assetsReady() ? getModel(variant.model) : undefined;
@@ -129,7 +129,7 @@ interface ScatterOpts {
 }
 
 /** Scatter objects near the track, rejecting positions on/near the road or failing the filter. */
-function scatter(track: Track, terrain: Terrain, variants: Variant[], count: number, seed: number, opts: ScatterOpts) {
+export function scatter(track: Track, terrain: Terrain, variants: Variant[], count: number, seed: number, opts: ScatterOpts) {
   const rand = mulberry32(seed);
   const buckets: THREE.Matrix4[][] = variants.map(() => []);
   const o = new THREE.Object3D();
@@ -231,7 +231,7 @@ export function buildScenery(track: Track, terrain: Terrain): THREE.Group {
 }
 
 /** Footprint radius (m) of a variant at scale 1 of the placement matrix. */
-function footprint(v: Variant) {
+export function footprint(v: Variant) {
   const model = v.model && assetsReady() ? getModel(v.model) : undefined;
   const box = new THREE.Box3();
   if (model) {

@@ -2,6 +2,19 @@
 
 Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.7.0] – 2026-10-12
+
+### Hinzugefügt
+- **Micro-Klasse** im Stil von *Micro Machines*: Spielzeugautos im Massstab ~1:100 auf einem riesigen Frühstückstisch
+  - **Frühstückstisch** (~0,9 km): Haarnadeln um Müslischale und Schneidbrett, S-Kurve, Strohhalme als Banden, verstreute Cornflakes und Krümel; rundherum Küche mit Fliesenboden, Wänden und Arbeitsplatte
+  - Autos: **Mini-Blitz**, **Taschen-Flitzer**, **Zwergrakete** – spritzig, wendig, mit hohem, surrendem Motorklang
+- **Vogelperspektive** als vierte Kamera (feste Ausrichtung, blickt in Fahrtrichtung voraus); auf Micro-Strecken voreingestellt, sonst per Kamerataste wählbar
+- Micro-Auto wird pro Spieler gemerkt; Lobby und Server wählen automatisch Autos der passenden Klasse
+- Neue CC0-Assets: Kenney Food Kit, ambientCG Wood049
+
+### Geändert
+- Der Menü-Hintergrund zeigt das Auto der Klasse der gewählten Strecke
+
 ## [0.6.0] – 2026-10-11
 
 ### Hinzugefügt

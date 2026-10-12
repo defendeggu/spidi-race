@@ -18,9 +18,14 @@ export const CITY_MODELS = [
   ...'acfhl'.split('').map((c) => `low-detail-building-${c}`),
   'low-detail-building-wide-a',
 ];
+export const FOOD_MODELS = [
+  'bowl-cereal', 'cup-saucer', 'cup-coffee', 'mug', 'plate', 'croissant', 'bread', 'egg-cup', 'carton', 'honey',
+  'peanut-butter', 'utensil-knife', 'utensil-spoon', 'utensil-fork', 'cutting-board', 'pancakes', 'banana', 'apple',
+  'orange', 'shaker-salt', 'donut-sprinkles', 'muffin', 'glass', 'strawberry', 'waffle',
+];
 export const TEXTURES = [
   'asphalt', 'grass', 'rock', 'snow', 'sand', 'gravel', 'concrete',
-  'dirt', 'forestfloor', 'mud', 'dune', 'redrock', 'desertdirt',
+  'dirt', 'forestfloor', 'mud', 'dune', 'redrock', 'desertdirt', 'wood',
 ] as const;
 export type TextureName = (typeof TEXTURES)[number];
 
@@ -72,6 +77,7 @@ export async function loadAssets(onProgress: (done: number, total: number) => vo
   NATURE_MODELS.forEach((m) => addModel('nature', m));
   BUILDING_MODELS.forEach((m) => addModel('buildings', m));
   CITY_MODELS.forEach((m) => addModel('city', m));
+  FOOD_MODELS.forEach((m) => addModel('food', m));
   for (const t of TEXTURES)
     jobs.push(async () => {
       const tex = await texLoader.loadAsync(`${BASE}textures/${t}.jpg`);

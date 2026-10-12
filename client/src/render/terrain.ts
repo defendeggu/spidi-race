@@ -10,7 +10,8 @@ export interface Terrain {
   near: number;
 }
 
-const MARGIN = 750;
+/** terrain beyond the track bounds; the breakfast table ends close to the track */
+const margin = (track: Track) => (track.def.theme === 'table' ? 60 : 750);
 const RES = 230;
 
 export function coastline(x: number) {
@@ -43,11 +44,14 @@ function naturalHeight(track: Track, x: number, z: number, d: number, hRef: numb
     }
     case 'forest':
       return hRef - 4 + fbm(x * 0.006, z * 0.006, seed, 4) * (10 + Math.min(d, 500) * 0.12);
+    case 'table':
+      return 0;
   }
 }
 
 export function buildTerrain(track: Track): Terrain {
   const b = track.bounds;
+  const MARGIN = margin(track);
   const minX = b.minX - MARGIN, minZ = b.minZ - MARGIN;
   const size = Math.max(b.maxX - b.minX, b.maxZ - b.minZ) + MARGIN * 2;
   const step = size / RES;
@@ -87,7 +91,8 @@ export function buildTerrain(track: Track): Terrain {
       const hRef = sh / sw;
       const t = smoothstep(near, near + 45, d);
       const below = hRef - 1.3 - Math.abs(track.bank[bestIdx]) * near;
-      const h = lerp(below, naturalHeight(track, x, z, d, hRef), t);
+      // the table top is perfectly flat, the road lies directly on it
+      const h = track.def.theme === 'table' ? 0 : lerp(below, naturalHeight(track, x, z, d, hRef), t);
       heights[iz * N + ix] = h;
       dists[iz * N + ix] = d;
     }
@@ -221,6 +226,13 @@ const THEMES: Record<TrackTheme, { textures: TextureName[]; scale: number[]; tin
     scale: [6, 7, 12, 5],
     tint: P({ base: '#e0e8d0', base2: '#c8d4b0', l1: '#e6eecf', l2: '#e2ddd6', deep: '#ffffff', verge: '#e8dccc' }),
     flat: P({ base: '#4a5e32', base2: '#56693a', l1: '#5d8a3a', l2: '#7b756d', deep: '#555555', verge: '#6b5236' }),
+  },
+  table: {
+    // not drawn (the table top comes from breakfast.ts), only used as height/distance field
+    textures: ['wood', 'wood', 'wood', 'wood'],
+    scale: [40, 40, 40, 40],
+    tint: P({ base: '#f2d6b0', base2: '#e8c8a0', l1: '#f2d6b0', l2: '#f2d6b0', deep: '#f2d6b0', verge: '#f2d6b0' }),
+    flat: P({ base: '#b88a5a', base2: '#a87a4f', l1: '#b88a5a', l2: '#b88a5a', deep: '#b88a5a', verge: '#b88a5a' }),
   },
   speedway: {
     textures: ['grass', 'rock', 'sand', 'asphalt'],

@@ -238,3 +238,7 @@ button.danger:hover:not(:disabled) { background: linear-gradient(#d0333c, #8f142
 .track.forest { background: linear-gradient(135deg, #2c5a2e, #6b4a2e); }
 em.badge { font-style: normal; font-size: 10px; background: #ff7a00; color: #1a1000; padding: 1px 5px; border-radius: 3px; vertical-align: 3px; margin-left: 4px; font-family: Verdana, sans-serif; }
 button.mini { padding: 0 6px; font-size: 11px; margin: 0 2px; }
+
+/* ------------------------------------------------------------ micro */
+.track.table { background: linear-gradient(135deg, #a8703f, #e8c08a); }
+em.badge.micro { background: #19b5e6; color: #001a24; }

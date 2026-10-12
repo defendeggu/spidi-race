@@ -85,7 +85,8 @@ export class EngineVoice {
   private gravelSrc: AudioBufferSourceNode;
   private out: GainNode;
 
-  constructor(pan = 0, volume = 1) {
+  /** pitch > 1 for the whiny little engines of the micro cars */
+  constructor(pan = 0, volume = 1, private pitch = 1) {
     const ctx = audio.ctx!;
     this.out = ctx.createGain();
     this.out.gain.value = volume;
@@ -134,7 +135,7 @@ export class EngineVoice {
   update(rpm: number, throttle: number, skid: number, gravel = 0) {
     const ctx = audio.ctx!;
     const t = ctx.currentTime;
-    const f = 28 + (rpm / 60) * 2.6;
+    const f = (28 + (rpm / 60) * 2.6) * this.pitch;
     this.oscA.frequency.setTargetAtTime(f, t, 0.03);
     this.oscB.frequency.setTargetAtTime(f * 0.501, t, 0.03);
     this.filter.frequency.setTargetAtTime(350 + rpm * 0.22 + throttle * 500, t, 0.05);

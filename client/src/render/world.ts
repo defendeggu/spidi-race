@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { getTrack, type Track, type TrackTheme } from '@spidi/shared';
+import { breakfastScenery, kitchenRoom } from './breakfast';
 import { buildScenery } from './scenery';
 import { buildTerrain } from './terrain';
 import { buildTrackMesh } from './trackMesh';
@@ -19,6 +20,7 @@ const THEMES: Record<TrackTheme, { skyTop: string; horizon: string; fog: string;
   speedway: { skyTop: '#2a7fd8', horizon: '#dceaf5', fog: '#d4e4f0', sun: '#fff6e0', ground: '#5f8a3c', fogFar: 2600 },
   desert: { skyTop: '#3d7cc9', horizon: '#f3d6a8', fog: '#e8c9a0', sun: '#fff1d6', ground: '#b0603a', fogFar: 1400 },
   forest: { skyTop: '#4f7fb5', horizon: '#c9d9c0', fog: '#b4c6ac', sun: '#fff4dc', ground: '#3f5a2e', fogFar: 850 },
+  table: { skyTop: '#e9dcc8', horizon: '#f5ead8', fog: '#efe3cf', sun: '#fff1d8', ground: '#a87a4f', fogFar: 1100 },
 };
 
 function sky(top: string, horizon: string) {
@@ -61,9 +63,15 @@ export function getWorld(trackId: string): World {
   scene.add(sun);
 
   const terrain = buildTerrain(track);
-  scene.add(terrain.mesh);
   scene.add(buildTrackMesh(track));
-  scene.add(buildScenery(track, terrain));
+  if (track.def.theme === 'table') {
+    // micro track: a kitchen table instead of a landscape
+    scene.add(kitchenRoom(track));
+    scene.add(breakfastScenery(track, terrain));
+  } else {
+    scene.add(terrain.mesh);
+    scene.add(buildScenery(track, terrain));
+  }
 
   if (track.def.theme === 'coast') {
     const water = new THREE.Mesh(
