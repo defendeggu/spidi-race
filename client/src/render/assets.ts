@@ -14,7 +14,25 @@ export const NATURE_MODELS = [
   'cactus_short', 'cactus_tall', 'cliff_large_rock', 'log', 'log_large', 'log_stack', 'stump_old', 'stump_round',
   'mushroom_redGroup', 'mushroom_tanGroup', 'tent_detailedOpen', 'campfire_logs', 'fence_simple',
 ];
-export const BUILDING_MODELS = ['building-type-a', 'building-type-c', 'building-type-f', 'building-type-k', 'building-type-n', 'building-type-t'];
+export const BUILDING_MODELS = 'abcdefghijklmnopqrstu'.split('').map((c) => `building-type-${c}`);
+/** City Kit Industrial (registered with prefix 'ind-' because names clash with the commercial kit) */
+export const INDUSTRIAL_MODELS = [
+  ...'abcdefghijklmnopqrst'.split('').map((c) => `building-${c}`),
+  'chimney-large', 'chimney-medium', 'chimney-small', 'detail-tank-large', 'detail-tank',
+  'shipping-container-a', 'shipping-container-b', 'shipping-container-c', 'water-tower', 'windmill', 'solar-panel-landscape-group',
+];
+/** Fantasy Town Kit parts (prefix 'fan-') */
+export const FANTASY_MODELS = [
+  'wall', 'wall-wood', 'wall-window-shutters', 'wall-wood-window-shutters', 'wall-window-glass', 'wall-wood-window-glass',
+  'wall-door', 'wall-wood-door', 'wall-doorway-round', 'wall-detail-cross', 'wall-wood-detail-cross', 'roof', 'roof-gable',
+  'roof-high', 'roof-high-gable', 'roof-point', 'chimney', 'fountain-round-detail', 'stall-red', 'stall-green', 'lantern',
+  'hedge-large', 'overhang',
+];
+/** Retro Urban Kit parts (prefix 'ret-') */
+export const RETRO_MODELS = [
+  'wall-a-flat', 'wall-a-flat-window', 'wall-a-flat-painted', 'wall-a-flat-garage', 'wall-b-flat', 'wall-b-flat-window',
+  'detail-awning-wide', 'detail-bench', 'detail-dumpster-closed',
+];
 export const CITY_MODELS = [
   ...'abcdefghijklmn'.split('').map((c) => `building-${c}`),
   ...'abcde'.split('').map((c) => `building-skyscraper-${c}`),
@@ -68,18 +86,21 @@ export async function loadAssets(onProgress: (done: number, total: number) => vo
   const loader = new GLTFLoader();
   const texLoader = new THREE.TextureLoader();
   const jobs: (() => Promise<void>)[] = [];
-  const addModel = (dir: string, name: string) =>
+  const addModel = (dir: string, name: string, prefix = '') =>
     jobs.push(async () => {
       const gltf: GLTF = await loader.loadAsync(`${BASE}${dir}/${name}.glb`);
       gltf.scene.traverse((o) => {
         if (o instanceof THREE.Mesh) o.geometry.userData.shared = true;
       });
-      models.set(name, gltf.scene);
+      models.set(prefix + name, gltf.scene);
     });
   CAR_MODELS.forEach((m) => addModel('cars', m));
   NATURE_MODELS.forEach((m) => addModel('nature', m));
   BUILDING_MODELS.forEach((m) => addModel('buildings', m));
   CITY_MODELS.forEach((m) => addModel('city', m));
+  INDUSTRIAL_MODELS.forEach((m) => addModel('industrial', m, 'ind-'));
+  FANTASY_MODELS.forEach((m) => addModel('fantasy', m, 'fan-'));
+  RETRO_MODELS.forEach((m) => addModel('retro', m, 'ret-'));
   FOOD_MODELS.forEach((m) => addModel('food', m));
   for (const t of TEXTURES)
     jobs.push(async () => {

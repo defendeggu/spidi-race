@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { getCar, gridPosition, type Track } from '@spidi/shared';
 import { CarVisual } from '../render/carModel';
+import { getTownWorld } from '../render/townWorld';
 import { getWorld, type World } from '../render/world';
 import { renderViewports } from '../renderer';
 import { createCarState } from '@spidi/shared';
@@ -67,6 +68,19 @@ export class Backdrop {
    */
   private debugS = -1;
   private debugView(dt: number) {
+    // `?townview=x,z,yawDeg[,height]`: a fixed camera in the practice town
+    const tv = /[?&]townview=(-?[\d.]+),(-?[\d.]+),(-?[\d.]+)(?:,([\d.]+))?/.exec(location.search);
+    if (tv) {
+      document.getElementById('ui')!.style.display = 'none';
+      const [x, z, yaw] = [Number(tv[1]), Number(tv[2]), (Number(tv[3]) * Math.PI) / 180];
+      const h = Number(tv[4] ?? 2.5);
+      this.camera.position.set(x, h, z);
+      // high cameras look down at the ground in front of them, low ones straight ahead
+      const ahead = h > 40 ? h * 1.1 : 50;
+      this.camera.lookAt(x + Math.sin(yaw) * ahead, h > 40 ? 0 : h * 0.6, z + Math.cos(yaw) * ahead);
+      renderViewports(getTownWorld().scene, [{ camera: this.camera, rect: [0, 0, 1, 1] }]);
+      return true;
+    }
     const m = /[?&]view=([a-z]+)@(\d+)/.exec(location.search);
     if (!m) return false;
     const world = getWorld(m[1]);

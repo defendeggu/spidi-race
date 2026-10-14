@@ -29,7 +29,7 @@ const KENNEY = [
     url: 'https://kenney.nl/media/pages/assets/city-kit-suburban/2c871b7af2-1745479373/kenney_city-kit-suburban_20.zip',
     dir: 'Models/GLB format/',
     out: 'buildings',
-    files: ['building-type-a.glb', 'building-type-c.glb', 'building-type-f.glb', 'building-type-k.glb', 'building-type-n.glb', 'building-type-t.glb', 'Textures/colormap.png'],
+    files: [...'abcdefghijklmnopqrstu'.split('').map((c) => `building-type-${c}.glb`), 'Textures/colormap.png'],
   },
   {
     name: 'City Kit (Commercial)',
@@ -43,6 +43,48 @@ const KENNEY = [
       ...'acfhl'.split('').map((c) => `low-detail-building-${c}.glb`),
       'low-detail-building-wide-a.glb',
       'Textures/colormap.png',
+    ],
+  },
+  {
+    name: 'City Kit (Industrial)',
+    page: 'https://kenney.nl/assets/city-kit-industrial',
+    url: 'https://kenney.nl/media/pages/assets/city-kit-industrial/0ec35b139d-1788171848/kenney_city-kit-industrial_2.0.zip',
+    dir: 'Models/GLB format/',
+    out: 'industrial',
+    files: [
+      ...'abcdefghijklmnopqrst'.split('').map((c) => `building-${c}.glb`),
+      'chimney-large.glb', 'chimney-medium.glb', 'chimney-small.glb', 'detail-tank-large.glb', 'detail-tank.glb',
+      'shipping-container-a.glb', 'shipping-container-b.glb', 'shipping-container-c.glb', 'water-tower.glb', 'windmill.glb',
+      'solar-panel-landscape-group.glb', 'Textures/colormap.png',
+    ],
+  },
+  {
+    name: 'Fantasy Town Kit',
+    page: 'https://kenney.nl/assets/fantasy-town-kit',
+    url: 'https://kenney.nl/media/pages/assets/fantasy-town-kit/efe948d309-1754222374/kenney_fantasy-town-kit_2.0.zip',
+    dir: 'Models/GLB format/',
+    out: 'fantasy',
+    files: [
+      'wall.glb', 'wall-wood.glb', 'wall-window-shutters.glb', 'wall-wood-window-shutters.glb', 'wall-window-glass.glb',
+      'wall-wood-window-glass.glb', 'wall-door.glb', 'wall-wood-door.glb', 'wall-doorway-round.glb', 'wall-detail-cross.glb',
+      'wall-wood-detail-cross.glb', 'roof.glb', 'roof-gable.glb', 'roof-high.glb', 'roof-high-gable.glb', 'roof-point.glb',
+      'chimney.glb', 'fountain-round-detail.glb', 'stall-red.glb', 'stall-green.glb', 'lantern.glb', 'hedge-large.glb',
+      'overhang.glb', 'Textures/colormap.png',
+    ],
+  },
+  {
+    name: 'Retro Urban Kit',
+    page: 'https://kenney.nl/assets/retro-urban-kit',
+    url: 'https://kenney.nl/media/pages/assets/retro-urban-kit/8314d4db22-1738147509/kenney_retro-urban-kit.zip',
+    dir: 'Models/GLB format/',
+    out: 'retro',
+    files: [
+      'wall-a-flat.glb', 'wall-a-flat-window.glb', 'wall-a-flat-painted.glb', 'wall-a-flat-garage.glb', 'wall-b-flat.glb', 'wall-b-flat-window.glb',
+      'wall-a.glb', 'wall-a-window.glb', 'wall-a-door.glb', 'wall-a-painted.glb', 'wall-a-garage.glb', 'wall-a-roof.glb',
+      'wall-a-roof-detailed.glb', 'wall-b.glb', 'wall-b-window.glb', 'wall-b-door.glb', 'wall-b-roof.glb',
+      'detail-awning-wide.glb', 'detail-bench.glb', 'detail-dumpster-closed.glb',
+      ...['bars', 'concrete', 'doors', 'metal', 'metal_wall', 'roof', 'roof_plates', 'signs', 'tiles', 'wall', 'wall_garage', 'wall_lines', 'windows', 'dirt', 'planks']
+        .map((t) => `Textures/${t}.png`),
     ],
   },
   {

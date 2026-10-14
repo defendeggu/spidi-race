@@ -75,6 +75,9 @@ export class TownHud {
     const colors: Record<string, string> = {
       house: 'rgba(200,190,170,0.55)', shop: 'rgba(170,170,180,0.6)', tower: 'rgba(120,130,150,0.7)',
       park: 'rgba(80,160,70,0.75)', parking: 'rgba(90,140,220,0.75)', practice: 'rgba(240,200,40,0.75)',
+      brick: 'rgba(190,110,80,0.6)', oldtown: 'rgba(210,160,110,0.6)', plaza: 'rgba(230,200,150,0.7)',
+      industry: 'rgba(140,130,110,0.7)', power: 'rgba(110,100,90,0.8)', supermarket: 'rgba(230,70,60,0.85)',
+      towerplaza: 'rgba(170,190,210,0.7)',
     };
     for (const b of this.town.blocks) {
       const [x0, y0] = this.toMap(b.cx + 45, b.cz + 45);
