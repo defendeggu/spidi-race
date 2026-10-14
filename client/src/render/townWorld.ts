@@ -4,7 +4,8 @@ import {
   BLOCK_HALF, BLOCK_INNER, getTown, LINE_COUNT, LINES, mulberry32, PARKING_BAY, ROAD_HW, SIDEWALK, TOWN_HALF, TRAFFIC_MODELS,
   type TownMap,
 } from '@spidi/shared';
-import { getTexture, type TextureName } from './assets';
+import { assetsReady, getTexture, type TextureName } from './assets';
+import { buildingMeshes, variantColors, type BuildingInstance } from './buildingKit';
 import { colored, fallback, instanced, towerGeo, type Variant } from './scenery';
 import { sky, THEMES } from './world';
 
@@ -74,7 +75,7 @@ export function getTownWorld(): TownWorld {
 
   // ---------------------------------------------------------------- ground: streets, sidewalks, block interiors
   const ext = LINES[LINE_COUNT - 1] + ROAD_HW;
-  const road = new Quads(), walk = new Quads(), grass = new Quads(), paved = new Quads(), lot = new Quads();
+  const road = new Quads(), walk = new Quads(), grass = new Quads(), paved = new Quads(), lot = new Quads(), cobble = new Quads();
   for (const L of LINES) {
     road.add(-ext, L - ROAD_HW, ext, L + ROAD_HW);
     road.add(L - ROAD_HW, -ext, L + ROAD_HW, ext);
@@ -96,13 +97,16 @@ export function getTownWorld(): TownWorld {
     walk.add(cx - H, cz + I, cx + H, cz + H);
     walk.add(cx - H, cz - I, cx - I, cz + I);
     walk.add(cx + I, cz - I, cx + H, cz + I);
-    const q = b.kind === 'house' || b.kind === 'park' ? grass : b.kind === 'parking' || b.kind === 'practice' ? lot : paved;
-    q.add(cx - I, cz - I, cx + I, cz + I);
+    const area = b.kind === 'house' || b.kind === 'park' ? grass
+      : ['parking', 'practice', 'supermarket', 'industry', 'power'].includes(b.kind) ? lot
+        : b.kind === 'oldtown' || b.kind === 'plaza' ? cobble : paved;
+    area.add(cx - I, cz - I, cx + I, cz + I);
   }
   scene.add(road.mesh(ground('asphalt', 7, '#9a9a9a', '#55575a')));
   scene.add(lot.mesh(ground('asphalt', 7, '#b4b4b4', '#66686b')));
   scene.add(walk.mesh(ground('concrete', 4, '#e0dcd4', '#b9b4aa')));
   scene.add(paved.mesh(ground('concrete', 6, '#a8a49c', '#8f8b84')));
+  scene.add(cobble.mesh(ground('gravel', 3, '#d8c4a8', '#a8957a')));
   scene.add(grass.mesh(ground('grass', 6, '#b8d49a', '#5f8a3c')));
 
   // ---------------------------------------------------------------- markings
@@ -171,28 +175,34 @@ export function getTownWorld(): TownWorld {
     trees[Math.floor(rnd() * TREES.length)].push(o.matrix.clone());
   }
   o.scale.setScalar(1);
-  // one instanced variant per model; without assets a box of the building's size stands in
-  const byModel = new Map<string, { v: Variant; m: THREE.Matrix4[] }>();
-  for (const b of town.buildings) {
-    let e = byModel.get(b.model);
-    if (!e) {
-      const turned = Math.abs(Math.sin(b.rot)) > 0.5;
-      const w = turned ? b.d : b.w, d = turned ? b.w : b.d, h = b.h;
-      const color = ['#b9b2a6', '#9fa8b3', '#d9c9b0', '#c9d4dc'][byModel.size % 4];
-      const geo = b.model.startsWith('building-type')
-        ? () => mergeGeometries([
-          colored(new THREE.BoxGeometry(w, h * 0.65, d).translate(0, h * 0.325, 0), color),
-          colored(new THREE.ConeGeometry(Math.hypot(w, d) / 2, h * 0.35, 4).rotateY(Math.PI / 4).scale(w / Math.hypot(w, d), 1, d / Math.hypot(w, d)).translate(0, h * 0.825, 0), '#8a4b38'),
-        ])!
-        : () => colored(new THREE.BoxGeometry(w, h, d).translate(0, h / 2, 0), color);
-      byModel.set(b.model, (e = { v: { model: b.model, geo, scale: b.scale }, m: [] }));
+  // buildings and props: one instanced mesh per model and material, colours per instance
+  const byModel = new Map<string, BuildingInstance[]>();
+  const fallbackBoxes: BuildingInstance[] = [];
+  const q = new THREE.Quaternion(), yAxis = new THREE.Vector3(0, 1, 0);
+  for (const b of [...town.buildings, ...town.props]) {
+    const colors = variantColors(b);
+    q.setFromAxisAngle(yAxis, b.rot);
+    const turned = Math.abs(Math.sin(b.rot)) > 0.5;
+    if (b.model === 'fence' || !assetsReady()) {
+      // fence segments (and everything without assets): a box of the footprint, scaled per instance
+      const w = turned ? b.d : b.w, d = turned ? b.w : b.d;
+      const m = new THREE.Matrix4().compose(new THREE.Vector3(b.x, 0, b.z), q, new THREE.Vector3(w, b.h, d));
+      if (b.model === 'fence' && assetsReady()) (byModel.get('fence') ?? byModel.set('fence', []).get('fence')!).push({ matrix: m, ...colors });
+      else fallbackBoxes.push({ matrix: m, ...colors });
+      continue;
     }
-    o.position.set(b.x, 0, b.z);
-    o.rotation.set(0, b.rot, 0);
-    o.updateMatrix();
-    e.m.push(o.matrix.clone());
+    const m = new THREE.Matrix4().compose(new THREE.Vector3(b.x, 0, b.z), q, new THREE.Vector3(b.scale, b.scale, b.scale));
+    (byModel.get(b.model) ?? byModel.set(b.model, []).get(b.model)!).push({ matrix: m, ...colors });
   }
-  for (const { v, m } of byModel.values()) instanced(v, m).forEach((x) => city.add(x));
+  for (const [model, items] of byModel) buildingMeshes(model, items).forEach((x) => city.add(x));
+  if (fallbackBoxes.length) {
+    const box = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0), new THREE.MeshLambertMaterial(), fallbackBoxes.length);
+    fallbackBoxes.forEach((it, i) => {
+      box.setMatrixAt(i, it.matrix);
+      box.setColorAt(i, it.wall);
+    });
+    city.add(box);
+  }
   addVariants(city, TREES, trees);
   addVariants(city, TREES, trees);
 
@@ -234,7 +244,7 @@ export function getTownWorld(): TownWorld {
   ])!;
   const lamps: THREE.Matrix4[] = [], cones: THREE.Matrix4[] = [];
   for (const c of town.circles) {
-    if (c.kind === 'tree') continue;
+    if (c.kind === 'tree' || c.kind === 'prop') continue;
     const b = town.blockAt(c.x, c.z);
     o.position.set(c.x, 0, c.z);
     // lamp arms point over the corner of the street

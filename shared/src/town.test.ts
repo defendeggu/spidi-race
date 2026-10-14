@@ -45,7 +45,7 @@ describe('practice town', () => {
 
   it('gardens and courtyards can be entered from the street', () => {
     // from the sidewalk, some straight path into the block centre area is free of buildings on every side
-    for (const b of town.blocks.filter((k) => k.kind === 'house' || k.kind === 'shop')) {
+    for (const b of town.blocks.filter((k) => ['house', 'shop', 'brick', 'oldtown', 'industry', 'plaza'].includes(k.kind))) {
       let open = 0;
       for (const [fx, fz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
         for (let lat = -30; lat <= 30; lat += 1) {
@@ -78,6 +78,52 @@ describe('practice town', () => {
     expect(bs.length).toBeGreaterThan(300);
     expect(outside).toEqual([]);
     expect(overlaps).toEqual([]);
+  });
+
+  it('keeps the 5 parking lots where they were', () => {
+    const lots = town.blocks.filter((b) => b.kind === 'parking').map((b) => `${b.i},${b.j}`).sort();
+    expect(lots).toEqual(['1,5', '2,1', '4,7', '6,2', '7,6']);
+  });
+
+  it('has two supermarkets, each right next to a parking lot, entrance facing it', () => {
+    const markets = town.blocks.filter((b) => b.kind === 'supermarket');
+    expect(markets).toHaveLength(2);
+    for (const m of markets) {
+      const lot = town.blocks.find((b) => b.kind === 'parking' && Math.abs(b.i - m.i) + Math.abs(b.j - m.j) === 1);
+      expect(lot, `supermarket ${m.i},${m.j}`).toBeDefined();
+      const hall = town.buildings.find((b) => b.model === 'supermarket' && town.blockAt(b.x, b.z) === m)!;
+      // the hall sits on the lot's side of its block, the front (+z of the model) points to the lot
+      expect(Math.sin(hall.rot) * (lot!.cx - m.cx) + Math.cos(hall.rot) * (lot!.cz - m.cz)).toBeGreaterThan(50);
+      expect(Math.hypot(hall.x - lot!.cx, hall.z - lot!.cz)).toBeLessThan(Math.hypot(m.cx - lot!.cx, m.cz - lot!.cz));
+    }
+  });
+
+  it('has the new quarters and the towers in the middle', () => {
+    const kinds = new Set(town.blocks.map((b) => b.kind));
+    for (const k of ['brick', 'oldtown', 'industry', 'power', 'plaza', 'towerplaza', 'tower'] as const) expect(kinds.has(k), k).toBe(true);
+    const towers = town.blocks.filter((b) => b.kind === 'tower');
+    for (const t of towers) expect(Math.max(Math.abs(t.i - 4), Math.abs(t.j - 4))).toBeLessThanOrEqual(1);
+    expect(town.props.some((p) => p.model === 'ind-water-tower')).toBe(true);
+    expect(town.props.filter((p) => p.model.includes('chimney')).length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('buildings of the same kind come in many colour variants and models', () => {
+    const byKit = (prefix: string) => town.buildings.filter((b) => b.model.startsWith(prefix));
+    for (const prefix of ['building-type', 'building-skyscraper', 'ind-building', 'tpl-fantasy', 'tpl-retro']) {
+      const bs = byKit(prefix);
+      expect(bs.length, prefix).toBeGreaterThan(4);
+      expect(new Set(bs.map((b) => b.variant)).size, prefix).toBeGreaterThanOrEqual(3);
+      expect(new Set(bs.map((b) => b.model)).size, prefix).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  it('props stay inside their block and off the streets', () => {
+    for (const p of town.props) {
+      const block = town.blockAt(p.x, p.z)!;
+      expect(block, p.model).toBeDefined();
+      expect(Math.abs(p.x - block.cx) + p.w / 2, p.model).toBeLessThanOrEqual(BLOCK_INNER + 0.01);
+      expect(Math.abs(p.z - block.cz) + p.d / 2, p.model).toBeLessThanOrEqual(BLOCK_INNER + 0.01);
+    }
   });
 
   it('town cars are gentle: about 70 km/h at most (the formula car a bit more)', () => {

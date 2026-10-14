@@ -2,6 +2,19 @@
 
 Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.11.0] – 2026-10-14
+
+### Hinzugefügt
+- **Übungsstadt mit Quartieren**: Backstein-Viertel (Retro Urban Kit), Altstadt mit Fachwerkhäusern und Marktplatz samt Brunnen (Fantasy Town Kit), Industriequartier mit Hallen, Wasserturm, Windrad und Containerlager sowie ein Kraftwerk mit Schornsteinen (City Kit Industrial)
+- **Zwei Supermärkte** („SPIDI MARKT“), jeder direkt neben einem Parkplatz, mit Vorplatz, Eingang zum Parkplatz und Einkaufswagen-Unterstand
+- **Farbvielfalt**: Wände und Dächer werden pro Gebäude aus Farbpaletten gewählt (Shader färbt die Palettenfelder der Kenney-Kits um); alle 21 Haustypen des Suburban-Kits
+- Hochhauszone in der Mitte mit unterschiedlich hohen und getönten Türmen und einer Plaza mit Brunnen, Bänken und Bäumen
+- Stadtkarte im HUD zeigt die neuen Quartiere; Entwickler-Ansicht `?townview=x,z,richtung,höhe`
+- Neue CC0-Assets: Kenney City Kit Industrial, Fantasy Town Kit, Retro Urban Kit
+
+### Geändert
+- Anzahl und Lage der 5 Parkplätze, Übungsplatz und Hochhauszone bleiben unverändert; ersetzt wurden Einfamilienhaus-Blöcke am Rand, zwei Geschäftsblöcke und zwei Parks
+
 ## [0.10.1] – 2026-10-12
 
 ### Geändert
@@ -146,6 +159,7 @@ Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog]
 - Docker-Image und docker-compose (Port 8090)
 
 [0.6.0]: https://github.com/defendeggu/spidi-race/compare/v0.5.0...v0.6.0
+[0.11.0]: https://github.com/defendeggu/spidi-race/compare/v0.10.1...v0.11.0
 [0.10.1]: https://github.com/defendeggu/spidi-race/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/defendeggu/spidi-race/compare/v0.9.1...v0.10.0
 [0.9.1]: https://github.com/defendeggu/spidi-race/compare/v0.9.0...v0.9.1
