@@ -80,6 +80,20 @@ describe('practice town', () => {
     expect(overlaps).toEqual([]);
   });
 
+  it('cars fit under the canopy of the tower with the entrance roof, but not into its walls', () => {
+    const towers = town.buildings.filter((b) => b.model === 'building-n');
+    expect(towers.length).toBeGreaterThan(0);
+    for (const b of towers) {
+      const at = (mx: number, mz: number) => ({
+        x: b.x + (mx * Math.cos(b.rot) + mz * Math.sin(b.rot)) * b.scale,
+        z: b.z + (-mx * Math.sin(b.rot) + mz * Math.cos(b.rot)) * b.scale,
+      });
+      const under = at(-0.82, 0.1), inside = at(0.4, 0.1);
+      expect(town.isFree(under.x, under.z, 1.2), `under the canopy of ${b.x},${b.z}`).toBe(true);
+      expect(town.isFree(inside.x, inside.z, 1.2)).toBe(false);
+    }
+  });
+
   it('keeps the 5 parking lots where they were', () => {
     const lots = town.blocks.filter((b) => b.kind === 'parking').map((b) => `${b.i},${b.j}`).sort();
     expect(lots).toEqual(['1,5', '2,1', '4,7', '6,2', '7,6']);

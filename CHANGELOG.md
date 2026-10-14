@@ -2,6 +2,12 @@
 
 Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.11.1] – 2026-10-14
+
+### Behoben
+- Backstein-Viertel: Die Häuser waren unvollständig (teils nur 3 Wände, frei stehende Rahmenteile), weil die Fassadenplatten des Retro Urban Kits nach innen zeigten; jetzt sind alle vier Seiten geschlossen, Ladenfronten mit Markisen zur Strasse
+- Hochhauszone: Unter dem Vordach des Hochhauses mit Eingangsdach kann man jetzt durchfahren; nur die beiden Stützen sind Hindernisse. Allgemein kollidieren Gebäude der Übungsstadt nur noch mit ihren Wänden am Boden (gemessen aus den Modellen mit `scripts/footprints.mjs`), nicht mehr mit Vordächern und Dachüberständen
+
 ## [0.11.0] – 2026-10-14
 
 ### Hinzugefügt
@@ -159,6 +165,7 @@ Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog]
 - Docker-Image und docker-compose (Port 8090)
 
 [0.6.0]: https://github.com/defendeggu/spidi-race/compare/v0.5.0...v0.6.0
+[0.11.1]: https://github.com/defendeggu/spidi-race/compare/v0.11.0...v0.11.1
 [0.11.0]: https://github.com/defendeggu/spidi-race/compare/v0.10.1...v0.11.0
 [0.10.1]: https://github.com/defendeggu/spidi-race/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/defendeggu/spidi-race/compare/v0.9.1...v0.10.0
