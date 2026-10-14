@@ -2,6 +2,7 @@ import type { CarSpec } from './cars';
 import { clamp, mulberry32, wrapAngle } from './math';
 import { CIRCLE_R, driveCar, newCarState, updateGearbox, type CarInput, type CarState, type DriveGround } from './physics';
 import { SURFACE_PROPS, type Surface } from './track';
+import { TOWN_FOOTPRINTS } from './townFootprints';
 
 /**
  * The open practice town ("Spidi-Stadt"): 1 × 1 km, flat, a grid of two-lane streets every 100 m
@@ -371,9 +372,25 @@ export class TownMap {
     const turned = Math.abs(Math.sin(rot)) > 0.5;
     const w = (turned ? m[2] : m[1]) * scale, d = (turned ? m[1] : m[2]) * scale;
     this.buildings.push({ model: m[0], scale, x, z, rot, w, d, h: m[3] * scale, variant: Math.floor(this.vrnd() * BUILDING_VARIANTS) });
-    // the collision box is a little smaller than the model (roofs and balconies stick out)
-    const ix = Math.max(0.5, w / 2 - 0.3), iz = Math.max(0.5, d / 2 - 0.3);
-    this.boxes.push({ minX: x - ix, maxX: x + ix, minZ: z - iz, maxZ: z + iz, solid: true });
+    const fp = TOWN_FOOTPRINTS[m[0]];
+    if (!fp) {
+      // the collision box is a little smaller than the model (roofs and balconies stick out)
+      const ix = Math.max(0.5, w / 2 - 0.3), iz = Math.max(0.5, d / 2 - 0.3);
+      this.boxes.push({ minX: x - ix, maxX: x + ix, minZ: z - iz, maxZ: z + iz, solid: true });
+      return;
+    }
+    // measured walls only: cars can drive under canopies and eaves; their posts are small obstacles
+    const cos = Math.cos(rot), sin = Math.sin(rot);
+    const toWorld = (mx: number, mz: number): [number, number] => [x + (mx * cos + mz * sin) * scale, z + (-mx * sin + mz * cos) * scale];
+    const [x0, x1, z0, z1] = fp.box;
+    const corners = [toWorld(x0, z0), toWorld(x1, z0), toWorld(x0, z1), toWorld(x1, z1)];
+    const xs = corners.map((c) => c[0]), zs = corners.map((c) => c[1]);
+    const inset = 0.1;
+    this.boxes.push({ minX: Math.min(...xs) + inset, maxX: Math.max(...xs) - inset, minZ: Math.min(...zs) + inset, maxZ: Math.max(...zs) - inset, solid: true });
+    for (const [px, pz, r] of fp.posts ?? []) {
+      const [wx, wz] = toWorld(px, pz);
+      if (!this.circles.some((c) => Math.hypot(c.x - wx, c.z - wz) < 0.3)) this.circles.push({ x: wx, z: wz, r: Math.max(0.25, r * scale), kind: 'prop' });
+    }
   }
 
   /**

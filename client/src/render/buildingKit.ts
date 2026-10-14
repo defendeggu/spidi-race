@@ -326,11 +326,41 @@ function fantasyHouse(name: string, cx: number, cz: number, floors: number): Par
 }
 
 const retroMats = new Map<string, THREE.Material>();
-/** One material per retro texture name, so all parts with the same texture merge. */
+/**
+ * One material per retro texture name, so all parts with the same texture merge. Each kit file maps
+ * into the texture atlas with its own uv transform (KHR_texture_transform); that transform is baked
+ * into the part's uvs first (bakeUvTransform), so the shared material uses the untransformed texture.
+ */
 function retroMat(m: THREE.Material) {
   let r = retroMats.get(m.name);
-  if (!r) retroMats.set(m.name, (r = m));
+  if (!r) {
+    const src = m as THREE.MeshStandardMaterial;
+    r = src.clone();
+    const map = src.map?.clone();
+    if (map) {
+      map.offset.set(0, 0);
+      map.repeat.set(1, 1);
+      map.rotation = 0;
+      map.center.set(0, 0);
+      map.wrapS = map.wrapT = THREE.RepeatWrapping;
+      map.needsUpdate = true;
+      (r as THREE.MeshStandardMaterial).map = map;
+    }
+    retroMats.set(m.name, r);
+  }
   return r;
+}
+
+function bakeUvTransform(g: THREE.BufferGeometry, map: THREE.Texture | null | undefined) {
+  const uv = g.attributes.uv;
+  if (!map || !uv) return;
+  map.updateMatrix();
+  const v = new THREE.Vector3();
+  for (let i = 0; i < uv.count; i++) {
+    v.set(uv.getX(i), uv.getY(i), 1).applyMatrix3(map.matrix);
+    uv.setXY(i, v.x, v.y);
+  }
+  uv.needsUpdate = true;
 }
 
 /** Retro Urban apartment / shop house from flat facade panels with a flat roof. */
@@ -345,15 +375,17 @@ function retroHouse(name: string, cx: number, cz: number, floors: number): Part[
     q.setFromAxisAngle(up, rot);
     m.compose(new THREE.Vector3(x, y, z), q, new THREE.Vector3(1, 1, 1));
     for (const p of modelParts(piece, m.clone(), false)) {
+      bakeUvTransform(p.geometry, (p.material as THREE.MeshStandardMaterial).map);
       const mat = retroMat(p.material as THREE.Material);
       parts.push({ ...p, material: mat, tint: mat.name === 'wall' ? 'wall' : undefined });
     }
   };
+  // the retro facade panels face -z (their normals point there), so each side is turned by 180°
   const sides = [
-    { n: [0, 1], rot: 0 },
-    { n: [0, -1], rot: Math.PI },
-    { n: [1, 0], rot: Math.PI / 2 },
-    { n: [-1, 0], rot: -Math.PI / 2 },
+    { n: [0, 1], rot: Math.PI },
+    { n: [0, -1], rot: 0 },
+    { n: [1, 0], rot: -Math.PI / 2 },
+    { n: [-1, 0], rot: Math.PI / 2 },
   ];
   for (let f = 0; f < floors; f++) {
     for (const s of sides) {
@@ -365,7 +397,7 @@ function retroHouse(name: string, cx: number, cz: number, floors: number): Part[
         let piece = (k + f) % 2 === 0 || count === 1 ? window : plain;
         if (f === 0 && front) piece = k === 0 && cx > 2 ? 'ret-wall-a-flat-garage' : 'ret-wall-a-flat-window';
         place(piece, x, f, z, s.rot);
-        if (f === 0 && front && k > 0) place('ret-detail-awning-wide', x, 0.78, z + 0.05, 0);
+        if (f === 0 && front && k > 0) place('ret-detail-awning-wide', x, 0.78, z + 0.15, Math.PI);
       }
     }
   }
