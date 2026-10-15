@@ -37,6 +37,18 @@ export function townBoard(id: string | undefined) {
   return TOWN_BOARDS.find((b) => b.id === id);
 }
 
+/** Kart races have their own board per track: 'kart:<trackId>' (road and offroad tracks). */
+export const KART_PREFIX = 'kart:';
+
+export function kartBoardTrack(id: string | undefined) {
+  if (!id?.startsWith(KART_PREFIX)) return undefined;
+  const t = TRACK_DEFS.find((d) => d.id === id.slice(KART_PREFIX.length));
+  return t && (t.class ?? 'road') !== 'micro' ? t : undefined;
+}
+
+/** Karts can be faster than their top speed while boosting. */
+const KART_BOOST_MARGIN = 1.35;
+
 /** Town boards rank by total time, race tracks by best lap. */
 export function boardSort(trackId: string): LeaderboardSort {
   return townBoard(trackId) ? 'time' : 'bestLap';
@@ -49,21 +61,23 @@ export function boardSort(trackId: string): LeaderboardSort {
 export function sanitizeSubmission(s: Partial<LeaderboardSubmission>, trusted = false): LeaderboardSubmission | null {
   if (!s || typeof s !== 'object') return null;
   if (townBoard(s.trackId)) return sanitizeTown(s);
-  const track = TRACK_DEFS.find((t) => t.id === s.trackId);
+  const kartTrack = kartBoardTrack(s.trackId);
+  const track = kartTrack ?? TRACK_DEFS.find((t) => t.id === s.trackId);
   const car = CARS.find((c) => c.id === s.carId);
-  // the car must belong to the track's class (road, offroad or micro)
-  if (!track || !car || car.class !== (track.class ?? 'road')) return null;
+  // the car must belong to the track's class (road, offroad or micro), on kart boards it must be a kart
+  if (!track || !car || car.class !== (kartTrack ? 'kart' : track.class ?? 'road')) return null;
   const laps = Math.round(Number(s.laps));
   const time = Number(s.time), bestLap = Number(s.bestLap);
   if (!(laps >= 1 && laps <= 10) || !Number.isFinite(time) || !Number.isFinite(bestLap)) return null;
   // no lap can be faster than driving the whole length at the car's top speed
-  const minLap = getTrack(track.id).length / car.topSpeed;
+  const minLap = getTrack(track.id).length / (car.topSpeed * (kartTrack ? KART_BOOST_MARGIN : 1));
   if (bestLap < minLap || bestLap > 3600 || time < bestLap * laps - 0.05 || time > 3600 * laps) return null;
   const name = String(s.name ?? '').replace(/[<>]/g, '').trim().slice(0, 16);
   if (!name) return null;
   if (s.mode === 'online' && !trusted) return null;
   const mode: RaceMode = s.mode === 'split' || s.mode === 'online' ? s.mode : 'solo';
-  return { name, carId: s.carId!, trackId: track.id, laps, time: Math.round(time * 1000) / 1000, bestLap: Math.round(bestLap * 1000) / 1000, mode };
+  if (kartTrack && mode === 'online') return null;
+  return { name, carId: s.carId!, trackId: kartTrack ? KART_PREFIX + track.id : track.id, laps, time: Math.round(time * 1000) / 1000, bestLap: Math.round(bestLap * 1000) / 1000, mode };
 }
 
 /** A practice-town run: known goal count, town car, plausible times (a goal takes at least a few seconds). */

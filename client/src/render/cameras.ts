@@ -35,6 +35,8 @@ export class ChaseCamera {
   private lead = new THREE.Vector3();
 
   private view: ChaseView;
+  /** camera shake strength (decays by itself), e.g. after a hit */
+  shake = 0;
 
   constructor(mode = 0, view: Partial<ChaseView> = {}) {
     this.view = { ...DEFAULT_VIEW, ...view };
@@ -51,6 +53,17 @@ export class ChaseCamera {
   }
 
   update(target: THREE.Vector3, heading: number, up: THREE.Vector3, speed: number, dt: number) {
+    this.place(target, heading, up, speed, dt);
+    if (this.shake > 0) {
+      this.shake = Math.max(0, this.shake - dt * 1.5);
+      const s = this.shake * 0.5;
+      this.camera.position.x += (Math.random() - 0.5) * s;
+      this.camera.position.y += (Math.random() - 0.5) * s;
+      this.camera.position.z += (Math.random() - 0.5) * s;
+    }
+  }
+
+  private place(target: THREE.Vector3, heading: number, up: THREE.Vector3, speed: number, dt: number) {
     const k = this.first ? 1 : 1 - Math.exp(-dt * 7);
     this.heading = this.first ? heading : lerpAngle(this.heading, heading, 1 - Math.exp(-dt * (this.mode === 2 ? 30 : 5.5)));
     const fx = Math.sin(this.heading), fz = Math.cos(this.heading);

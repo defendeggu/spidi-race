@@ -1,6 +1,6 @@
 # Spidi Race 🏁
 
-![Version](https://img.shields.io/badge/version-0.12.0-ffcc00)
+![Version](https://img.shields.io/badge/version-0.13.0-ffcc00)
 ![Lizenz Code](https://img.shields.io/badge/code-MIT-blue)
 ![Lizenz Assets](https://img.shields.io/badge/assets-CC0-green)
 ![Docker](https://img.shields.io/badge/docker-ready-2496ED)
@@ -24,6 +24,7 @@ Ein Arcade-Rennspiel im Browser im Geist von *Need for Speed II: Special Edition
 - [Features](#features)
 - [Schnellstart mit Docker](#schnellstart-mit-docker)
 - [Steuerung](#steuerung)
+- [Kart-Rennen mit Items](#kart-rennen-mit-items)
 - [Übungsfahrt in der Stadt](#übungsfahrt-in-der-stadt)
 - [Netzwerkspiel](#netzwerkspiel)
 - [Rangliste](#rangliste)
@@ -47,7 +48,7 @@ Ein Arcade-Rennspiel im Browser im Geist von *Need for Speed II: Special Edition
   | Waldtrail | Offroad | 2,8 km | Waldweg, Kuppen, Schlammlöcher, Furt, Sprung über den Bach |
   | Frühstückstisch | Micro | 0,9 km | Spielzeugautos auf dem Küchentisch: Müslischale, Kaffeetasse, Croissant, Strohhalme als Banden |
 
-- **15 Autos** mit eigenen Fahrwerten, je nach Streckenklasse:
+- **20 Fahrzeuge** mit eigenen Fahrwerten, je nach Streckenklasse bzw. Modus:
 
   | Auto | Klasse | Modell | Stärke |
   |---|---|---|---|
@@ -66,7 +67,9 @@ Ein Arcade-Rennspiel im Browser im Geist von *Need for Speed II: Special Edition
   | Polizeiauto | Stadt | Streifenwagen | gemütlich, Originallackierung |
   | Feuerwehr | Stadt | Feuerwehrauto | gross, etwas langsamer |
   | Kaito ZX | Stadt | Formelwagen | schneller, für Fortgeschrittene |
+  | Oobi, Oodi, Ooli, Oopi, Oozi | Kart | Karts mit Alien-Fahrern | Allrounder, Beschleunigung, Kurven, Spitze, Gewicht |
 
+- **Kart-Rennen mit Items** auf allen Strassen- und Offroad-Strecken: ?-Boxen, Blaster, Zielsucher, Minen, Turbo und Schild, Drift-Boost, KI-Karts mit Items, siehe [unten](#kart-rennen-mit-items)
 - **Übungsfahrt**: eine offene Stadt von 1 × 1 km ohne Rennen, mit 4 Alltagsautos und einem Formelwagen, Aufgaben (Sterne sammeln, Einparken) und langsamem Verkehr, siehe [unten](#übungsfahrt-in-der-stadt)
 - **Offroad**: echte Sprünge mit Flugphase, Untergründe Schotter, Sand, Schlamm und Wasser mit eigenem Grip, Federung, Staub- und Schlammpartikel
 - **Micro**: Spielzeugautos im Massstab 1:100 auf einem Frühstückstisch, gefahren aus der Vogelperspektive wie bei *Micro Machines*
@@ -113,6 +116,7 @@ Das Image ist zweistufig aufgebaut (Node 22). Beim Build laufen die Tests und de
 | Handbremse | `Leertaste` | `Strg rechts` / `Shift rechts` / `Num 0` |
 | Kamera wechseln | `C` | `Enter` / `.` |
 | Pause | `Esc` | |
+| Item benutzen (Kart-Rennen) | `E` | `Ende` / `-` / `Num 1` |
 | Steuerungshilfe ein/aus (Übungsfahrt) | `H` | |
 | Ton an/aus | `M` | |
 
@@ -126,10 +130,31 @@ Das Image ist zweistufig aufgebaut (Node 22). Beim Build laufen die Tests und de
   | Lenken | linker oder rechter Stick, Steuerkreuz | linker oder rechter Stick, Steuerkreuz |
   | Handbremse | X oder RB | □ oder R1 |
   | Kamera / Pause | Y / Start | △ / Start |
+  | Kart-Rennen: Item / Kamera | Y / Back oder Steuerkreuz ↑ | △ / Select oder Steuerkreuz ↑ |
 
   Erkannt werden sowohl Gamepads mit Standard-Belegung als auch die rohe Linux-Belegung, die Firefox für manche Controller meldet (Xbox-Controller mit Triggern als Achsen, DualShock 3).
 - **PS3-Controller:** Unter Linux per USB oder Bluetooth direkt nutzbar (Treiber `hid-sony` ist im Kernel), in Chrome und Firefox. Unter Windows 11 gibt es keinen eingebauten Treiber: [DsHidMini](https://github.com/nefarius/DsHidMini) installieren und den Controller im *XInput*-Modus betreiben, dann erscheint er als Xbox-Controller. Den Browser erkennt das Gamepad erst nach dem ersten Tastendruck.
 - Viele Tastaturen erkennen nur eine begrenzte Zahl gleichzeitig gedrückter Tasten. Gehen im Splitscreen Eingaben verloren, hilft ein Gamepad für einen der beiden Spieler.
+
+## Kart-Rennen mit Items
+
+Hauptmenü → **Kart-Rennen mit Items**. Gefahren wird auf allen Strassen- und Offroad-Strecken, allein oder zu zweit im Splitscreen, gegen bis zu 7 KI-Karts. Netzwerkspiel mit Karts gibt es noch nicht.
+
+| Was | Details |
+|---|---|
+| Karts | 5 Karts mit Alien-Fahrern (Kenney Car Kit), ca. 95–100 km/h, sehr wendig |
+| ?-Boxen | drei Reihen pro Runde (bei 20 %, 55 % und 85 % der Strecke); wer mit leerem Slot durchfährt, bekommt nach einer kurzen Roulette ein Item. Die Boxen sind nach 2 s wieder da |
+| Vergabe | nach Platzierung: Vorne gibt es eher Minen und Blaster, hinten eher Turbo und Zielsucher |
+| Blaster 🔫 | Schaumstoffpfeil geradeaus, prallt bis zu dreimal an der Leitplanke ab |
+| Zielsucher 🎯 | verfolgt das Kart direkt vor dir |
+| Mine 💣 | wird hinter dem Kart abgelegt |
+| Turbo 🚀 | 1,5 s mehr Tempo |
+| Schild 🛡️ | 5 s Schutz vor einem Treffer |
+| Treffer | das Kart dreht sich einmal und verliert sein Tempo; danach ist es kurz unverwundbar |
+| Drift-Boost | Handbremse + Lenken ab ca. 30 km/h: der Drift lädt in drei Stufen (blaue, orange, violette Funken), beim Loslassen gibt es einen Turbo. Beim Driftstart hüpft das Kart – so springt man über Minen |
+| Rangliste | eigene Kart-Listen pro Strecke (Umschalter „Autos / Karts“ in der Rangliste) |
+
+Die Item-Logik (`shared/src/items.ts`) läuft ohne Browser und deterministisch, damit sie später für das Netzwerkspiel auf dem Server laufen kann.
 
 ## Übungsfahrt in der Stadt
 
@@ -184,6 +209,7 @@ Jedes beendete Rennen eines menschlichen Fahrers landet in der permanenten Rangl
 
 - Die Wertung gilt pro Strecke. Angezeigt werden die Top 50, gespeichert bis zu 2000 Rennen pro Strecke.
 - Für die Übungsfahrt gibt es zwei eigene Listen, **Stadt: Sterne** und **Stadt: Einparken**. Gewertet wird die Gesamtzeit für 5, 10 oder 20 Ziele, dazu wird das schnellste einzelne Ziel angezeigt. Erlaubt sind nur Stadtautos.
+- Kart-Rennen haben pro Strecke eigene Listen (`kart:<strecke>`), nur mit Karts; wegen der Boosts liegt die Untergrenze 35 % unter der Höchstgeschwindigkeit.
 - Der Server speichert alles in `data/leaderboard.json`. Diese Datei ist **git-ignoriert**. Im Repo liegt nur die leere Vorlage `data/leaderboard.template.json`, mit der ein neuer Server startet.
 - Mit Docker wird `./data` in den Container eingebunden. Die Rangliste übersteht Neustarts und Image-Updates und lässt sich einfach sichern.
 - Zurücksetzen: `data/leaderboard.json` löschen und den Server neu starten.
@@ -227,7 +253,7 @@ Alle Modelle und Texturen stehen unter **CC0 (Public Domain)** und liegen in [`c
 | [Kenney](https://kenney.nl/assets/watercraft-kit) | Watercraft Kit | Frachter, Schlepper, Boote, Container und Bojen im Hafen |
 | [Kenney](https://kenney.nl/assets/train-kit) | Train Kit | S-Bahn, Lok und Güterwagen |
 | [Kenney](https://kenney.nl/assets/graveyard-kit) | Graveyard Kit | Grabsteine, Grüfte, Eisenzaun, Laternen und Kiefern des Friedhofs |
-| [Kenney](https://kenney.nl/assets/blaster-kit) | Blaster Kit | (für den Kart-Modus) |
+| [Kenney](https://kenney.nl/assets/blaster-kit) | Blaster Kit | Blaster auf den Karts, Schaumstoffpfeile, Granaten als Minen |
 | [ambientCG](https://ambientcg.com) | Asphalt031, Grass004, Rock064, Snow010A, Ground080, Gravel043, Concrete034 | Strasse, Gelände, Bankett, Mauern |
 | [ambientCG](https://ambientcg.com) | Ground106, Ground037, Ground071, Ground093C, Rock029, Ground097 | Offroad: Waldweg, Waldboden, Schlamm, Dünen, roter Fels, Wüstenpiste |
 | [ambientCG](https://ambientcg.com) | Wood049 | Micro: Holztisch |
@@ -260,7 +286,7 @@ scripts/  Asset-Download
 
 ## Versionierung
 
-Das Projekt folgt [Semantic Versioning](https://semver.org/lang/de/). Die aktuelle Version ist **0.12.0**. Änderungen stehen im [CHANGELOG](CHANGELOG.md), Releases sind als Git-Tags `vX.Y.Z` markiert. Die Version steht auch unten rechts im Hauptmenü.
+Das Projekt folgt [Semantic Versioning](https://semver.org/lang/de/). Die aktuelle Version ist **0.13.0**. Änderungen stehen im [CHANGELOG](CHANGELOG.md), Releases sind als Git-Tags `vX.Y.Z` markiert. Die Version steht auch unten rechts im Hauptmenü.
 
 ## Lizenz und Credits
 

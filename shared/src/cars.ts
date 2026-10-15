@@ -320,6 +320,29 @@ export const TOWN_CARS: CarSpec[] = [
 
 CARS.push(...TOWN_CARS);
 
+// ---------------------------------------------------------------- karts (kart races with items)
+const KART_BASE = {
+  class: 'kart' as const,
+  suspension: 0.05,
+  brake: 16,
+  wheelbase: 1.9,
+  gears: 4,
+  mass: 600,
+  accent: '#222222',
+  keepPaint: true,
+  shape: { length: 2.6, width: 1.8, height: 0.7, roof: 1.6, cabinShift: 0, spoiler: false },
+};
+
+export const KART_CARS: CarSpec[] = [
+  { ...KART_BASE, id: 'kart-oobi', name: 'Oobi', description: 'Allrounder – nichts zu meckern', model: 'kart-oobi', color: '#e8402a', topSpeed: 27, accel: 10, grip: 16, steer: 0.8 },
+  { ...KART_BASE, id: 'kart-oodi', name: 'Oodi', description: 'Raketenstart – beschleunigt am schnellsten', model: 'kart-oodi', color: '#3a7ad8', topSpeed: 26, accel: 11.5, grip: 15.5, steer: 0.8 },
+  { ...KART_BASE, id: 'kart-ooli', name: 'Ooli', description: 'Kurvenkünstlerin – klebt auf der Strasse', model: 'kart-ooli', color: '#3aa84a', topSpeed: 26, accel: 9.5, grip: 18, steer: 0.88 },
+  { ...KART_BASE, id: 'kart-oopi', name: 'Oopi', description: 'Vollgas-Fan – höchste Spitze, rutscht gern', model: 'kart-oopi', color: '#e8c020', topSpeed: 28.5, accel: 9.5, grip: 15, steer: 0.76 },
+  { ...KART_BASE, id: 'kart-oozi', name: 'Oozi', description: 'Schwergewicht – schiebt die anderen weg', model: 'kart-oozi', color: '#a050d0', topSpeed: 27.5, accel: 9.8, grip: 15.5, steer: 0.78, mass: 800 },
+];
+
+CARS.push(...KART_CARS);
+
 /** Parked and passing cars in the town (visual only). */
 export const TRAFFIC_MODELS = ['sedan', 'hatchback-sports', 'suv', 'van', 'delivery', 'taxi', 'sedan-sports'];
 
@@ -336,7 +359,12 @@ export function carRatings(c: CarSpec) {
   const norm = (v: number, lo: number, hi: number) => Math.max(0.1, Math.min(1, (v - lo) / (hi - lo)));
   // micro cars are compared among themselves: they are all quicker off the line and grippier
   const micro = c.class === 'micro';
-  const speed = { road: [70, 96], offroad: [56, 74], micro: [50, 62], town: [15, 22] }[c.class];
+  const speed = { road: [70, 96], offroad: [56, 74], micro: [50, 62], town: [15, 22], kart: [24, 29] }[c.class];
+  if (c.class === 'kart') {
+    return {
+      speed: norm(c.topSpeed, 24, 29), accel: norm(c.accel, 8.5, 12), handling: norm(c.grip + c.steer * 5, 17.5, 23), brakes: norm(c.brake, 12, 18),
+    };
+  }
   return {
     speed: norm(c.topSpeed, speed[0], speed[1]),
     accel: micro ? norm(c.accel, 10, 13.5) : c.class === 'town' ? norm(c.accel, 3, 5.5) : norm(c.accel, 7, 11.5),

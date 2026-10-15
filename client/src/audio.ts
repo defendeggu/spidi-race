@@ -51,6 +51,22 @@ class AudioSystem {
     o.stop(ctx.currentTime + dur);
   }
 
+  /** A rising (or falling) tone, e.g. for a boost. */
+  sweep(from: number, to: number, dur: number, vol = 0.18) {
+    const ctx = this.ctx;
+    if (!ctx || !this.master) return;
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(from, ctx.currentTime);
+    o.frequency.exponentialRampToValueAtTime(to, ctx.currentTime + dur);
+    g.gain.setValueAtTime(vol, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
+    o.connect(g).connect(this.master);
+    o.start();
+    o.stop(ctx.currentTime + dur);
+  }
+
   crash(intensity: number, pan = 0) {
     const ctx = this.ctx;
     if (!ctx || !this.master) return;

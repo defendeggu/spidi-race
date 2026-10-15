@@ -2,6 +2,20 @@
 
 Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.13.0] – 2026-10-15
+
+### Hinzugefügt
+- **Kart-Rennen mit Items** (Hauptmenü): auf allen Strassen- und Offroad-Strecken, allein oder im Splitscreen, gegen KI-Karts
+  - 5 Karts mit Alien-Fahrern aus dem Kenney Car Kit
+  - ?-Boxen in drei Reihen pro Runde, Item nach Platzierung gewichtet, Roulette im HUD
+  - Items: Blaster (prallt an der Leitplanke ab), Zielsucher, Mine, Turbo, Schild; Treffer lassen das Kart drehen, danach kurz unverwundbar
+  - Drift-Boost in drei Stufen mit farbigen Funken, Hüpfer beim Driftstart (über Minen springen)
+  - KI-Karts setzen Items gezielt ein und driften in engen Kurven
+  - Treffer mit fliegenden Trümmerteilen, Kamera-Wackler, Meldungen „Getroffen von …“, Projektile auf der Minikarte, synthetisierte Sounds
+  - Item-Taste: `E` / `Ende` / `-` / `Num 1`, am Gamepad Y bzw. △ (die Kamera liegt im Kart-Rennen auf Back/Select bzw. Steuerkreuz hoch)
+  - Eigene Kart-Ranglisten pro Strecke mit Umschalter „Autos / Karts“
+- Die Item-Logik ist rein, deterministisch und ohne Browser (`shared/src/items.ts`), als Grundlage für spätere Netzwerk-Kart-Rennen
+
 ## [0.12.0] – 2026-10-15
 
 ### Hinzugefügt
@@ -202,6 +216,7 @@ Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog]
 - Docker-Image und docker-compose (Port 8090)
 
 [0.6.0]: https://github.com/defendeggu/spidi-race/compare/v0.5.0...v0.6.0
+[0.13.0]: https://github.com/defendeggu/spidi-race/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/defendeggu/spidi-race/compare/v0.11.2...v0.12.0
 [0.11.2]: https://github.com/defendeggu/spidi-race/compare/v0.11.1...v0.11.2
 [0.11.1]: https://github.com/defendeggu/spidi-race/compare/v0.11.0...v0.11.1

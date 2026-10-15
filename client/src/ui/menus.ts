@@ -1,4 +1,4 @@
-import { carsForClass, MAX_CARS, type Slot } from '@spidi/shared';
+import { carsForClass, MAX_CARS, TRACK_DEFS, type Slot } from '@spidi/shared';
 import { Game, type LocalPlayerCfg } from '../game';
 import { KEYMAPS, SOLO_KEYMAP } from '../input';
 import type { App, Mode } from './app';
@@ -16,6 +16,7 @@ export function showMain(app: App, error = '') {
       <button class="big" data-a="single">Einzelrennen</button>
       <button class="big" data-a="split">Splitscreen · 2 Spieler</button>
       <button class="big" data-a="online">Netzwerkspiel</button>
+      <button class="big kart" data-a="kart">Kart-Rennen mit Items</button>
       <button class="big practice" data-a="town">Übungsfahrt in der Stadt</button>
       <button class="big" data-a="board">Rangliste</button>
       <button class="big secondary" data-a="controls">Steuerung</button>
@@ -27,6 +28,7 @@ export function showMain(app: App, error = '') {
     split: () => app.showSetup('split'),
     online: () => app.showOnlineSetup(),
     town: () => app.showTownSetup(),
+    kart: () => app.showKartSetup(),
     board: () => app.showLeaderboard({ trackId: app.prefs.trackId, sort: 'bestLap' }, () => app.showMain()),
     controls: () => showControls(app),
     credits: () => showCredits(app),
@@ -68,6 +70,7 @@ function showControls(app: App) {
         <tr><td>Pause</td><td colspan="2">${k('Esc')}</td></tr>
         <tr><td>Ton an/aus</td><td colspan="2">${k('M')}</td></tr>
         <tr><td>Steuerungshilfe (Übungsfahrt)</td><td colspan="2">${k('H')}</td></tr>
+        <tr><td>Item benutzen (Kart-Rennen)</td><td>${k('E')}</td><td>${k('Ende')} / ${k('-')} / ${k('Num 1')}</td></tr>
       </table>
       <p class="hint">Im Einzelspieler funktionieren WASD und die Pfeiltasten. Spieler 1 bekommt das erste angeschlossene Gamepad, Spieler 2 das zweite.</p>
       <table class="keys">
@@ -77,6 +80,7 @@ function showControls(app: App) {
         <tr><td>Lenken</td><td colspan="2">linker oder rechter Stick, Steuerkreuz</td></tr>
         <tr><td>Handbremse</td><td>X oder RB</td><td>□ oder R1</td></tr>
         <tr><td>Kamera / Pause</td><td>Y / Start</td><td>△ / Start</td></tr>
+        <tr><td>Kart-Rennen: Item / Kamera</td><td>Y / Back oder ↑</td><td>△ / Select oder ↑</td></tr>
       </table>
       <p class="hint">Hinweis: Manche Tastaturen erkennen nicht beliebig viele gleichzeitig gedrückte Tasten.
       Falls im Splitscreen Eingaben verloren gehen, hilft ein Gamepad für einen der beiden Spieler.</p>
@@ -107,6 +111,63 @@ export function showSetup(app: App, mode: Mode) {
 }
 
 const AI_NAMES = ['Rossi', 'Lindqvist', 'Tanaka', 'Moreau', 'Becker', 'Okafor', 'Silva', 'Novak'];
+
+/** road and offroad tracks: karts race on all but the breakfast table */
+const KART_TRACKS = TRACK_DEFS.filter((t) => (t.class ?? 'road') !== 'micro');
+
+export function showKartSetup(app: App) {
+  const pr = app.prefs;
+  const humans = pr.kartPlayers === 2 ? 2 : 1;
+  const maxAi = MAX_CARS - humans;
+  if (!KART_TRACKS.some((t) => t.id === pr.kartTrackId)) pr.kartTrackId = KART_TRACKS[0].id;
+  const s = { trackId: pr.kartTrackId, laps: pr.laps, aiCount: pr.aiCount, aiSkill: pr.aiSkill };
+  const refresh = () => app.showKartSetup();
+  app.backdrop.show(pr.kartTrackId, Array.from({ length: humans }, (_, k) => app.carOf(k, 'kart')));
+  app.setScreen('kart', html`
+    <div class="menu panel wide">
+      <h2>Kart-Rennen</h2>
+      <p class="hint">Fahr durch die ?-Boxen und schnapp dir ein Item: Blaster, Zielsucher, Mine, Turbo oder Schild. Driften (Handbremse + Lenken) lädt einen Turbo auf.</p>
+      <div class="toggle town-row">
+        <button class="${humans === 1 ? 'sel' : ''}" data-a="players" data-id="1">1 Spieler</button>
+        <button class="${humans === 2 ? 'sel' : ''}" data-a="players" data-id="2">2 Spieler (Splitscreen)</button>
+      </div>
+      <div class="players">${playerPanel(app, 0, 'kart')}${humans > 1 ? playerPanel(app, 1, 'kart') : ''}</div>
+      ${settingsBlock(s, true, maxAi, KART_TRACKS)}
+      <div class="row"><button data-a="back">Zurück</button><button class="go" data-a="start">Rennen starten ▶</button></div>
+    </div>`);
+  app.bind({
+    ...playerActions(app, refresh, () => 'kart'),
+    ...settingsActions(s, maxAi, () => {
+      Object.assign(pr, { kartTrackId: s.trackId, laps: s.laps, aiCount: s.aiCount, aiSkill: s.aiSkill });
+      app.savePrefs();
+      refresh();
+    }),
+    players: (el) => { pr.kartPlayers = Number(el.dataset.id); app.savePrefs(); refresh(); },
+    back: () => app.showMain(),
+    start: () => app.startKart(),
+  });
+}
+
+export function startKart(app: App) {
+  const pr = app.prefs;
+  const humans = pr.kartPlayers === 2 ? 2 : 1;
+  app.lastLocal = { mode: humans === 2 ? 'split' : 'single', kart: true };
+  app.restart = () => app.startKart();
+  const ai = Math.min(pr.aiCount, MAX_CARS - humans);
+  const pool = carsForClass('kart');
+  const slots: Slot[] = [];
+  for (let i = 0; i < ai; i++) {
+    slots.push({ id: `ai${i}`, name: AI_NAMES[i % AI_NAMES.length], carId: pool[(i + 1) % pool.length].id, isAI: true, ownerId: '', grid: i });
+  }
+  const locals: LocalPlayerCfg[] = [];
+  for (let k = 0; k < humans; k++) {
+    slots.push({ id: `p${k + 1}`, name: pr.players[k].name, carId: app.carOf(k, 'kart'), isAI: false, ownerId: '', grid: ai + k });
+    locals.push({ slotId: `p${k + 1}`, keymap: humans === 1 ? SOLO_KEYMAP : KEYMAPS[k], pad: k });
+  }
+  app.runGame(new Game(app.hudLayer, {
+    trackId: pr.kartTrackId, laps: pr.laps, slots, locals, countdown: 3.5, aiSkill: pr.aiSkill, kart: true,
+  }));
+}
 
 export function startLocal(app: App, mode: Mode) {
   app.lastLocal = { mode };

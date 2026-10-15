@@ -8,13 +8,17 @@ export interface KeyMap {
   right: string[];
   handbrake: string[];
   camera: string[];
+  /** use the held item (kart races) */
+  item: string[];
 }
 
 export const KEYMAPS: KeyMap[] = [
-  { up: ['KeyW'], down: ['KeyS'], left: ['KeyA'], right: ['KeyD'], handbrake: ['Space'], camera: ['KeyC'] },
+  { up: ['KeyW'], down: ['KeyS'], left: ['KeyA'], right: ['KeyD'], handbrake: ['Space'], camera: ['KeyC'], item: ['KeyE'] },
   {
     up: ['ArrowUp'], down: ['ArrowDown'], left: ['ArrowLeft'], right: ['ArrowRight'],
     handbrake: ['ControlRight', 'ShiftRight', 'Numpad0'], camera: ['Enter', 'NumpadEnter', 'Period'],
+    // End, Num 1 and the '-' key of German keyboards (code Slash)
+    item: ['End', 'Numpad1', 'Slash'],
   },
 ];
 
@@ -26,9 +30,10 @@ export const SOLO_KEYMAP: KeyMap = {
   right: [...KEYMAPS[0].right, ...KEYMAPS[1].right],
   handbrake: [...KEYMAPS[0].handbrake, ...KEYMAPS[1].handbrake],
   camera: [...KEYMAPS[0].camera, ...KEYMAPS[1].camera],
+  item: [...KEYMAPS[0].item, ...KEYMAPS[1].item],
 };
 
-const BLOCKED = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space']);
+const BLOCKED = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'Slash', 'End']);
 
 class InputManager {
   private down = new Set<string>();
@@ -79,7 +84,7 @@ class InputManager {
   }
 
   /** True once per gamepad button press (camera / pause). */
-  consumePad(padSlot: number, action: 'camera' | 'pause') {
+  consumePad(padSlot: number, action: 'camera' | 'pause' | 'item' | 'altCamera') {
     const pad = padState(padSlot);
     const key = `${pad?.index}:${action}`;
     const now = !!pad?.[action];

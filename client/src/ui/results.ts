@@ -1,5 +1,5 @@
 import {
-  formatTime, getCar, rankEntries, TOWN_BOARDS, TOWN_GOAL_COUNTS, townBoard, TRACK_DEFS,
+  formatTime, getCar, KART_PREFIX, kartBoardTrack, rankEntries, TOWN_BOARDS, TOWN_GOAL_COUNTS, townBoard, TRACK_DEFS,
   type LeaderboardEntry, type LeaderboardSort, type ResultRow,
 } from '@spidi/shared';
 import { Game } from '../game';
@@ -19,7 +19,8 @@ export function showResults(app: App, results: ResultRow[], ranks?: Record<strin
   app.game?.setEngineVolume(0.25);
   const online = !!app.net;
   const game = app.game instanceof Game ? app.game : null;
-  const trackId = game?.track.def.id ?? app.prefs.trackId;
+  // kart races have their own boards ('kart:<track>')
+  const trackId = (game?.items ? KART_PREFIX : '') + (game?.track.def.id ?? app.prefs.trackId);
   const myIds = new Set(game ? game.race.entries.filter((e) => !e.isAI && (!online || e.ownerId === app.net!.clientId)).map((e) => e.id) : []);
   const rows = results.map((r) => html`
     <tr class="${myIds.has(r.id) ? 'me' : ''}">
@@ -39,7 +40,7 @@ export function showResults(app: App, results: ResultRow[], ranks?: Record<strin
     </div>`);
   app.ui.classList.add('dim');
   app.bind({
-    again: () => app.lastLocal && app.startLocal(app.lastLocal.mode),
+    again: () => app.lastLocal && (app.lastLocal.kart ? app.startKart() : app.startLocal(app.lastLocal.mode)),
     lobby: () => {
       app.game?.dispose();
       app.game = null;
@@ -55,7 +56,8 @@ export function showResults(app: App, results: ResultRow[], ranks?: Record<strin
   const show = (rk: number[]) => {
     const el = document.getElementById('lb-info');
     if (!el) return;
-    const trackName = TRACK_DEFS.find((t) => t.id === trackId)?.name ?? trackId;
+    const kt = kartBoardTrack(trackId);
+    const trackName = kt ? `${kt.name} (Kart)` : TRACK_DEFS.find((t) => t.id === trackId)?.name ?? trackId;
     const lines = mine.filter((_, i) => rk[i] > 0).map((r) => html`🏆 <b>${r.name}</b>: Platz ${rk[mine.indexOf(r)]} der Rundenrekorde auf ${trackName}<br />`);
     setHtml(el, html`${lines}`);
   };
@@ -93,6 +95,7 @@ export function showLeaderboard(app: App, view: BoardView, back: () => void, ent
     return;
   }
   const town = townBoard(view.trackId);
+  const kart = !!kartBoardTrack(view.trackId);
   // town boards: total time for a fixed number of goals
   if (town) view.sort = 'time';
   const onTrack = entries.filter((e) => e.trackId === view.trackId);
@@ -115,8 +118,13 @@ export function showLeaderboard(app: App, view: BoardView, back: () => void, ent
   app.setScreen('leaderboard', html`
     <div class="menu panel wide">
       <h2>Rangliste</h2>
+      ${town ? '' : html`<div class="toggle">
+        <button class="${kart ? '' : 'sel'}" data-a="kind" data-id="">Autos</button>
+        <button class="${kart ? 'sel' : ''}" data-a="kind" data-id="${KART_PREFIX}">Karts</button>
+      </div>`}
       <div class="toggle">
-        ${[...TRACK_DEFS, ...TOWN_BOARDS].map((t) => html`<button class="${t.id === view.trackId ? 'sel' : ''}" data-a="track" data-id="${t.id}">${t.name}</button>`)}
+        ${[...TRACK_DEFS.filter((t) => !kart || (t.class ?? 'road') !== 'micro').map((t) => ({ id: (kart ? KART_PREFIX : '') + t.id, name: t.name })), ...TOWN_BOARDS]
+          .map((t) => html`<button class="${t.id === view.trackId ? 'sel' : ''}" data-a="track" data-id="${t.id}">${t.name}</button>`)}
       </div>
       <div class="opts">
         ${town ? '' : html`<label>Wertung
@@ -136,6 +144,13 @@ export function showLeaderboard(app: App, view: BoardView, back: () => void, ent
   const again = (v: BoardView) => showLeaderboard(app, v, back, entries);
   app.bind({
     track: (el) => showLeaderboard(app, { ...view, trackId: el.dataset.id! }, back),
+    kind: (el) => {
+      const base = view.trackId.replace(KART_PREFIX, '');
+      const t = TRACK_DEFS.find((d) => d.id === base);
+      // the breakfast table has no kart board
+      const id = el.dataset.id && (t?.class ?? 'road') === 'micro' ? 'alpenpass' : base;
+      showLeaderboard(app, { ...view, trackId: (el.dataset.id ?? '') + id }, back);
+    },
     sort: (el) => again({ ...view, sort: (el as HTMLSelectElement).value as LeaderboardSort }),
     laps: (el) => again({ ...view, laps: Number((el as HTMLSelectElement).value) }),
     back,
