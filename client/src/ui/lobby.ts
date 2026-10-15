@@ -1,10 +1,18 @@
-import { getCar, MAX_CARS, type ServerMsg } from '@spidi/shared';
+import { getCar, MAX_CARS, TRACK_DEFS, type CarClass, type LobbySettings, type ServerMsg } from '@spidi/shared';
 import { Game, type LocalPlayerCfg } from '../game';
 import { KEYMAPS, SOLO_KEYMAP } from '../input';
 import { Net } from '../net';
 import type { App } from './app';
 import { html } from './html';
 import { playerActions, playerPanel, settingsActions, settingsBlock } from './widgets';
+
+/** karts race on road and offroad tracks */
+const KART_TRACKS = TRACK_DEFS.filter((t) => (t.class ?? 'road') !== 'micro');
+
+/** The car class of the lobby: karts in a kart race, otherwise the track's class. */
+function lobbyClass(app: App, s: LobbySettings): CarClass {
+  return s.kart ? 'kart' : app.classOf(s.trackId);
+}
 
 export function showOnlineSetup(app: App, error = '') {
   const n = app.prefs.onlineLocal;
@@ -21,7 +29,7 @@ export function showOnlineSetup(app: App, error = '') {
         <button class="${n === 2 ? 'sel' : ''}" data-a="two">2 Spieler (Splitscreen)</button>
       </div>
       <div class="players">${playerPanel(app, 0, 'road')}${n > 1 ? playerPanel(app, 1, 'road') : ''}</div>
-      <p class="hint">Wählt der Host eine Offroad- oder Micro-Strecke, suchst du dein Auto dieser Klasse direkt in der Lobby aus.</p>
+      <p class="hint">Wählt der Host eine Offroad- oder Micro-Strecke oder ein Kart-Rennen, suchst du dein Fahrzeug dieser Klasse direkt in der Lobby aus.</p>
       <div class="row"><button data-a="back">Zurück</button><button class="go" data-a="connect">Lobby betreten ▶</button></div>
     </div>`);
   app.bind({
@@ -74,7 +82,7 @@ function onNet(app: App, m: ServerMsg) {
     app.lobby = m;
     // track class changed by the host: switch to my car of that class
     if (m.phase === 'lobby') {
-      const want = app.lobbyPlayers(app.classOf(m.settings.trackId));
+      const want = app.lobbyPlayers(lobbyClass(app, m.settings));
       const mine = m.clients.find((c) => c.id === app.net!.clientId)?.players;
       if (mine && JSON.stringify(mine) !== JSON.stringify(want)) app.net!.send({ type: 'join', players: want });
     }
@@ -88,7 +96,7 @@ function onNet(app: App, m: ServerMsg) {
     }));
     const skill = app.lobby?.settings.aiSkill ?? 0.93;
     app.runGame(new Game(app.hudLayer, {
-      trackId: m.trackId, laps: m.laps, slots: m.slots, locals, countdown: m.countdown, aiSkill: skill, net: app.net!,
+      trackId: m.trackId, laps: m.laps, slots: m.slots, locals, countdown: m.countdown, aiSkill: skill, net: app.net!, kart: !!m.kart,
     }));
   }
 }
@@ -100,7 +108,9 @@ export function showLobby(app: App) {
   const isHost = l.hostId === net.clientId;
   const humans = l.clients.reduce((s, c) => s + c.players.length, 0);
   const maxAi = Math.max(0, MAX_CARS - humans);
-  const cls = app.classOf(l.settings.trackId);
+  const cls = lobbyClass(app, l.settings);
+  const kart = !!l.settings.kart;
+  const editable = isHost && l.phase === 'lobby';
   app.backdrop.show(l.settings.trackId, app.lobbyPlayers(cls).map((p) => p.carId));
   const canPick = l.phase === 'lobby';
   const list = l.clients.map((c) => c.players.map((p, k) => {
@@ -116,7 +126,13 @@ export function showLobby(app: App) {
       <h2>Lobby</h2>
       <div class="lobby">
         <div><h3>Fahrer (${humans})</h3><ul class="lobby-list">${list}</ul></div>
-        <div>${settingsBlock(settings, isHost && l.phase === 'lobby', maxAi)}</div>
+        <div>
+          <div class="toggle">
+            <button class="${!kart ? 'sel' : ''}" data-a="kind" data-id="cars" ${!editable ? html`disabled` : ''}>Autorennen</button>
+            <button class="${kart ? 'sel' : ''}" data-a="kind" data-id="kart" ${!editable ? html`disabled` : ''}>Kart-Rennen mit Items</button>
+          </div>
+          ${settingsBlock(settings, editable, maxAi, kart ? KART_TRACKS : TRACK_DEFS)}
+        </div>
       </div>
       ${app.lobbyNotice ? html`<div class="notice">${app.lobbyNotice}</div>` : ''}
       ${l.phase === 'race' ? html`<p class="hint">Ein Rennen läuft gerade – du fährst beim nächsten Rennen mit.</p>` : ''}
@@ -128,6 +144,11 @@ export function showLobby(app: App) {
     </div>`);
   app.bind({
     ...settingsActions(settings, maxAi, () => net.send({ type: 'settings', settings })),
+    kind: (el) => {
+      settings.kart = el.dataset.id === 'kart';
+      if (settings.kart && !KART_TRACKS.some((t) => t.id === settings.trackId)) settings.trackId = KART_TRACKS[0].id;
+      net.send({ type: 'settings', settings });
+    },
     leave: () => app.showMain(),
     lcar: (el) => {
       app.cycleCar(Number(el.dataset.k), cls, Number(el.dataset.d));

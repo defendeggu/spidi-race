@@ -76,7 +76,6 @@ export function sanitizeSubmission(s: Partial<LeaderboardSubmission>, trusted = 
   if (!name) return null;
   if (s.mode === 'online' && !trusted) return null;
   const mode: RaceMode = s.mode === 'split' || s.mode === 'online' ? s.mode : 'solo';
-  if (kartTrack && mode === 'online') return null;
   return { name, carId: s.carId!, trackId: kartTrack ? KART_PREFIX + track.id : track.id, laps, time: Math.round(time * 1000) / 1000, bestLap: Math.round(bestLap * 1000) / 1000, mode };
 }
 

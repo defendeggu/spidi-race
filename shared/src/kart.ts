@@ -113,6 +113,17 @@ export function stepKartWith(c: CarState, spec: CarSpec, inp: CarInput, dt: numb
   move(s, i);
 }
 
+/**
+ * The timers of a kart that is driven elsewhere: the game server keeps them for karts simulated by
+ * their clients, so that hits, shields and the immunity after a spin-out are judged correctly.
+ */
+export function tickKartTimers(ks: KartState, dt: number) {
+  ks.invuln = Math.max(0, ks.invuln - dt);
+  ks.shield = Math.max(0, ks.shield - dt);
+  ks.hop = Math.max(0, ks.hop - dt);
+  ks.spin = Math.max(0, ks.spin - dt);
+}
+
 /** A hit by a projectile or a mine: spin-out unless the kart is protected. Returns what happened. */
 export function hitKart(ks: KartState): 'hit' | 'blocked' | 'immune' {
   if (ks.spin > 0 || ks.invuln > 0) return 'immune';

@@ -2,7 +2,15 @@
 
 Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
-## [0.16.0] – 2026-10-16
+## [0.17.0] – 2026-10-16
+
+### Hinzugefügt
+- **Kart-Rennen im Netzwerkspiel**: Der Host schaltet in der Lobby auf „Kart-Rennen mit Items“; alle wählen ihr Kart direkt in der Lobby
+  - der Server führt Item-Boxen, Würfeln nach Platzierung, Projektile, Minen und Treffer für alle sowie die KI-Karts mit ihrer Item-Taktik
+  - Clients senden nur „Item benutzen“ und den Drift-/Boost-Zustand ihrer Karts; Treffer, Schild und Turbo kommen mit den Snapshots zurück
+  - Online-Kart-Zeiten trägt der Server in die Kart-Rangliste ein
+
+ – 2026-10-16
 
 ### Hinzugefügt
 - **Touch-Steuerung** für Smartphones und Tablets (Spieler 1): Lenkfeld links, Gas, Bremse, Drift und – in den Kart-Modi – Item rechts, Kamera und Pause oben; mehrere Finger gleichzeitig, Hinweis bei Hochformat, Vollbild beim Spielstart, kein Zoomen oder Scrollen

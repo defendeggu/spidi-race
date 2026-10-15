@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { AIDriver } from './ai';
 import { carsForClass, getCar } from './cars';
-import { ItemWorld, rollItem, ITEM_WEIGHTS } from './items';
-import { DRIFT_BOOST, driftLevel, newKartState, stepKart } from './kart';
+import { ItemWorld, rollItem, ITEM_WEIGHTS, type ItemEvent } from './items';
+import { DRIFT_BOOST, driftLevel, hitKart, newKartState, SPIN_TIME, stepKart, tickKartTimers, TURBO_TIME } from './kart';
 import { KartBrain } from './kartAi';
 import { sanitizeSubmission } from './leaderboard';
 import { mulberry32 } from './math';
+import { applyNetItems, toNetItems } from './protocol';
 import { collideCars, createCarState, forwardSpeed, type CarInput } from './physics';
 import { Race, type Slot } from './race';
 import { gridPosition } from './track';
@@ -142,6 +143,9 @@ describe('kart driving', () => {
     expect(sanitizeSubmission({ ...ok, trackId: 'kart:fruehstueck' })).toBeNull();
     expect(sanitizeSubmission({ ...ok, bestLap: 50, time: 110 })).toBeNull();
     expect(sanitizeSubmission({ ...ok, trackId: 'alpenpass' })).toBeNull();
+    // online kart races: only from the game server
+    expect(sanitizeSubmission({ ...ok, mode: 'online' })).toBeNull();
+    expect(sanitizeSubmission({ ...ok, mode: 'online' }, true)).toMatchObject({ mode: 'online', trackId: 'kart:alpenpass' });
   });
 });
 
@@ -189,4 +193,36 @@ describe('kart race with AI and items', () => {
       expect(hits).toBeGreaterThan(0);
     });
   }
+});
+
+describe('kart items over the network', () => {
+  it('a client mirror follows the server, own karts keep their drift', () => {
+    const track = getTrack('speedway');
+    const server = new ItemWorld(track, ['a', 'b'], 5);
+    const client = new ItemWorld(track, ['a', 'b'], 9);
+    const sa = server.kart('a'), sb = server.kart('b');
+    sa.item = 'blaster';
+    sb.boost = 0.8;
+    sb.drift = -1;
+    hitKart(sa);
+    server.boxes[2].respawn = 1.5;
+    const ca = client.kart('a');
+    ca.drift = 1;
+    ca.driftTime = 1;
+    ca.boost = 0.4;
+    const ev: ItemEvent[] = [{ type: 'use', car: 'a', item: 'turbo' }];
+    applyNetItems(client, JSON.parse(JSON.stringify(toNetItems(server, ev))), new Set(['a']));
+    // own kart: item and spin-out from the server (the hit ends the drift), turbo boost from the event
+    expect(ca.item).toBe('blaster');
+    expect(ca.spin).toBeCloseTo(SPIN_TIME);
+    expect(ca.drift).toBe(0);
+    expect(ca.boost).toBe(TURBO_TIME);
+    // other karts: everything from the server
+    expect(client.kart('b').drift).toBe(-1);
+    expect(client.kart('b').boost).toBe(0.8);
+    expect(client.boxes.map((b) => b.respawn > 0)).toEqual(server.boxes.map((b) => b.respawn > 0));
+    // the server keeps the timers of client-driven karts running
+    tickKartTimers(sa, SPIN_TIME + 0.1);
+    expect(sa.spin).toBe(0);
+  });
 });
