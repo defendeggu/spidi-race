@@ -1,6 +1,6 @@
 import type { NetRace, ResultRow, Slot } from './race';
 import type { CarState } from './physics';
-import { ITEM_KINDS, TURBO_TIME, type ItemKind, type KartState } from './kart';
+import { ITEM_KINDS, SHIELD_TIME, TURBO_TIME, type ItemKind, type KartState } from './kart';
 import type { ItemEvent, ItemWorld, Projectile } from './items';
 import type { BattleRow, NetBattle } from './battle';
 
@@ -131,6 +131,8 @@ export interface NetBattleRow extends BattleRow {
 export interface NetKart {
   id: string;
   it: ItemKind | null;
+  /** the items behind it */
+  q: ItemKind[];
   /** item roulette: seconds left */
   ro: number;
   sp: number;
@@ -144,10 +146,10 @@ export interface NetKart {
   ht: number;
 }
 
-/** Everything of the items the clients need to show: karts, shots [id, kind, x, y, z, vx, vz], mines, boxes away, events. */
+/** Everything of the items the clients need to show: karts, shots [id, kind, x, y, z, vx, vz, owner], mines, boxes away, events. */
 export interface NetItems {
   k: NetKart[];
-  p: [number, 'blaster' | 'homing', number, number, number, number, number][];
+  p: [number, 'blaster' | 'homing', number, number, number, number, number, string][];
   m: [number, number, number, number][];
   /** indices of the boxes that are not there right now */
   b: number[];
@@ -156,7 +158,7 @@ export interface NetItems {
 
 export function toNetKart(ks: KartState): NetKart {
   return {
-    id: ks.id, it: ks.item, ro: r2(ks.rolling), sp: r2(ks.spin), sh: r2(ks.shield), inv: r2(ks.invuln),
+    id: ks.id, it: ks.item, q: [...ks.stock], ro: r2(ks.rolling), sp: r2(ks.spin), sh: r2(ks.shield), inv: r2(ks.invuln),
     bo: r2(ks.boost), dr: ks.drift, dt: r2(ks.driftTime), hp: r2(ks.hop), hg: ks.hitsGiven, ht: ks.hitsTaken,
   };
 }
@@ -164,7 +166,7 @@ export function toNetKart(ks: KartState): NetKart {
 export function toNetItems(w: ItemWorld, events: ItemEvent[]): NetItems {
   return {
     k: [...w.karts.values()].map(toNetKart),
-    p: w.projectiles.map((p) => [p.id, p.kind, r2(p.x), r2(p.y), r2(p.z), r2(p.vx), r2(p.vz)]),
+    p: w.projectiles.map((p) => [p.id, p.kind, r2(p.x), r2(p.y), r2(p.z), r2(p.vx), r2(p.vz), p.owner]),
     m: w.mines.map((m) => [m.id, r2(m.x), r2(m.y), r2(m.z)]),
     b: w.boxes.flatMap((b, i) => (b.respawn > 0 ? [i] : [])),
     ev: events,
@@ -187,13 +189,15 @@ export function applyKartDrive(ks: KartState, v: unknown) {
 /**
  * Client side: show the server's item state. own: karts this client drives – they keep their drift and
  * boost, take a spin-out when the server says they were hit and a boost when their turbo fired.
- * delay (s): shots are drawn that much in the past, like the interpolated cars of the others.
+ * delay (s): the others' shots are drawn that much in the past, like their interpolated cars; own shots
+ * are drawn where they are, like the own karts.
  */
 export function applyNetItems(w: ItemWorld, n: NetItems, own: Set<string>, delay = 0) {
   for (const k of n.k) {
     const ks = w.karts.get(k.id);
     if (!ks) continue;
     ks.item = k.it && ITEM_KINDS.includes(k.it) ? k.it : null;
+    ks.stock = Array.isArray(k.q) ? k.q.filter((q) => ITEM_KINDS.includes(q)) : [];
     ks.rolling = k.ro;
     ks.shield = k.sh;
     ks.invuln = k.inv;
@@ -221,12 +225,110 @@ export function applyNetItems(w: ItemWorld, n: NetItems, own: Set<string>, delay
     }
   }
   w.projectiles.length = 0;
-  for (const [id, kind, x, y, z, vx, vz] of n.p) {
-    const p: Projectile = { id, kind, owner: '', target: null, x: x - vx * delay, y, z: z - vz * delay, vx, vz, idx: 0, age: 0, bounces: 0 };
+  for (const [id, kind, x, y, z, vx, vz, owner = ''] of n.p) {
+    const d = own.has(owner) ? 0 : delay;
+    const p: Projectile = { id, kind, owner, target: null, x: x - vx * d, y, z: z - vz * d, vx, vz, idx: 0, age: 0, bounces: 0 };
     w.projectiles.push(p);
   }
   w.mines.length = 0;
   for (const [id, x, y, z] of n.m) w.mines.push({ id, owner: '', x, y, z, age: 1 });
   const away = new Set(n.b);
   w.boxes.forEach((b, i) => (b.respawn = away.has(i) ? 1 : 0));
+}
+
+/** a use the server has not confirmed within this time (s) was refused (e.g. the kart was hit) */
+const PREDICT_TIMEOUT = 1;
+
+/**
+ * Client side of the items in a network game: the server's state, plus the own uses shown at once.
+ * Pressing "item" fires the shot (or drops the mine, raises the shield …) right away; when the server's
+ * confirmation arrives, its shot takes over the predicted one (the visuals keep the object, see
+ * `adopt`), and the use is not shown a second time.
+ */
+export class ItemMirror {
+  private pending: { car: string; item: ItemKind; local: number | null; age: number }[] = [];
+  /** confirmed uses waiting for the server's shot / mine: car → local id */
+  private awaiting = new Map<string, number>();
+
+  constructor(readonly world: ItemWorld) {}
+
+  /** The player used the item of an own kart: returns the events to show (none if there was no item). */
+  use(id: string, c: CarState): ItemEvent[] {
+    const p = this.world.predict(id, c);
+    if (!p) return [];
+    this.pending.push({ car: id, ...p, age: 0 });
+    return this.world.events.splice(0);
+  }
+
+  /** Between snapshots: shots fly on; predictions the server never confirmed disappear. */
+  update(dt: number): ItemEvent[] {
+    for (const p of this.world.projectiles) {
+      p.x += p.vx * dt;
+      p.z += p.vz * dt;
+    }
+    const events: ItemEvent[] = [];
+    for (let k = this.pending.length - 1; k >= 0; k--) {
+      const p = this.pending[k];
+      p.age += dt;
+      if (p.age < PREDICT_TIMEOUT) continue;
+      this.pending.splice(k, 1);
+      if (p.local !== null) {
+        this.dropLocal(p.local);
+        events.push({ type: 'destroy', id: p.local, reason: 'timeout' });
+      }
+    }
+    return events;
+  }
+
+  /**
+   * A snapshot from the server. Returns the events to show and the shots / mines whose predicted
+   * object the server's one takes over ([local id, server id]).
+   */
+  apply(n: NetItems, own: Set<string>, delay = 0): { events: ItemEvent[]; adopt: [number, number][] } {
+    const w = this.world;
+    const keepShots = w.projectiles.filter((p) => p.id < 0);
+    const keepMines = w.mines.filter((m) => m.id < 0);
+    applyNetItems(w, n, own, delay);
+    const events: ItemEvent[] = [];
+    const adopt: [number, number][] = [];
+    for (const e of n.ev) {
+      if (e.type === 'use' && own.has(e.car)) {
+        const k = this.pending.findIndex((p) => p.car === e.car && p.item === e.item);
+        if (k >= 0) {
+          const [p] = this.pending.splice(k, 1);
+          if (p.local !== null) this.awaiting.set(p.car, p.local);
+          continue; // already shown
+        }
+      }
+      if (e.type === 'spawn' && this.awaiting.has(e.owner)) {
+        const local = this.awaiting.get(e.owner)!;
+        this.awaiting.delete(e.owner);
+        adopt.push([local, e.id]);
+        const i = keepShots.findIndex((p) => p.id === local);
+        if (i >= 0) keepShots.splice(i, 1);
+        const j = keepMines.findIndex((m) => m.id === local);
+        if (j >= 0) keepMines.splice(j, 1);
+        continue;
+      }
+      events.push(e);
+    }
+    // predictions still waiting for the server: keep them, and keep the item out of the slot
+    w.projectiles.push(...keepShots);
+    w.mines.push(...keepMines);
+    for (const p of this.pending) {
+      const ks = w.karts.get(p.car);
+      if (!ks) continue;
+      if (ks.item === p.item) ks.item = ks.stock.shift() ?? null;
+      if (p.item === 'shield') ks.shield = Math.max(ks.shield, SHIELD_TIME - p.age);
+    }
+    return { events, adopt };
+  }
+
+  private dropLocal(id: number) {
+    const w = this.world;
+    const i = w.projectiles.findIndex((p) => p.id === id);
+    if (i >= 0) w.projectiles.splice(i, 1);
+    const j = w.mines.findIndex((m) => m.id === id);
+    if (j >= 0) w.mines.splice(j, 1);
+  }
 }

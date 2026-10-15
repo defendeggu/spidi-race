@@ -135,7 +135,8 @@ Das Image ist zweistufig aufgebaut (Node 22). Beim Build laufen die Tests und de
   Erkannt werden sowohl Gamepads mit Standard-Belegung als auch die rohe Linux-Belegung, die Firefox für manche Controller meldet (Xbox-Controller mit Triggern als Achsen, DualShock 3).
 - **PS3-Controller:** Unter Linux per USB oder Bluetooth direkt nutzbar (Treiber `hid-sony` ist im Kernel), in Chrome und Firefox. Unter Windows 11 gibt es keinen eingebauten Treiber: [DsHidMini](https://github.com/nefarius/DsHidMini) installieren und den Controller im *XInput*-Modus betreiben, dann erscheint er als Xbox-Controller. Den Browser erkennt das Gamepad erst nach dem ersten Tastendruck.
 - Viele Tastaturen erkennen nur eine begrenzte Zahl gleichzeitig gedrückter Tasten. Gehen im Splitscreen Eingaben verloren, hilft ein Gamepad für einen der beiden Spieler.
-- **Smartphone und Tablet (Touch):** Im Spiel erscheinen Bildschirm-Knöpfe für Spieler 1 – links ein Lenkfeld (Daumen auflegen und seitlich ziehen), rechts **Gas**, **Bremse** und **Drift**, in den Kart-Modi **Item**, oben Kamera und Pause. Am besten quer halten; das Spiel wechselt beim Start in den Vollbildmodus. Auf Touch-Geräten rechnet die Grafik mit geringerer Auflösung und ohne Kantenglättung, damit es flüssig läuft. Für Neigungssteuerung bräuchte es HTTPS; sie ist noch nicht eingebaut.
+- **Smartphone und Tablet (Touch):** Im Spiel erscheinen Bildschirm-Knöpfe für Spieler 1 – links ein Lenkfeld (Daumen auflegen und seitlich ziehen), rechts **Gas**, **Bremse** und **Drift**, in den Kart-Modi **Item**, oben Kamera und Pause. Am besten quer halten; das Spiel wechselt beim Start in den Vollbildmodus. Auf Touch-Geräten rechnet die Grafik mit geringerer Auflösung und ohne Kantenglättung, damit es flüssig läuft.
+- **Grafik:** Unten im Hauptmenü lässt sich die Grafik auf **Auto**, **Hoch** oder **Niedrig** stellen. Niedrig rechnet ohne Kantenglättung und mit geringerer Auflösung – hilft auf älteren Laptops. Auto ist auf Handys und Tablets niedrig, sonst hoch. Beim Umschalten lädt die Seite kurz neu. Für Neigungssteuerung bräuchte es HTTPS; sie ist noch nicht eingebaut.
 
 ## Kart-Rennen mit Items
 
@@ -144,7 +145,7 @@ Hauptmenü → **Kart-Rennen mit Items**. Gefahren wird auf allen Strassen- und 
 | Was | Details |
 |---|---|
 | Karts | 5 Karts mit Alien-Fahrern (Kenney Car Kit), ca. 120–135 km/h, mit Boost mehr, sehr wendig |
-| ?-Boxen | drei Reihen pro Runde (bei 20 %, 55 % und 85 % der Strecke); wer mit leerem Slot durchfährt, bekommt nach einer kurzen Roulette ein Item. Die Boxen sind nach 2 s wieder da |
+| ?-Boxen | drei Reihen pro Runde (bei 20 %, 55 % und 85 % der Strecke); jede Box gibt nach einer kurzen Roulette ein Item. Man kann bis zu 3 Items sammeln und setzt sie nacheinander ein (die gesammelten stehen klein neben dem Slot). Die Boxen sind nach 2 s wieder da |
 | Vergabe | nach Platzierung: Vorne gibt es eher Minen und Blaster, hinten eher Turbo und Zielsucher |
 | Blaster 🔫 | Schaumstoffpfeil geradeaus, prallt bis zu dreimal an der Leitplanke ab |
 | Zielsucher 🎯 | verfolgt das Kart direkt vor dir |
@@ -198,7 +199,7 @@ So funktioniert es technisch:
 - Jeder Client simuliert seine eigenen Autos und sendet deren Zustand 30-mal pro Sekunde.
 - Der Server simuliert die KI-Gegner, entscheidet über Runden, Platzierungen und Zieleinlauf und verteilt den Spielstand an alle.
 - Fremde Autos werden mit etwa 110 ms Verzögerung interpoliert, damit sie flüssig fahren.
-- Kart-Rennen: Der Server führt die Items aller Karts – Boxen, Würfeln, Projektile, Minen und Treffer – und die KI-Karts samt ihrer Item-Taktik. Die Clients schicken nur „Item benutzen“ und den Drift- und Boost-Zustand ihrer Karts mit; Treffer, Schild und Turbo kommen vom Server zurück. Beim Battle führt der Server zusätzlich die Ballons und erkennt, wer ins Hafenbecken gefallen ist.
+- Kart-Rennen: Der Server führt die Items aller Karts – Boxen, Würfeln, Projektile, Minen und Treffer – und die KI-Karts samt ihrer Item-Taktik. Die Clients schicken nur „Item benutzen“ und den Drift- und Boost-Zustand ihrer Karts mit; Treffer, Schild und Turbo kommen vom Server zurück. Beim Battle führt der Server zusätzlich die Ballons und erkennt, wer ins Hafenbecken gefallen ist. Eigene Schüsse, Minen, Schild und Turbo erscheinen sofort beim Drücken; der Server bestätigt sie, und sein Schuss übernimmt den angezeigten.
 
 ## Rangliste
 

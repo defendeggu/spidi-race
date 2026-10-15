@@ -1,11 +1,17 @@
 import * as THREE from 'three';
+import { loadPrefs } from './ui/prefs';
 
-/** phones and tablets get a lighter setting: no antialiasing and a lower resolution */
-const low = window.matchMedia?.('(pointer: coarse)').matches ?? false;
+/**
+ * Low graphics (the setting in the main menu; 'auto' = on phones and tablets): no antialiasing and a
+ * lower resolution – on big screens a bit below the window size. Antialiasing is fixed when the WebGL
+ * context is created, so a change of the setting reloads the page.
+ */
+const level = loadPrefs().graphics;
+const lowGraphics = level === 'low' || (level !== 'high' && (window.matchMedia?.('(pointer: coarse)').matches ?? false));
 
 /** One WebGL renderer for the whole app (menus and races). */
-export const renderer = new THREE.WebGLRenderer({ antialias: !low, powerPreference: 'high-performance' });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, low ? 1 : 1.5));
+export const renderer = new THREE.WebGLRenderer({ antialias: !lowGraphics, powerPreference: 'high-performance' });
+renderer.setPixelRatio(lowGraphics ? (window.innerWidth >= 1400 ? 0.75 : 1) : Math.min(window.devicePixelRatio, 1.5));
 renderer.domElement.id = 'view';
 document.getElementById('app')!.prepend(renderer.domElement);
 

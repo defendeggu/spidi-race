@@ -6,7 +6,7 @@ import { DRIFT_BOOST, driftLevel, hitKart, newKartState, SPIN_TIME, stepKart, ti
 import { KartBrain } from './kartAi';
 import { sanitizeSubmission } from './leaderboard';
 import { mulberry32 } from './math';
-import { applyNetItems, toNetItems } from './protocol';
+import { applyNetItems, ItemMirror, toNetItems } from './protocol';
 import { collideCars, createCarState, forwardSpeed, type CarInput } from './physics';
 import { Race, type Slot } from './race';
 import { gridPosition } from './track';
@@ -224,5 +224,84 @@ describe('kart items over the network', () => {
     // the server keeps the timers of client-driven karts running
     tickKartTimers(sa, SPIN_TIME + 0.1);
     expect(sa.spin).toBe(0);
+  });
+});
+
+describe('collecting several items', () => {
+  it('a kart carries up to three items and uses them in order', () => {
+    const track = getTrack('speedway');
+    const w = new ItemWorld(track, ['a'], 3);
+    const c = createCarState('a', track, 0, 0, 0);
+    const ks = w.kart('a');
+    // drive through four boxes, one after another (each roll finishes before the next box)
+    for (let k = 0; k < 4; k++) {
+      const b = w.boxes[k];
+      c.x = b.x;
+      c.y = b.y;
+      c.z = b.z;
+      w.step(1 / 60, [c], () => 1, () => null);
+      c.x += 100;
+      for (let i = 0; i < 70; i++) w.step(1 / 60, [c], () => 1, () => null);
+    }
+    expect(ks.item).not.toBeNull();
+    expect(ks.stock.length).toBe(2);
+    const order = [ks.item, ...ks.stock];
+    const used: string[] = [];
+    w.events.length = 0;
+    for (let k = 0; k < 4; k++) {
+      w.use('a');
+      w.step(1 / 60, [c], () => 1, () => null);
+    }
+    for (const e of w.events) if (e.type === 'use') used.push(e.item);
+    expect(used).toEqual(order);
+    expect(ks.item).toBeNull();
+  });
+});
+
+describe('own items shown at once in the network game', () => {
+  const track = getTrack('speedway');
+  const setup = () => {
+    const server = new ItemWorld(track, ['a', 'b'], 5);
+    const client = new ItemMirror(new ItemWorld(track, ['a', 'b'], 9));
+    const c = createCarState('a', track, 0, 0, 0);
+    server.kart('a').item = 'blaster';
+    server.kart('a').stock = ['mine'];
+    const own = new Set(['a']);
+    client.apply(toNetItems(server, []), own);
+    return { server, client, c, own };
+  };
+
+  it('the shot flies at once, the server shot takes it over', () => {
+    const { server, client, c, own } = setup();
+    const ev = client.use('a', c);
+    expect(ev.map((e) => e.type)).toEqual(['use', 'spawn']);
+    const local = client.world.projectiles[0].id;
+    expect(local).toBeLessThan(0);
+    expect(client.world.kart('a').item).toBe('mine');
+    // a snapshot from before the server got the message: the shot stays, the slot stays moved on
+    client.apply(JSON.parse(JSON.stringify(toNetItems(server, []))), own);
+    expect(client.world.projectiles.map((p) => p.id)).toEqual([local]);
+    expect(client.world.kart('a').item).toBe('mine');
+    // the server fires: its shot takes over, nothing is shown twice
+    server.use('a');
+    server.step(1 / 60, [c], () => 1, () => null);
+    const r = client.apply(JSON.parse(JSON.stringify(toNetItems(server, server.events.splice(0)))), own);
+    const id = server.projectiles[0].id;
+    expect(r.adopt).toEqual([[local, id]]);
+    expect(r.events.filter((e) => e.type === 'use' || e.type === 'spawn')).toEqual([]);
+    expect(client.world.projectiles.map((p) => p.id)).toEqual([id]);
+    expect(client.world.kart('a').item).toBe('mine');
+  });
+
+  it('a use the server refuses disappears again', () => {
+    const { server, client, c, own } = setup();
+    client.use('a', c);
+    const local = client.world.projectiles[0].id;
+    client.update(0.5);
+    // the server never fired (the kart was hit just before): the item is back after the timeout
+    expect(client.update(0.6)).toEqual([{ type: 'destroy', id: local, reason: 'timeout' }]);
+    expect(client.world.projectiles).toEqual([]);
+    client.apply(toNetItems(server, []), own);
+    expect(client.world.kart('a').item).toBe('blaster');
   });
 });

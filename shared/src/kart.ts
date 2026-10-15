@@ -5,6 +5,8 @@ import type { Track } from './track';
 
 export type ItemKind = 'blaster' | 'homing' | 'mine' | 'turbo' | 'shield';
 export const ITEM_KINDS: ItemKind[] = ['blaster', 'homing', 'mine', 'turbo', 'shield'];
+/** a kart carries up to this many items and uses them one after the other */
+export const ITEM_SLOTS = 3;
 
 /** Drift charge needed for boost level 1 / 2 / 3 (s) and the boost each level gives (s). */
 export const DRIFT_LEVELS = [0.6, 1.2, 2];
@@ -20,7 +22,10 @@ export const HOP_TIME = 0.3;
 /** Everything a kart carries in addition to the car state. */
 export interface KartState {
   id: string;
+  /** the item used next */
   item: ItemKind | null;
+  /** the items collected behind it (at most ITEM_SLOTS - 1), used in this order */
+  stock: ItemKind[];
   /** item roulette running (s left); the item is decided when it ends */
   rolling: number;
   rollItem: ItemKind | null;
@@ -39,7 +44,7 @@ export interface KartState {
 
 export function newKartState(id: string): KartState {
   return {
-    id, item: null, rolling: 0, rollItem: null, boost: 0, spin: 0, invuln: 0, shield: 0, drift: 0, driftTime: 0, hop: 0,
+    id, item: null, stock: [], rolling: 0, rollItem: null, boost: 0, spin: 0, invuln: 0, shield: 0, drift: 0, driftTime: 0, hop: 0,
     hitsGiven: 0, hitsTaken: 0,
   };
 }

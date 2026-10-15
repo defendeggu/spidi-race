@@ -136,6 +136,16 @@ export class ItemVisuals {
     }
   }
 
+  /** Network game: the server's shot or mine (id) takes over the one shown in advance (local id). */
+  adopt(local: number, id: number) {
+    for (const map of [this.shots, this.mines]) {
+      const o = map.get(local);
+      if (!o) continue;
+      map.delete(local);
+      map.set(id, o);
+    }
+  }
+
   private burst(p: THREE.Vector3, color: string) {
     for (let i = 0; i < 24; i++) {
       const a = Math.random() * Math.PI * 2, s = 3 + Math.random() * 6;

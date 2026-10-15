@@ -1,4 +1,4 @@
-import { hitKart, newKartState, SHIELD_TIME, TURBO_TIME, type ItemKind, type KartState } from './kart';
+import { hitKart, ITEM_SLOTS, newKartState, SHIELD_TIME, TURBO_TIME, type ItemKind, type KartState } from './kart';
 import { clamp, mulberry32, wrapAngle } from './math';
 import { forwardSpeed, type CarState } from './physics';
 import { HARBOR, LINE_COUNT, LINES, type TownMap } from './town';
@@ -174,6 +174,8 @@ export class ItemWorld {
   readonly events: ItemEvent[] = [];
   private pending = new Set<string>();
   private nextId = 1;
+  /** ids of predicted (client-side) shots and mines are negative */
+  private nextLocalId = -1;
   private rnd: () => number;
   /** projectiles are pooled: no garbage while racing */
   private pool: Projectile[] = [];
@@ -215,9 +217,11 @@ export class ItemWorld {
         ks.rolling -= dt;
         if (ks.rolling <= 0) {
           ks.rolling = 0;
-          ks.item = ks.rollItem;
+          const item = ks.rollItem!;
           ks.rollItem = null;
-          this.events.push({ type: 'granted', car: c.id, item: ks.item! });
+          if (ks.item) ks.stock.push(item);
+          else ks.item = item;
+          this.events.push({ type: 'granted', car: c.id, item });
         }
       }
       this.boxes.forEach((b, i) => {
@@ -225,8 +229,8 @@ export class ItemWorld {
         if (Math.hypot(b.x - c.x, b.z - c.z) > BOX_RADIUS || Math.abs(b.y - c.y) > 3) return;
         b.respawn = BOX_RESPAWN;
         this.events.push({ type: 'box', box: i, car: c.id });
-        // only karts with an empty slot get something
-        if (!ks.item && ks.rolling === 0) {
+        // only karts with a free slot get something (one roll at a time)
+        if (ks.rolling === 0 && (ks.item ? 1 : 0) + ks.stock.length < ITEM_SLOTS) {
           ks.rolling = ROLL_TIME;
           ks.rollItem = rollItem(position(c.id), n, this.rnd);
         }
@@ -297,24 +301,40 @@ export class ItemWorld {
     return res;
   }
 
-  private fire(id: string, c: CarState | undefined, target: string | null) {
+  /**
+   * Network game, client side: use the held item at once, before the server confirms it – the shot,
+   * mine, shield or turbo shows without the round trip. Returns the item used (null if none) and its
+   * shot / mine id (negative), which the server's own object takes over when it arrives.
+   */
+  predict(id: string, c: CarState): { item: ItemKind; local: number | null } | null {
+    const ks = this.karts.get(id);
+    if (!ks?.item || ks.spin > 0) return null;
+    const item = ks.item;
+    const local = item === 'blaster' || item === 'homing' || item === 'mine' ? this.nextLocalId : null;
+    this.fire(id, c, null, true);
+    return { item, local };
+  }
+
+  private fire(id: string, c: CarState | undefined, target: string | null, local = false) {
     const ks = this.karts.get(id);
     if (!ks?.item || !c) return;
+    const newId = () => (local ? this.nextLocalId-- : this.nextId++);
     const item = ks.item;
-    ks.item = null;
+    // the next collected item moves up
+    ks.item = ks.stock.shift() ?? null;
     this.events.push({ type: 'use', car: id, item });
     const fx = Math.sin(c.heading), fz = Math.cos(c.heading);
     if (item === 'turbo') ks.boost = Math.max(ks.boost, TURBO_TIME);
     else if (item === 'shield') ks.shield = SHIELD_TIME;
     else if (item === 'mine') {
-      const m: Mine = { id: this.nextId++, owner: id, x: c.x - fx * 3, y: c.y, z: c.z - fz * 3, age: 0 };
+      const m: Mine = { id: newId(), owner: id, x: c.x - fx * 3, y: c.y, z: c.z - fz * 3, age: 0 };
       this.mines.push(m);
       this.events.push({ type: 'spawn', id: m.id, kind: 'mine', owner: id });
     } else {
       const speed = (item === 'blaster' ? BLASTER_SPEED : HOMING_SPEED) + Math.max(0, forwardSpeed(c));
       const p = this.pool.pop() ?? ({} as Projectile);
       Object.assign(p, {
-        id: this.nextId++, kind: item, owner: id, target: item === 'homing' ? target : null,
+        id: newId(), kind: item, owner: id, target: item === 'homing' ? target : null,
         x: c.x + fx * 2.5, y: c.y + 0.6, z: c.z + fz * 2.5, vx: fx * speed, vz: fz * speed, idx: c.idx, age: 0, bounces: 0,
       });
       this.projectiles.push(p);

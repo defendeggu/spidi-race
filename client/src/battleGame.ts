@@ -1,5 +1,5 @@
 import {
-  applyNetBattle, applyNetCar, applyNetItems, BATTLE_BOT_NAMES, BattleBot, BattleSession, battleSpawn, collideCars,
+  applyNetBattle, applyNetCar, BATTLE_BOT_NAMES, ItemMirror, BattleBot, BattleSession, battleSpawn, collideCars,
   createTownCar, forwardSpeed, getCar, HARBOR, idleCar, ItemWorld, lerp, lerpAngle, NO_INPUT, stepCarTown, stepKartWith,
   SURFACE_PROPS, toNetCar, toNetKart, townArena,
   type BattleRow, type CarInput, type CarSpec, type CarState, type ItemEvent, type ItemKind, type NetCar, type ServerMsg, type Slot,
@@ -92,6 +92,8 @@ export class BattleGame {
   private finishTimer = -1;
   private finished = false;
   private offNet: (() => void) | null = null;
+  /** network game: the server's items, own uses shown at once */
+  private mirror: ItemMirror | null = null;
   paused = false;
   /** HUD containers of this game (one per player) */
   private holders: HTMLElement[] = [];
@@ -154,7 +156,10 @@ export class BattleGame {
     this.items = new ItemWorld(townArena(town), ids, Math.floor(Math.random() * 1e9));
     this.visuals = new ItemVisuals(this.world.dynamic, this.items, new Map(this.karts.map((k) => [k.id, k.visual])), this.particles);
     this.world.dynamic.add(this.particles.points);
-    if (net) this.offNet = net.on((m) => this.onNet(m));
+    if (net) {
+      this.mirror = new ItemMirror(this.items);
+      this.offNet = net.on((m) => this.onNet(m));
+    }
   }
 
   start() {
@@ -187,8 +192,9 @@ export class BattleGame {
       }
       applyNetBattle(this.session, m.battle);
       const own = new Set(this.players.map((p) => p.kart.id));
-      applyNetItems(this.items, m.items, own, INTERP_DELAY / 1000);
-      for (const e of m.items.ev) {
+      const r = this.mirror!.apply(m.items, own, INTERP_DELAY / 1000);
+      for (const [local, id] of r.adopt) this.visuals.adopt(local, id);
+      for (const e of r.events) {
         if (e.type === 'hit') this.lostBalloon(e.victim);
         this.events.push(e);
       }
@@ -224,8 +230,14 @@ export class BattleGame {
       }
       const fire = input.consume(p.cfg.keymap.item) || input.consumePad(p.cfg.pad, 'item') || (touch && input.consumeTouch('item'));
       if (fire && !this.paused && this.session.phase === 'running' && this.session.alive(p.kart.id)) {
-        if (this.opts.net) this.opts.net.send({ type: 'item', id: p.kart.id });
-        else this.items.use(p.kart.id);
+        if (this.opts.net && this.mirror) {
+          // shown at once, the server confirms it
+          const ev = this.mirror.use(p.kart.id, p.kart.state);
+          if (ev.length) {
+            this.events.push(...ev);
+            this.opts.net.send({ type: 'item', id: p.kart.id });
+          }
+        } else this.items.use(p.kart.id);
       }
     }
     // the network game goes on during the pause
@@ -240,10 +252,7 @@ export class BattleGame {
     if (this.opts.net) {
       this.updateRemote(now);
       // shots fly on between the server's snapshots
-      for (const p of this.items.projectiles) {
-        p.x += p.vx * dt;
-        p.z += p.vz * dt;
-      }
+      this.events.push(...this.mirror!.update(dt));
     }
     this.render(sim ? this.acc / STEP : 1, dt);
   }
