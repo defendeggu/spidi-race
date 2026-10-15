@@ -1,5 +1,6 @@
 import type { CarInput } from '@spidi/shared';
 import { isPlayStation, readPad, type PadKind, type PadState } from './padMapping';
+import type { TouchAction, TouchControls } from './touch';
 
 export interface KeyMap {
   up: string[];
@@ -66,6 +67,14 @@ class InputManager {
     this.pressed.clear();
   }
 
+  /** on-screen controls on phones and tablets (player 1 only) */
+  touch: TouchControls | null = null;
+
+  /** True once per tap of a touch button (pause, camera, item). */
+  consumeTouch(a: TouchAction) {
+    return this.touch?.consume(a) ?? false;
+  }
+
   carInput(map: KeyMap, padSlot: number): CarInput {
     const inp: CarInput = {
       throttle: this.isDown(map.up) ? 1 : 0,
@@ -79,6 +88,14 @@ class InputManager {
       if (pad.throttle > 0) inp.throttle = pad.throttle;
       if (pad.brake > 0) inp.brake = pad.brake;
       if (pad.handbrake) inp.handbrake = true;
+    }
+    // the touch controls belong to player 1
+    const t = padSlot === 0 ? this.touch?.state : undefined;
+    if (t) {
+      if (t.steer !== 0) inp.steer = t.steer;
+      if (t.throttle > 0) inp.throttle = t.throttle;
+      if (t.brake > 0) inp.brake = t.brake;
+      if (t.handbrake) inp.handbrake = true;
     }
     return inp;
   }

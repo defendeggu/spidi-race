@@ -145,11 +145,13 @@ export class TownGame {
   /** a cheat changed a car: such runs stay out of the leaderboard */
   cheated = false;
   paused = false;
+  /** HUD containers of this game (one per player) */
+  private holders: HTMLElement[] = [];
   onPause: (() => void) | null = null;
   /** called a moment after a solo run or duel has ended */
   onFinish: ((result: TownResult) => void) | null = null;
 
-  constructor(private hudLayer: HTMLElement, readonly opts: TownOptions) {
+  constructor(hudLayer: HTMLElement, readonly opts: TownOptions) {
     this.world = getTownWorld();
     const town = this.world.town;
     const split = opts.players.length > 1;
@@ -166,6 +168,7 @@ export class TownGame {
       holder.style.top = split ? `${k * 50}%` : '0';
       holder.style.height = split ? '50%' : '100%';
       hudLayer.appendChild(holder);
+      this.holders.push(holder);
       // in a duel both chase the same (gold) goal, so only one is drawn
       const color = duel ? GOAL_COLORS[0] : GOAL_COLORS[k];
       const goal = opts.task === 'parking' ? parkingGoal(color) : starGoal(color);
@@ -202,7 +205,8 @@ export class TownGame {
     input.clearPressed();
     const frame = (now: number) => {
       this.raf = requestAnimationFrame(frame);
-      const dt = Math.min(0.1, (now - this.last) / 1000);
+      // never negative: the first animation frame time can lie before performance.now()
+      const dt = Math.max(0, Math.min(0.1, (now - this.last) / 1000));
       this.last = now;
       this.frame(dt);
     };
@@ -234,14 +238,14 @@ export class TownGame {
   private frame(dt: number) {
     this.clock += dt;
     const padPause = this.players.map((p) => input.consumePad(p.cfg.pad, 'pause')).some(Boolean);
-    if (input.consume(['Escape']) || padPause) this.onPause?.();
+    if (input.consume(['Escape']) || padPause || input.consumeTouch('pause')) this.onPause?.();
     if (input.consume(['KeyM'])) {
       const m = audio.toggleMute();
       for (const p of this.players) p.hud.flash(m ? 'Ton aus' : 'Ton an', 1);
     }
     if (input.consume(['KeyH'])) for (const p of this.players) p.hud.toggleHelp();
     for (const p of this.players) {
-      if (input.consume(p.cfg.keymap.camera) || input.consumePad(p.cfg.pad, 'camera')) {
+      if (input.consume(p.cfg.keymap.camera) || input.consumePad(p.cfg.pad, 'camera') || (p.cfg.pad === 0 && input.consumeTouch('camera'))) {
         p.cam.cycle();
         p.hud.showCameraMode(p.cam.mode);
       }
@@ -439,6 +443,7 @@ export class TownGame {
     }
     this.particles.dispose();
     for (const t of this.trafficVisuals) t.visual.dispose();
-    this.hudLayer.innerHTML = '';
+    // only our own HUD: a new game may already have added its HUD (restart, "again")
+    for (const h of this.holders) h.remove();
   }
 }

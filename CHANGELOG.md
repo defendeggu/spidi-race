@@ -2,6 +2,16 @@
 
 Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.16.0] – 2026-10-16
+
+### Hinzugefügt
+- **Touch-Steuerung** für Smartphones und Tablets (Spieler 1): Lenkfeld links, Gas, Bremse, Drift und – in den Kart-Modi – Item rechts, Kamera und Pause oben; mehrere Finger gleichzeitig, Hinweis bei Hochformat, Vollbild beim Spielstart, kein Zoomen oder Scrollen
+- Leichtere Grafik auf Touch-Geräten (geringere Auflösung, keine Kantenglättung)
+
+### Behoben
+- Spielschleifen: Ein negativer Zeitschritt (der erste Bild-Zeitstempel kann vor `performance.now()` liegen) konnte die Physik für viele Sekunden anhalten
+- „Nochmal“ und „Neustart“ entfernten das HUD des neuen Spiels: Jedes Spiel räumt jetzt nur noch seine eigenen HUD-Elemente weg
+
 ## [0.15.0] – 2026-10-15
 
 ### Hinzugefügt
@@ -238,6 +248,7 @@ Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog]
 - Docker-Image und docker-compose (Port 8090)
 
 [0.6.0]: https://github.com/defendeggu/spidi-race/compare/v0.5.0...v0.6.0
+[0.16.0]: https://github.com/defendeggu/spidi-race/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/defendeggu/spidi-race/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/defendeggu/spidi-race/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/defendeggu/spidi-race/compare/v0.12.0...v0.13.0

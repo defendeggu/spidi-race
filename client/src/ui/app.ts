@@ -3,6 +3,7 @@ import { audio } from '../audio';
 import { typeCheat } from '../cheats';
 import { Game } from '../game';
 import { input } from '../input';
+import { isTouchDevice, TouchControls } from '../touch';
 import type { Net } from '../net';
 import { TownGame } from '../townGame';
 import { BattleGame } from '../battleGame';
@@ -111,6 +112,15 @@ export class App {
     this.ui.className = 'hidden';
     this.ui.innerHTML = '';
     this.screen = 'game';
+    // phones and tablets: on-screen controls for player 1, fullscreen and no page scrolling
+    input.touch?.dispose();
+    input.touch = null;
+    if (isTouchDevice()) {
+      const kart = (game instanceof Game && !!game.items) || game instanceof BattleGame;
+      input.touch = new TouchControls(this.hudLayer, { item: kart });
+      this.hudLayer.classList.add('touch-on');
+      document.documentElement.requestFullscreen?.().catch(() => {});
+    }
     if (game instanceof Game) game.onFinish = (results, ranks) => this.showResults(results, ranks);
     else if (game instanceof BattleGame) game.onFinish = (r) => showBattleResults(this, game, r);
     else game.onFinish = (r) => showTownResults(this, game, r);
@@ -187,6 +197,9 @@ export class App {
   quitGame() {
     this.game?.dispose();
     this.game = null;
+    input.touch?.dispose();
+    input.touch = null;
+    this.hudLayer.classList.remove('touch-on');
     this.showMain();
   }
 }

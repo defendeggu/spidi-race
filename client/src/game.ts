@@ -82,6 +82,8 @@ export class Game {
   private finishedNotified = false;
   private offNet: (() => void) | null = null;
   paused = false;
+  /** HUD containers of this game (one per player) */
+  private holders: HTMLElement[] = [];
   private particles = new Particles();
   /** landings during the last fixed steps (for HUD, sound and dust) */
   private landings: { car: GameCar; airTime: number; hit: number }[] = [];
@@ -93,7 +95,7 @@ export class Game {
   onFinish: ((results: ResultRow[], ranks?: Record<string, number>) => void) | null = null;
   onPause: (() => void) | null = null;
 
-  constructor(private hudLayer: HTMLElement, private opts: GameOptions) {
+  constructor(hudLayer: HTMLElement, private opts: GameOptions) {
     this.track = getTrack(opts.trackId);
     this.world = getWorld(opts.trackId);
     this.race = new Race(this.track, opts.laps, opts.slots, opts.countdown);
@@ -136,6 +138,7 @@ export class Game {
       holder.style.top = split ? `${k * 50}%` : '0';
       holder.style.height = split ? '50%' : '100%';
       hudLayer.appendChild(holder);
+      this.holders.push(holder);
       const hud = new Hud(holder, this.track, cfg.slotId, split);
       const pitch = car.spec.class === 'micro' ? 1.7 : car.spec.class === 'kart' ? 1.35 : 1;
       const voice = audio.ctx ? new EngineVoice(split ? (k === 0 ? -0.45 : 0.45) : 0, split ? 0.75 : 1, pitch) : null;
@@ -154,7 +157,8 @@ export class Game {
     input.clearPressed();
     const frame = (now: number) => {
       this.raf = requestAnimationFrame(frame);
-      const dt = Math.min(0.1, (now - this.last) / 1000);
+      // never negative: the first animation frame time can lie before performance.now()
+      const dt = Math.max(0, Math.min(0.1, (now - this.last) / 1000));
       this.last = now;
       this.frame(dt, now);
     };
@@ -191,19 +195,20 @@ export class Game {
 
   private frame(dt: number, now: number) {
     const padPause = this.players.map((p) => input.consumePad(p.cfg.pad, 'pause')).some(Boolean);
-    if (input.consume(['Escape']) || padPause) this.onPause?.();
+    if (input.consume(['Escape']) || padPause || input.consumeTouch('pause')) this.onPause?.();
     if (input.consume(['KeyM'])) {
       const m = audio.toggleMute();
       for (const p of this.players) p.hud.flash(m ? 'Ton aus' : 'Ton an', 1);
     }
     for (const p of this.players) {
+      const touch = p.cfg.pad === 0;
       // in kart races Y / △ fires, the camera moves to Back / Select or d-pad up
-      if (input.consume(p.cfg.keymap.camera) || input.consumePad(p.cfg.pad, this.items ? 'altCamera' : 'camera')) {
+      if (input.consume(p.cfg.keymap.camera) || input.consumePad(p.cfg.pad, this.items ? 'altCamera' : 'camera') || (touch && input.consumeTouch('camera'))) {
         p.cam.cycle();
         p.hud.showCameraMode(p.cam.mode);
       }
       if (this.items) {
-        const fire = input.consume(p.cfg.keymap.item) || input.consumePad(p.cfg.pad, 'item');
+        const fire = input.consume(p.cfg.keymap.item) || input.consumePad(p.cfg.pad, 'item') || (touch && input.consumeTouch('item'));
         const entry = this.race.entry(p.car.slot.id);
         if (fire && this.race.started && !entry?.finished && !this.paused) this.items.use(p.car.slot.id);
       }
@@ -447,6 +452,7 @@ export class Game {
       p.hud.dispose();
       p.voice?.dispose();
     }
-    this.hudLayer.innerHTML = '';
+    // only our own HUD: a new game may already have added its HUD (restart, "again")
+    for (const h of this.holders) h.remove();
   }
 }
