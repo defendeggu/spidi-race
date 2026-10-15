@@ -9,3 +9,12 @@ services:
     volumes:
       # permanente Rangliste: data/leaderboard.json (git-ignoriert, Vorlage im Repo)
       - ./data:/app/data
+    # Härtung: nur ./data ist beschreibbar, keine Linux-Capabilities, keine Rechteausweitung
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - "no-new-privileges:true"
+    mem_limit: 512m

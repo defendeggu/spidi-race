@@ -1,5 +1,6 @@
 import { formatTime, getCar, type Race, type Track } from '@spidi/shared';
 import { CAMERA_MODES } from './render/cameras';
+import { html, setHtml } from './ui/html';
 
 export interface MapDot {
   x: number;
@@ -23,7 +24,7 @@ export class Hud {
   constructor(parent: HTMLElement, private track: Track, private entryId: string, compact: boolean) {
     this.root = document.createElement('div');
     this.root.className = 'hud' + (compact ? ' compact' : '');
-    this.root.innerHTML = `
+    setHtml(this.root, html`
       <div class="hud-tl">
         <div class="hud-pos"><span data-k="pos">1</span><small>/<span data-k="cnt">1</span></small></div>
         <div class="hud-lap">RUNDE <span data-k="lap">1/3</span></div>
@@ -40,7 +41,7 @@ export class Hud {
         <div class="hud-speed"><span data-k="speed">0</span><small>km/h</small></div>
         <div class="hud-gear">GANG <span data-k="gear">1</span></div>
         <div class="hud-rpm"><div data-k="rpm"></div></div>
-      </div>`;
+      </div>`);
     this.root.querySelectorAll<HTMLElement>('[data-k]').forEach((e) => (this.el[e.dataset.k!] = e));
     const size = compact ? 120 : 170;
     this.mapBg = document.createElement('canvas');
@@ -122,9 +123,8 @@ export class Hud {
     }
 
     const rows = [...race.entries].sort((a, b) => a.position - b.position).slice(0, 8);
-    this.el.standings.innerHTML = rows
-      .map((r) => `<div class="${r.id === this.entryId ? 'me' : ''}"><b>${r.position}</b><i style="background:${getCar(r.carId).color}"></i>${escapeHtml(r.name)}${r.finished ? ' ✔' : ''}</div>`)
-      .join('');
+    setHtml(this.el.standings, html`${rows.map((r) =>
+      html`<div class="${r.id === this.entryId ? 'me' : ''}"><b>${r.position}</b><i style="background:${getCar(r.carId).color}"></i>${r.name}${r.finished ? ' ✔' : ''}</div>`)}`);
 
     const g = this.map.getContext('2d')!;
     g.clearRect(0, 0, this.map.width, this.map.height);
@@ -148,8 +148,4 @@ export class Hud {
   dispose() {
     this.root.remove();
   }
-}
-
-export function escapeHtml(s: string) {
-  return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 }

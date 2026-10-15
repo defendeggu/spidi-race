@@ -65,6 +65,29 @@ export function toNetCar(c: CarState): NetCar {
   };
 }
 
+const num = (v: unknown, lo: number, hi: number, def = 0) => {
+  const n = typeof v === 'number' ? v : NaN;
+  return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : def;
+};
+
+/**
+ * Clean a car state received from the network: every field gets the right type and a sane range,
+ * unknown fields are dropped. Returns null if it is not an object with an id and finite x/z.
+ */
+export function sanitizeNetCar(v: unknown, maxGear = 8): NetCar | null {
+  if (!v || typeof v !== 'object') return null;
+  const o = v as Record<string, unknown>;
+  if (typeof o.id !== 'string' || o.id.length > 64) return null;
+  if (typeof o.x !== 'number' || typeof o.z !== 'number' || !Number.isFinite(o.x) || !Number.isFinite(o.z)) return null;
+  const W = 1e5;
+  return {
+    id: o.id,
+    x: num(o.x, -W, W), y: num(o.y, -1e3, 1e3), z: num(o.z, -W, W), h: num(o.h, -10, 10),
+    vx: num(o.vx, -200, 200), vz: num(o.vz, -200, 200), st: num(o.st, -1, 1), rpm: num(o.rpm, 0, 9000),
+    g: Math.round(num(o.g, 0, maxGear, 1)), sk: num(o.sk, 0, 1), br: o.br === true, vy: num(o.vy, -100, 100), air: o.air === true,
+  };
+}
+
 export function applyNetCar(c: CarState, n: NetCar) {
   c.x = n.x;
   c.y = n.y;

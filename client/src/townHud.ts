@@ -2,6 +2,7 @@ import { LINES, TOWN_HALF, type CarInput, type TownMap, type TownTask } from '@s
 import { CAMERA_MODES } from './render/cameras';
 import type { KeyMap } from './input';
 import type { PadKind } from './padMapping';
+import { html, setHtml } from './ui/html';
 
 export interface TownDot {
   x: number;
@@ -33,7 +34,7 @@ export class TownHud {
   constructor(parent: HTMLElement, private town: TownMap, task: TownTask, duel: boolean, private keymap: KeyMap, compact: boolean) {
     this.root = document.createElement('div');
     this.root.className = 'hud town-hud' + (compact ? ' compact' : '');
-    this.root.innerHTML = `
+    setHtml(this.root, html`
       <div class="hud-tl">
         <div class="town-task">${duel ? 'DUELL · ' : ''}${TASK_TITLE[task]}</div>
         <div class="town-count" data-k="count"></div>
@@ -50,7 +51,7 @@ export class TownHud {
       <div class="hud-br">
         <div class="hud-speed"><span data-k="speed">0</span><small>km/h</small></div>
         <div class="hud-gear">GANG <span data-k="gear">1</span></div>
-      </div>`;
+      </div>`);
     this.root.querySelectorAll<HTMLElement>('[data-k]').forEach((e) => (this.el[e.dataset.k!] = e));
     if (task === 'free') this.el.goal.style.display = 'none';
     const size = compact ? 140 : 200;
@@ -171,20 +172,20 @@ export class TownHud {
       this.padMode = pad;
       const k = this.keymap;
       const ps = pad === 'playstation';
-      this.el.help.innerHTML = pad
-        ? `<div class="th-title">${ps ? 'PlayStation-Controller' : 'Gamepad'}</div>
+      setHtml(this.el.help, pad
+        ? html`<div class="th-title">${ps ? 'PlayStation-Controller' : 'Gamepad'}</div>
            <div class="th-row"><b data-h="throttle">${ps ? 'R2 · ✕' : 'RT · A'}</b><span>Gas</span></div>
            <div class="th-row"><b data-h="brake">${ps ? 'L2 · ○' : 'LT · B'}</b><span>Bremse / Rückwärts</span></div>
            <div class="th-row"><b data-h="left">◀ Stick</b><b data-h="right">Stick ▶</b><span>Lenken</span></div>
            <div class="th-row"><b data-h="hand">${ps ? '□ · R1' : 'X · RB'}</b><span>Handbremse</span></div>
            <div class="th-foot">H = Hilfe aus</div>`
-        : `<div class="th-title">Tastatur</div>
+        : html`<div class="th-title">Tastatur</div>
            <div class="th-keys">
              <div></div><b data-h="throttle">${label(k.up)}<small>Gas</small></b><div></div>
              <b data-h="left">${label(k.left)}<small>Links</small></b><b data-h="brake">${label(k.down)}<small>Bremse</small></b><b data-h="right">${label(k.right)}<small>Rechts</small></b>
            </div>
            <div class="th-row"><b data-h="hand">${label(k.handbrake)}</b><span>Handbremse</span></div>
-           <div class="th-foot">H = Hilfe aus</div>`;
+           <div class="th-foot">H = Hilfe aus</div>`);
     }
     const on: Record<string, boolean> = {
       throttle: inp.throttle > 0.05, brake: inp.brake > 0.05, left: inp.steer < -0.1, right: inp.steer > 0.1, hand: inp.handbrake,
