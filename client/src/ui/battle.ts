@@ -20,18 +20,27 @@ export function startBattle(app: App) {
 export function showBattleResults(app: App, game: BattleGame, r: BattleResult) {
   game.setEngineVolume(0.25);
   const win = r.rows.find((x) => x.id === r.winner);
+  const online = !!app.net;
   app.setScreen('results', html`
     <div class="menu panel overlay">
       <h2>${win ? `${win.name} gewinnt!` : 'Unentschieden!'}</h2>
       <table class="results"><tr><th>#</th><th>Fahrer</th><th>Kart</th><th>Ballons</th><th>Treffer</th></tr>
-        ${r.rows.map((x) => html`<tr class="${x.human ? 'me' : ''}"><td>${x.place}</td><td>${x.name}${x.human ? '' : html` <small>KI</small>`}</td>
+        ${r.rows.map((x) => html`<tr class="${x.mine ? 'me' : ''}"><td>${x.place}</td><td>${x.name}${x.human ? '' : html` <small>KI</small>`}</td>
           <td>${getCar(x.carId).name}</td><td>${x.balloons ? '🎈'.repeat(x.balloons) : '–'}</td><td>${x.hitsGiven}</td></tr>`)}
       </table>
       <div class="row">
-        <button class="go" data-a="again">Nochmal</button>
-        <button data-a="menu">Hauptmenü</button>
+        ${online ? html`<button class="go" data-a="lobby">Zurück zur Lobby</button>` : html`<button class="go" data-a="again">Nochmal</button>`}
+        <button data-a="menu">${online ? 'Netzwerkspiel verlassen' : 'Hauptmenü'}</button>
       </div>
     </div>`);
   app.ui.classList.add('dim');
-  app.bind({ again: () => app.startBattle(), menu: () => app.quitGame() });
+  app.bind({
+    again: () => app.startBattle(),
+    lobby: () => {
+      app.game?.dispose();
+      app.game = null;
+      app.showLobby();
+    },
+    menu: () => app.quitGame(),
+  });
 }

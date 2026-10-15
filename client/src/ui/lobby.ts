@@ -1,4 +1,5 @@
-import { getCar, MAX_CARS, TRACK_DEFS, type CarClass, type LobbySettings, type ServerMsg } from '@spidi/shared';
+import { BATTLE_BOT_NAMES, BATTLE_MAX_KARTS, getCar, MAX_CARS, TRACK_DEFS, type CarClass, type LobbySettings, type ServerMsg } from '@spidi/shared';
+import { BattleGame } from '../battleGame';
 import { Game, type LocalPlayerCfg } from '../game';
 import { KEYMAPS, SOLO_KEYMAP } from '../input';
 import { Net } from '../net';
@@ -94,6 +95,13 @@ function onNet(app: App, m: ServerMsg) {
     const locals: LocalPlayerCfg[] = mine.map((s, k) => ({
       slotId: s.id, keymap: mine.length === 1 ? SOLO_KEYMAP : KEYMAPS[k], pad: k,
     }));
+    if (m.battle) {
+      app.runGame(new BattleGame(app.hudLayer, {
+        players: mine.map((s, k) => ({ name: s.name, carId: s.carId, keymap: locals[k].keymap, pad: k, slotId: s.id })),
+        bots: 0, net: app.net!, slots: m.slots,
+      }));
+      return;
+    }
     const skill = app.lobby?.settings.aiSkill ?? 0.93;
     app.runGame(new Game(app.hudLayer, {
       trackId: m.trackId, laps: m.laps, slots: m.slots, locals, countdown: m.countdown, aiSkill: skill, net: app.net!, kart: !!m.kart,
@@ -107,7 +115,8 @@ export function showLobby(app: App) {
   if (!l || !net) return;
   const isHost = l.hostId === net.clientId;
   const humans = l.clients.reduce((s, c) => s + c.players.length, 0);
-  const maxAi = Math.max(0, MAX_CARS - humans);
+  const battle = !!l.settings.kart && !!l.settings.battle;
+  const maxAi = battle ? Math.max(0, Math.min(BATTLE_BOT_NAMES.length, BATTLE_MAX_KARTS - humans)) : Math.max(0, MAX_CARS - humans);
   const cls = lobbyClass(app, l.settings);
   const kart = !!l.settings.kart;
   const editable = isHost && l.phase === 'lobby';
@@ -129,9 +138,17 @@ export function showLobby(app: App) {
         <div>
           <div class="toggle">
             <button class="${!kart ? 'sel' : ''}" data-a="kind" data-id="cars" ${!editable ? html`disabled` : ''}>Autorennen</button>
-            <button class="${kart ? 'sel' : ''}" data-a="kind" data-id="kart" ${!editable ? html`disabled` : ''}>Kart-Rennen mit Items</button>
+            <button class="${kart && !battle ? 'sel' : ''}" data-a="kind" data-id="kart" ${!editable ? html`disabled` : ''}>Kart-Rennen mit Items</button>
+            <button class="${battle ? 'sel' : ''}" data-a="kind" data-id="battle" ${!editable ? html`disabled` : ''}>Kart-Battle in der Stadt</button>
           </div>
-          ${settingsBlock(settings, editable, maxAi, kart ? KART_TRACKS : TRACK_DEFS)}
+          ${battle
+            ? html`
+              <p class="hint">Jedes Kart hat 3 Ballons. Jeder Treffer kostet einen, wer ins Hafenbecken fällt, verliert alle.
+              Wer zuletzt noch Ballons hat, gewinnt – spätestens nach 3 Minuten. Bis zu ${BATTLE_MAX_KARTS} Karts.</p>
+              <div class="opts"><label>Computer-Karts <span class="stepper">
+                <button data-a="aiDown" ${!editable ? html`disabled` : ''}>−</button><b>${Math.min(settings.aiCount, maxAi)}</b>
+                <button data-a="aiUp" ${!editable ? html`disabled` : ''}>+</button></span></label></div>`
+            : settingsBlock(settings, editable, maxAi, kart ? KART_TRACKS : TRACK_DEFS)}
         </div>
       </div>
       ${app.lobbyNotice ? html`<div class="notice">${app.lobbyNotice}</div>` : ''}
@@ -139,13 +156,14 @@ export function showLobby(app: App) {
       <div class="row">
         <button data-a="leave">Lobby verlassen</button>
         ${isHost && l.phase === 'race' ? html`<button class="danger" data-a="abort">Rennen für alle abbrechen</button>` : ''}
-        ${isHost ? html`<button class="go" data-a="start" ${l.phase !== 'lobby' ? html`disabled` : ''}>Rennen starten ▶</button>` : html`<span class="hint">Warte auf den Host…</span>`}
+        ${isHost ? html`<button class="go" data-a="start" ${l.phase !== 'lobby' ? html`disabled` : ''}>${battle ? 'Battle starten ▶' : 'Rennen starten ▶'}</button>` : html`<span class="hint">Warte auf den Host…</span>`}
       </div>
     </div>`);
   app.bind({
     ...settingsActions(settings, maxAi, () => net.send({ type: 'settings', settings })),
     kind: (el) => {
-      settings.kart = el.dataset.id === 'kart';
+      settings.kart = el.dataset.id === 'kart' || el.dataset.id === 'battle';
+      settings.battle = el.dataset.id === 'battle';
       if (settings.kart && !KART_TRACKS.some((t) => t.id === settings.trackId)) settings.trackId = KART_TRACKS[0].id;
       net.send({ type: 'settings', settings });
     },

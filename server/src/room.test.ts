@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { WebSocket } from 'ws';
-import { getCar, type CarState, type ItemWorld, type Race, type ServerMsg, type Slot } from '@spidi/shared';
+import { getCar, HARBOR, type BattleSession, type CarState, type ItemWorld, type Race, type ServerMsg, type Slot } from '@spidi/shared';
 import { Leaderboard } from './leaderboard';
 import { Room } from './room';
 
@@ -27,7 +27,10 @@ class FakeSocket extends EventEmitter {
   }
 }
 
-type Internals = { race: Race | null; cars: { slot: Slot; state: CarState }[]; items: ItemWorld | null; tick(): void; timer: NodeJS.Timeout | null };
+type Internals = {
+  race: Race | null; cars: { slot: Slot; state: CarState }[]; items: ItemWorld | null; tick(): void; timer: NodeJS.Timeout | null;
+  battle: { session: BattleSession; items: ItemWorld; tick(cars: { slot: Slot; state: CarState }[], dt: number): boolean } | null; phase: string;
+};
 
 const rooms: Room[] = [];
 const dirs: string[] = [];
@@ -154,5 +157,67 @@ describe('room', () => {
     expect(ks.boost).toBe(3);
     expect(ks.drift).toBe(1);
     expect(ks.hop).toBe(0);
+  });
+
+  it('runs a kart battle in the town', () => {
+    const { inner, join } = setup();
+    const a = join('Anna'), b = join('Ben');
+    a.msg({ type: 'join', players: [{ name: 'Anna', carId: 'kart-ooli' }] });
+    a.msg({ type: 'settings', settings: { trackId: 'speedway', laps: 1, aiCount: 9, aiSkill: 0.93, kart: true, battle: true } });
+    a.msg({ type: 'start' });
+    const start = b.sent.find((m) => m.type === 'start') as Extract<ServerMsg, { type: 'start' }>;
+    expect(start.battle).toBe(true);
+    // two players and at most four bots, all in karts, each on its own intersection
+    expect(start.slots.length).toBe(6);
+    expect(start.slots.every((s) => getCar(s.carId).class === 'kart')).toBe(true);
+    expect(new Set(inner.cars.map((c) => `${c.state.x},${c.state.z}`)).size).toBe(6);
+    // stop the room's clock and step the battle by hand
+    clearInterval(inner.timer!);
+    const battle = inner.battle!;
+    const step = (n: number) => {
+      for (let i = 0; i < n && !battle.tick(inner.cars, 1 / 60); i++);
+    };
+    step(60 * 4);
+    expect(battle.session.phase).toBe('running');
+    // Ben drives into the harbour: out
+    const ben = start.slots.find((s) => !s.isAI && s.name === 'Ben')!;
+    const car = inner.cars.find((c) => c.slot.id === ben.id)!;
+    b.msg({ type: 'state', cars: [{ id: ben.id, x: car.state.x, z: car.state.z, y: HARBOR.waterY - 2 }] });
+    step(1);
+    expect(battle.session.alive(ben.id)).toBe(false);
+    // Anna fires her item; Ben (out) cannot, and nobody fires someone else's
+    const anna = start.slots.find((s) => !s.isAI && s.name === 'Anna')!;
+    battle.items.kart(anna.id).item = 'shield';
+    battle.items.kart(ben.id).item = 'shield';
+    b.msg({ type: 'item', id: anna.id });
+    b.msg({ type: 'item', id: ben.id });
+    step(1);
+    expect(battle.items.kart(anna.id).item).toBe('shield');
+    expect(battle.items.kart(ben.id).item).toBe('shield');
+    a.msg({ type: 'item', id: anna.id });
+    step(1);
+    expect(battle.items.kart(anna.id).shield).toBeGreaterThan(0);
+    // the bots hunt Anna (who stands still) and each other: decided within the three minutes
+    step(60 * 200);
+    expect(battle.session.phase).toBe('finished');
+  });
+
+  it('sends the battle result and returns to the lobby', async () => {
+    const { inner, join } = setup();
+    const a = join('Anna'), b = join('Ben');
+    a.msg({ type: 'settings', settings: { trackId: 'speedway', laps: 1, aiCount: 0, aiSkill: 0.93, kart: true, battle: true } });
+    a.msg({ type: 'start' });
+    const start = a.sent.find((m) => m.type === 'start') as Extract<ServerMsg, { type: 'start' }>;
+    const [anna, ben] = start.slots;
+    inner.battle!.session.step(5);
+    // Ben falls into the harbour: Anna wins, the result follows after a short pause
+    const car = inner.cars.find((c) => c.slot.id === ben.id)!;
+    b.msg({ type: 'state', cars: [{ id: ben.id, x: car.state.x, z: car.state.z, y: HARBOR.waterY - 2 }] });
+    await new Promise((r) => setTimeout(r, 3000));
+    const end = a.sent.find((m) => m.type === 'battleEnd') as Extract<ServerMsg, { type: 'battleEnd' }> | undefined;
+    expect(end?.winner).toBe(anna.id);
+    expect(end?.rows.map((r) => [r.id, r.place, r.isAI])).toEqual([[anna.id, 1, false], [ben.id, 2, false]]);
+    expect(inner.phase).toBe('lobby');
+    expect(a.sent.filter((m) => m.type === 'bsnap').length).toBeGreaterThan(50);
   });
 });

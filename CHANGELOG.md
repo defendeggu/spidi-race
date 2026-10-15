@@ -2,7 +2,17 @@
 
 Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
-## [0.17.0] – 2026-10-16
+## [0.18.0] – 2026-10-16
+
+### Hinzugefügt
+- **Kart-Battle im Netzwerkspiel**: Der Host wählt in der Lobby „Kart-Battle in der Stadt“ und 0–4 Computer-Karts, insgesamt bis zu 8 Karts (zwei neue Startkreuzungen)
+  - der Server führt Ballons, Item-Boxen, Projektile, Minen, Treffer, die Bots und den Sturz ins Hafenbecken; jedes Gerät fährt seine eigenen Karts
+  - Ergebnis für alle mit „Zurück zur Lobby“; wer das Spiel verlässt, scheidet aus
+
+### Geändert
+- Kart-Battle: keine Ballons mehr über den Karts – die Ballons stehen nur noch im HUD; ein Treffer zeigt einen kleinen weissen Puff
+
+ – 2026-10-16
 
 ### Hinzugefügt
 - **Kart-Rennen im Netzwerkspiel**: Der Host schaltet in der Lobby auf „Kart-Rennen mit Items“; alle wählen ihr Kart direkt in der Lobby

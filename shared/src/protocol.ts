@@ -2,6 +2,7 @@ import type { NetRace, ResultRow, Slot } from './race';
 import type { CarState } from './physics';
 import { ITEM_KINDS, TURBO_TIME, type ItemKind, type KartState } from './kart';
 import type { ItemEvent, ItemWorld, Projectile } from './items';
+import type { BattleRow, NetBattle } from './battle';
 
 /** Compact car state sent over the network. */
 export interface NetCar {
@@ -33,6 +34,8 @@ export interface LobbySettings {
   aiSkill: number;
   /** kart race with items (road and offroad tracks) */
   kart?: boolean;
+  /** with kart: battle in the practice town instead of a race (aiCount = bots) */
+  battle?: boolean;
 }
 
 export interface LobbyClient {
@@ -57,8 +60,11 @@ export type ClientMsg =
 export type ServerMsg =
   | { type: 'welcome'; clientId: string }
   | { type: 'lobby'; hostId: string; phase: 'lobby' | 'race'; settings: LobbySettings; clients: LobbyClient[] }
-  | { type: 'start'; trackId: string; laps: number; slots: Slot[]; countdown: number; kart?: boolean }
+  | { type: 'start'; trackId: string; laps: number; slots: Slot[]; countdown: number; kart?: boolean; battle?: boolean }
   | { type: 'snap'; cars: NetCar[]; race: NetRace; items?: NetItems }
+  /** kart battle: cars, items and balloons */
+  | { type: 'bsnap'; cars: NetCar[]; items: NetItems; battle: NetBattle }
+  | { type: 'battleEnd'; rows: NetBattleRow[]; winner: string | null }
   | { type: 'aborted'; by: string }
   | { type: 'end'; results: ResultRow[]; /** best-lap leaderboard rank per car id */ ranks: Record<string, number> };
 
@@ -109,6 +115,14 @@ export function applyNetCar(c: CarState, n: NetCar) {
   c.braking = n.br;
   c.vy = n.vy ?? 0;
   c.airborne = !!n.air;
+}
+
+/** A line of the battle result. */
+export interface NetBattleRow extends BattleRow {
+  name: string;
+  carId: string;
+  isAI: boolean;
+  ownerId: string;
 }
 
 // ---------------------------------------------------------------- kart races over the network
