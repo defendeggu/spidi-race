@@ -1,8 +1,8 @@
 import type { LeaderboardEntry, LeaderboardSubmission } from '@spidi/shared';
 
-/** Permanent leaderboard on the game server (same host that served the page). */
-export async function fetchLeaderboard(): Promise<LeaderboardEntry[]> {
-  const res = await fetch('/api/leaderboard', { cache: 'no-store' });
+/** Permanent leaderboard of one track on the game server (same host that served the page). */
+export async function fetchLeaderboard(trackId: string): Promise<LeaderboardEntry[]> {
+  const res = await fetch(`/api/leaderboard?track=${encodeURIComponent(trackId)}`, { cache: 'no-store' });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return (await res.json()).entries;
 }

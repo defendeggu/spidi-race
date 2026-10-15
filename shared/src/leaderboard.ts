@@ -42,22 +42,26 @@ export function boardSort(trackId: string): LeaderboardSort {
   return townBoard(trackId) ? 'time' : 'bestLap';
 }
 
-/** Fastest plausible average speed in m/s (~400 km/h) – faster laps are rejected. */
-const MAX_AVG_SPEED = 110;
-
-/** Cleans a submission; returns null if it is incomplete or physically impossible. */
-export function sanitizeSubmission(s: Partial<LeaderboardSubmission>): LeaderboardSubmission | null {
+/**
+ * Cleans a submission; returns null if it is incomplete or physically impossible.
+ * Only the game server itself (`trusted`) may record online races.
+ */
+export function sanitizeSubmission(s: Partial<LeaderboardSubmission>, trusted = false): LeaderboardSubmission | null {
   if (!s || typeof s !== 'object') return null;
   if (townBoard(s.trackId)) return sanitizeTown(s);
   const track = TRACK_DEFS.find((t) => t.id === s.trackId);
-  if (!track || !CARS.some((c) => c.id === s.carId)) return null;
+  const car = CARS.find((c) => c.id === s.carId);
+  // the car must belong to the track's class (road, offroad or micro)
+  if (!track || !car || car.class !== (track.class ?? 'road')) return null;
   const laps = Math.round(Number(s.laps));
   const time = Number(s.time), bestLap = Number(s.bestLap);
   if (!(laps >= 1 && laps <= 10) || !Number.isFinite(time) || !Number.isFinite(bestLap)) return null;
-  const minLap = getTrack(track.id).length / MAX_AVG_SPEED;
+  // no lap can be faster than driving the whole length at the car's top speed
+  const minLap = getTrack(track.id).length / car.topSpeed;
   if (bestLap < minLap || bestLap > 3600 || time < bestLap * laps - 0.05 || time > 3600 * laps) return null;
   const name = String(s.name ?? '').replace(/[<>]/g, '').trim().slice(0, 16);
   if (!name) return null;
+  if (s.mode === 'online' && !trusted) return null;
   const mode: RaceMode = s.mode === 'split' || s.mode === 'online' ? s.mode : 'solo';
   return { name, carId: s.carId!, trackId: track.id, laps, time: Math.round(time * 1000) / 1000, bestLap: Math.round(bestLap * 1000) / 1000, mode };
 }

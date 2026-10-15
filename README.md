@@ -1,6 +1,6 @@
 # Spidi Race 🏁
 
-![Version](https://img.shields.io/badge/version-0.11.1-ffcc00)
+![Version](https://img.shields.io/badge/version-0.11.2-ffcc00)
 ![Lizenz Code](https://img.shields.io/badge/code-MIT-blue)
 ![Lizenz Assets](https://img.shields.io/badge/assets-CC0-green)
 ![Docker](https://img.shields.io/badge/docker-ready-2496ED)
@@ -96,7 +96,13 @@ Danach im Browser **http://localhost:8090** öffnen.
 | Healthcheck | `GET /health` |
 | Rangliste | `./data/leaderboard.json` (als Volume eingebunden) |
 
-Das Image ist zweistufig aufgebaut. Beim Build laufen die Tests und der Produktionsbuild. Zur Laufzeit braucht das Image nur Node, ohne `node_modules`. Die Assets liegen im Repo, der Build braucht also kein Internet ausser für npm.
+Das Image ist zweistufig aufgebaut (Node 22). Beim Build laufen die Tests und der Produktionsbuild. Zur Laufzeit braucht das Image nur Node, ohne `node_modules`. Die Assets liegen im Repo, der Build braucht also kein Internet ausser für npm.
+
+**Sicherheit und Betrieb**
+- Der Container läuft als Benutzer `node`, mit schreibgeschütztem Dateisystem (nur `./data` ist beschreibbar), ohne Linux-Capabilities und mit höchstens 512 MB Speicher (`docker-compose.yml`). Der Ordner `./data` muss für die Benutzer-ID 1000 beschreibbar sein.
+- Gedacht ist der Server fürs Heimnetz: ohne Anmeldung und ohne TLS. Wer ihn im Internet betreibt, setzt einen Reverse-Proxy mit TLS davor (z. B. Caddy).
+- Der Server prüft alle Netzwerknachrichten, begrenzt die Bewegung der Autos auf das, was das Auto fahren kann, nimmt WebSocket-Verbindungen nur von der eigenen Seite an (Origin-Prüfung) und trennt stumme Verbindungen nach etwa 30 s.
+- Statische Dateien kommen mit ETag, gzip und Sicherheits-Headern (u. a. Content-Security-Policy).
 
 ## Steuerung
 
@@ -180,16 +186,17 @@ Jedes beendete Rennen eines menschlichen Fahrers landet in der permanenten Rangl
 - Der Server speichert alles in `data/leaderboard.json`. Diese Datei ist **git-ignoriert**. Im Repo liegt nur die leere Vorlage `data/leaderboard.template.json`, mit der ein neuer Server startet.
 - Mit Docker wird `./data` in den Container eingebunden. Die Rangliste übersteht Neustarts und Image-Updates und lässt sich einfach sichern.
 - Zurücksetzen: `data/leaderboard.json` löschen und den Server neu starten.
-- Die API ist `GET /api/leaderboard[?track=<id>]` und `POST /api/leaderboard` mit `{ entries: [...] }`. Unplausible Zeiten werden abgewiesen.
+- Die API ist `GET /api/leaderboard?track=<id>` (ohne `track`: die Top 50 jeder Wertung) und `POST /api/leaderboard` mit `{ entries: [...] }`.
+- Unplausible Zeiten werden abgewiesen: Keine Runde darf schneller sein, als das gewählte Auto die Strecke mit Höchstgeschwindigkeit durchfahren könnte, und das Auto muss zur Streckenklasse passen. Netzwerkrennen trägt nur der Server selbst ein, per HTTP gehen nur Einzel- und Splitscreen-Zeiten. Pro IP sind 10 Einträge pro Minute erlaubt. Einzel- und Splitscreen-Zeiten werden im Browser gemessen und lassen sich deshalb nicht völlig fälschungssicher prüfen.
 
 ## Entwicklung
 
-Voraussetzung: **Node.js ≥ 20.19**
+Voraussetzung: **Node.js ≥ 22** (npm ≥ 11 empfohlen; npm 10 kann `npm install` mit Vitest 5 nicht auflösen, `npm ci` geht)
 
 ```bash
 npm install
 npm run dev          # Vite-Client auf :5173 (Hot-Reload) + Spielserver auf :8090
-npm test             # Strecken-, Physik- und komplette KI-Rennsimulation (Vitest)
+npm test             # Strecken-, Physik-, KI-Rennsimulation, Stadt, Server und Rangliste (Vitest)
 npm run typecheck    # TypeScript für shared, client und server
 npm run build        # Produktionsbuild: client/dist + server/dist/index.cjs
 npm start            # Produktionsserver auf :8090 (liefert auch den Client aus)
@@ -230,12 +237,14 @@ shared/   Fahrphysik, Strecken (Catmull-Rom-Spline), Autos, Rennlogik, KI, Netzw
           Übungsstadt (town.ts), Stadtverkehr (traffic.ts), Aufgaben (townTasks.ts)
 client/   Vite + Three.js
   src/render/   Asset-Loader, Gelände (Splat-Shader), Strasse, Szenerie, Frühstückstisch/Küche, Automodelle, Kameras
-  src/ui/       Menüs, Lobby, Ergebnisse, Menü-Hintergrund
+  src/ui/       app.ts (Ablauf, Pause) · menus · town · results (Ergebnis, Rangliste) · lobby · widgets · prefs
+                html.ts: Templates, die jede Einsetzung automatisch escapen
   src/game.ts   Spielschleife (feste 60 Hz), Splitscreen, Interpolation, Netz-Sync
   src/townGame.ts, townHud.ts, render/townWorld.ts   Übungsfahrt in der Stadt
   src/render/buildingKit.ts   Gebäude der Übungsstadt: Farbvarianten per Shader, Häuser aus Bauteilen, Supermarkt
 scripts/footprints.mjs      misst die Grundflächen der Stadtgebäude (Kollision ohne Vordächer) → shared/src/townFootprints.ts
-server/   Node + ws: liefert den Client aus, Lobby, autoritativer Rennstatus, KI-Autos
+server/   Node + ws: app.ts (HTTP, Statik, API, WebSocket-Upgrade), room.ts (Lobby, Rennstatus, KI), leaderboard.ts
+.github/  CI: Typecheck, Tests und Build bei jedem Push
 scripts/  Asset-Download
 ```
 
@@ -245,7 +254,7 @@ scripts/  Asset-Download
 
 ## Versionierung
 
-Das Projekt folgt [Semantic Versioning](https://semver.org/lang/de/). Die aktuelle Version ist **0.11.1**. Änderungen stehen im [CHANGELOG](CHANGELOG.md), Releases sind als Git-Tags `vX.Y.Z` markiert. Die Version steht auch unten rechts im Hauptmenü.
+Das Projekt folgt [Semantic Versioning](https://semver.org/lang/de/). Die aktuelle Version ist **0.11.2**. Änderungen stehen im [CHANGELOG](CHANGELOG.md), Releases sind als Git-Tags `vX.Y.Z` markiert. Die Version steht auch unten rechts im Hauptmenü.
 
 ## Lizenz und Credits
 

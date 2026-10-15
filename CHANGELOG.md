@@ -2,6 +2,29 @@
 
 Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.11.2] – 2026-10-15
+
+### Sicherheit
+- Der Server stürzt nicht mehr ab, wenn er kaputte Nachrichten (`null`, leere Spieler, leere Autos) oder kaputte URLs (`/%E0%A4%A`, `//`) bekommt; das waren 5 Wege, das Spiel für alle mit einer einzigen Nachricht zu beenden
+- Autozustände aus dem Netz werden bereinigt (Typen, Wertebereiche), und kein Auto kann sich mehr weiter bewegen, als es fahren kann (Speedhack)
+- Rangliste: Untergrenze je Auto statt pauschal 396 km/h, Auto muss zur Streckenklasse passen, Netzwerkrennen trägt nur der Server ein, Rate-Limit 10 Einträge pro Minute und IP; ohne `track` liefert die API nur noch die Top 50 jeder Wertung
+- WebSocket nimmt nur Verbindungen von der eigenen Seite an (Origin-Prüfung); Pfadprüfung der Statik mit `relative()` statt Präfixvergleich
+- Sicherheits-Header (Content-Security-Policy, `nosniff`, Referrer-Policy)
+- Docker: Node 22 statt des abgelaufenen Node 20, gehärtete `docker-compose.yml` (schreibgeschützt, keine Capabilities, Speicherlimit)
+- Abhängigkeiten: Vitest 5, esbuild 0.25, fflate 0.8.3 – `npm audit` meldet 0 Schwachstellen
+
+### Behoben
+- Die Rennuhr im Netzwerkspiel lief 3 % zu schnell (Node rundet `setInterval` ab); die Server-Schleife rechnet jetzt auf Echtzeit
+- Geisterspieler: Verbindungen ohne Antwort auf Ping werden nach etwa 30 s getrennt
+- Die Rangliste schreibt gebündelt und asynchron (höchstens alle 2 s) und blockiert das Rennen nicht mehr; beim Stoppen des Containers wird Ungespeichertes noch geschrieben, Schreibfehler werden deutlich gemeldet
+- Statische Dateien mit ETag/304 und gzip: Modelle und Texturen werden nicht mehr bei jedem Aufruf neu geladen
+
+### Geändert
+- Menü-Code aufgeteilt (`ui/app.ts`, `menus`, `town`, `results`, `lobby`, `widgets`, `prefs`); alle HTML-Templates escapen Einsetzungen automatisch (`ui/html.ts`)
+- Die Ranglisten-Ansicht lädt pro Strecke
+- CI mit GitHub Actions (Typecheck, Tests, Build)
+- Neue Tests für Server (Absturzversuche, Rechte, Speedhack, Uhr, Ping), HTTP (URLs, Pfade, Header, Origin, Rate-Limit) und das Escaping
+
 ## [0.11.1] – 2026-10-14
 
 ### Behoben
@@ -165,6 +188,7 @@ Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog]
 - Docker-Image und docker-compose (Port 8090)
 
 [0.6.0]: https://github.com/defendeggu/spidi-race/compare/v0.5.0...v0.6.0
+[0.11.2]: https://github.com/defendeggu/spidi-race/compare/v0.11.1...v0.11.2
 [0.11.1]: https://github.com/defendeggu/spidi-race/compare/v0.11.0...v0.11.1
 [0.11.0]: https://github.com/defendeggu/spidi-race/compare/v0.10.1...v0.11.0
 [0.10.1]: https://github.com/defendeggu/spidi-race/compare/v0.10.0...v0.10.1
