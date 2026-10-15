@@ -13,3 +13,4 @@ export * from './townTasks';
 export * from './kart';
 export * from './items';
 export * from './kartAi';
+export * from './battle';

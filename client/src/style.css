@@ -292,3 +292,8 @@ button.big.practice { border-left-color: #3ad16b; }
 .hud-drift.l3 { background: #d36bff; box-shadow: 0 0 10px #d36bff; }
 .hud.compact .hud-item-icon { width: 52px; height: 52px; font-size: 30px; line-height: 46px; }
 button.big.kart { border-left-color: #ff5a3c; }
+.town-standings { font-family: Verdana, sans-serif; font-style: normal; font-size: 13px; margin-top: 6px; }
+.town-standings div { margin: 2px 0; }
+.town-standings i { display: inline-block; width: 11px; height: 11px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+.town-standings .me { color: var(--gold); font-weight: bold; }
+.town-standings .out { opacity: 0.45; text-decoration: line-through; }

@@ -1,4 +1,5 @@
-import { driftLevel, formatTime, getCar, type ItemKind, type KartState, type Race, type Track } from '@spidi/shared';
+import { formatTime, getCar, type KartState, type Race, type Track } from '@spidi/shared';
+import { ItemSlot } from './itemSlot';
 import { CAMERA_MODES } from './render/cameras';
 import { html, setHtml } from './ui/html';
 
@@ -11,8 +12,6 @@ export interface MapDot {
   small?: boolean;
 }
 
-const ITEM_ICON: Record<ItemKind, string> = { blaster: '🔫', homing: '🎯', mine: '💣', turbo: '🚀', shield: '🛡️' };
-const ITEM_LABEL: Record<ItemKind, string> = { blaster: 'Blaster', homing: 'Zielsucher', mine: 'Mine', turbo: 'Turbo', shield: 'Schild' };
 
 /** HTML overlay for one viewport. */
 export class Hud {
@@ -25,6 +24,7 @@ export class Hud {
   private mapScale = 1;
   private mapOx = 0;
   private mapOz = 0;
+  private item: ItemSlot;
 
   constructor(parent: HTMLElement, private track: Track, private entryId: string, compact: boolean) {
     this.root = document.createElement('div');
@@ -42,7 +42,7 @@ export class Hud {
       <div class="hud-standings" data-k="standings"></div>
       <div class="hud-center" data-k="center"></div>
       <div class="hud-msg" data-k="msg"></div>
-      <div class="hud-item" data-k="item"><div class="hud-item-icon" data-k="itemIcon"></div><div class="hud-item-label" data-k="itemLabel"></div><div class="hud-drift" data-k="drift"></div></div>
+
       <div class="hud-br">
         <div class="hud-speed"><span data-k="speed">0</span><small>km/h</small></div>
         <div class="hud-gear">GANG <span data-k="gear">1</span></div>
@@ -55,6 +55,7 @@ export class Hud {
     this.map.className = 'hud-map';
     this.map.width = this.map.height = this.mapBg.width = this.mapBg.height = size;
     this.root.appendChild(this.map);
+    this.item = new ItemSlot(this.root);
     parent.appendChild(this.root);
     this.drawMapBackground(size);
   }
@@ -97,7 +98,7 @@ export class Hud {
   }
 
   update(race: Race, speed: number, gear: number, rpm: number, dots: MapDot[], wrongWay: boolean, dt: number, kart?: KartState) {
-    this.updateItem(kart, dt);
+    this.item.update(kart, dt);
     const e = race.entry(this.entryId);
     if (!e) return;
     const n = race.entries.length;
@@ -147,35 +148,6 @@ export class Hud {
       g.strokeStyle = d.self ? '#fff' : '#000';
       g.stroke();
     }
-  }
-
-  private rollTime = 0;
-  private lastItem = '';
-
-  /** Item slot of kart races: roulette while rolling, then the item; drift level below. */
-  private updateItem(ks: KartState | undefined, dt: number) {
-    const box = this.el.item;
-    box.style.display = ks ? '' : 'none';
-    if (!ks) return;
-    let icon = '', label = '';
-    if (ks.rolling > 0) {
-      this.rollTime += dt;
-      const kinds = Object.keys(ITEM_ICON) as ItemKind[];
-      icon = ITEM_ICON[kinds[Math.floor(this.rollTime * 14) % kinds.length]];
-      label = '…';
-    } else if (ks.item) {
-      icon = ITEM_ICON[ks.item];
-      label = ITEM_LABEL[ks.item];
-    }
-    const key = icon + label;
-    if (key !== this.lastItem) {
-      this.lastItem = key;
-      this.el.itemIcon.textContent = icon;
-      this.el.itemLabel.textContent = label;
-      box.classList.toggle('full', !!ks.item);
-    }
-    const lvl = driftLevel(ks);
-    this.el.drift.className = 'hud-drift' + (ks.drift !== 0 && lvl > 0 ? ` l${lvl}` : '');
   }
 
   showCameraMode(mode: number) {

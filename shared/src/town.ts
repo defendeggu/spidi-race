@@ -910,6 +910,41 @@ export class TownMap {
   }
 
   /**
+   * A small circle (e.g. a projectile) at (x, z) against all obstacles: the push-out direction and
+   * depth of the deepest overlap, or null if it is free.
+   */
+  pointHit(x: number, z: number, r: number): { nx: number; nz: number; pen: number } | null {
+    let best: { nx: number; nz: number; pen: number } | null = null;
+    const cell = this.cell(x, z);
+    if (!cell) return null;
+    for (const o of cell.boxes) {
+      let nx: number, nz: number, pen: number;
+      if (x > o.minX && x < o.maxX && z > o.minZ && z < o.maxZ) {
+        const d = [x - o.minX, o.maxX - x, z - o.minZ, o.maxZ - z];
+        const m = d.indexOf(Math.min(...d));
+        nx = m === 0 ? -1 : m === 1 ? 1 : 0;
+        nz = m === 2 ? -1 : m === 3 ? 1 : 0;
+        pen = d[m] + r;
+      } else {
+        const qx = clamp(x, o.minX, o.maxX), qz = clamp(z, o.minZ, o.maxZ);
+        const dd = Math.hypot(x - qx, z - qz);
+        if (dd >= r || dd < 1e-9) continue;
+        nx = (x - qx) / dd;
+        nz = (z - qz) / dd;
+        pen = r - dd;
+      }
+      if (!best || pen > best.pen) best = { nx, nz, pen };
+    }
+    for (const o of cell.circles) {
+      const dx = x - o.x, dz = z - o.z, dd = Math.hypot(dx, dz);
+      if (dd >= r + o.r) continue;
+      const pen = r + o.r - dd;
+      if (!best || pen > best.pen) best = { nx: dd > 1e-9 ? dx / dd : 1, nz: dd > 1e-9 ? dz / dd : 0, pen };
+    }
+    return best;
+  }
+
+  /**
    * Push the car out of buildings, trees, cones, lamps and the wall (two circles per car, like car-vs-car).
    * The car bounces off and scrapes along like at a guard rail. Returns the impact speed.
    */

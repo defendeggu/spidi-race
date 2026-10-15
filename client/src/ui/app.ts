@@ -5,6 +5,8 @@ import { Game } from '../game';
 import { input } from '../input';
 import type { Net } from '../net';
 import { TownGame } from '../townGame';
+import { BattleGame } from '../battleGame';
+import { showBattleResults, startBattle } from './battle';
 import { Backdrop } from './backdrop';
 import { html, setHtml, type SafeHtml } from './html';
 import { leaveNet, showLobby, showOnlineSetup } from './lobby';
@@ -24,7 +26,7 @@ export class App {
   readonly hudLayer = document.getElementById('hud')!;
   readonly backdrop = new Backdrop();
   readonly prefs = loadPrefs();
-  game: Game | TownGame | null = null;
+  game: Game | TownGame | BattleGame | null = null;
   net: Net | null = null;
   lobby: { hostId: string; phase: 'lobby' | 'race'; settings: LobbySettings; clients: LobbyClient[] } | null = null;
   lobbyNotice = '';
@@ -67,6 +69,7 @@ export class App {
   startLocal(mode: Mode) { startLocal(this, mode); }
   showKartSetup() { showKartSetup(this); }
   startKart() { startKart(this); }
+  startBattle() { startBattle(this); }
   showTownSetup() { showTownSetup(this); }
   startTown() { startTown(this); }
   showResults(results: ResultRow[], ranks?: Record<string, number>) { showResults(this, results, ranks); }
@@ -101,7 +104,7 @@ export class App {
 
   // ---------------------------------------------------------------- running a game
 
-  runGame(game: Game | TownGame) {
+  runGame(game: Game | TownGame | BattleGame) {
     this.backdrop.hide();
     this.game?.dispose();
     this.game = game;
@@ -109,6 +112,7 @@ export class App {
     this.ui.innerHTML = '';
     this.screen = 'game';
     if (game instanceof Game) game.onFinish = (results, ranks) => this.showResults(results, ranks);
+    else if (game instanceof BattleGame) game.onFinish = (r) => showBattleResults(this, game, r);
     else game.onFinish = (r) => showTownResults(this, game, r);
     game.onPause = () => this.togglePause();
     game.start();
