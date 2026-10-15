@@ -24,6 +24,9 @@ export interface Prefs {
   /** kart race: players (1/2) and track (road and offroad tracks only) */
   kartPlayers: number;
   kartTrackId: string;
+  /** kart race on a track or battle in the town, and the number of battle bots */
+  kartMode: 'race' | 'battle';
+  kartBots: number;
 }
 
 export const TRAFFIC: { id: TrafficLevel; label: string; cars: number }[] = [
@@ -54,7 +57,7 @@ export function loadPrefs(): Prefs {
     ],
     trackId: TRACK_DEFS[0].id, laps: 2, aiCount: 4, aiSkill: 0.93, onlineLocal: 1,
     townPlayers: 1, townTask: 'stars', townTraffic: 'few', townGoals: 10,
-    kartPlayers: 1, kartTrackId: 'alpenpass',
+    kartPlayers: 1, kartTrackId: 'alpenpass', kartMode: 'race', kartBots: 3,
   };
   try {
     const raw = localStorage.getItem(KEY);

@@ -58,6 +58,11 @@ export function driftLevel(ks: KartState) {
  * - Spin-out after a hit: no control, one full turn, speed drops.
  */
 export function stepKart(c: CarState, spec: CarSpec, inp: CarInput, track: Track, dt: number, ks: KartState) {
+  stepKartWith(c, spec, inp, dt, ks, (s, i) => stepCar(c, s, i, track, dt));
+}
+
+/** The kart rules on top of any car physics step (race track or town). */
+export function stepKartWith(c: CarState, spec: CarSpec, inp: CarInput, dt: number, ks: KartState, move: (spec: CarSpec, inp: CarInput) => void) {
   ks.invuln = Math.max(0, ks.invuln - dt);
   ks.shield = Math.max(0, ks.shield - dt);
   ks.hop = Math.max(0, ks.hop - dt);
@@ -68,7 +73,7 @@ export function stepKart(c: CarState, spec: CarSpec, inp: CarInput, track: Track
     ks.drift = 0;
     ks.driftTime = 0;
     ks.boost = 0;
-    stepCar(c, spec, { throttle: 0, brake: 0.3, steer: 0, handbrake: false }, track, dt);
+    move(spec, { throttle: 0, brake: 0.3, steer: 0, handbrake: false });
     // one full turn over the spin time; the speed bleeds off
     c.heading += ((Math.PI * 2) / SPIN_TIME) * dt;
     const k = Math.exp(-2.5 * dt);
@@ -105,7 +110,7 @@ export function stepKart(c: CarState, spec: CarSpec, inp: CarInput, track: Track
     s = { ...s, topSpeed: s.topSpeed * 1.3, accel: s.accel * 1.8 };
     i = { ...i, throttle: 1, brake: 0 };
   }
-  stepCar(c, s, i, track, dt);
+  move(s, i);
 }
 
 /** A hit by a projectile or a mine: spin-out unless the kart is protected. Returns what happened. */

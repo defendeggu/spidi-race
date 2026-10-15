@@ -122,18 +122,29 @@ export function showKartSetup(app: App) {
   if (!KART_TRACKS.some((t) => t.id === pr.kartTrackId)) pr.kartTrackId = KART_TRACKS[0].id;
   const s = { trackId: pr.kartTrackId, laps: pr.laps, aiCount: pr.aiCount, aiSkill: pr.aiSkill };
   const refresh = () => app.showKartSetup();
-  app.backdrop.show(pr.kartTrackId, Array.from({ length: humans }, (_, k) => app.carOf(k, 'kart')));
+  const city = TRACK_DEFS.find((t) => t.theme === 'city')?.id ?? pr.kartTrackId;
+  app.backdrop.show(pr.kartMode === 'battle' ? city : pr.kartTrackId, Array.from({ length: humans }, (_, k) => app.carOf(k, 'kart')));
+  const battle = pr.kartMode === 'battle';
+  const bots = Math.max(0, Math.min(4, pr.kartBots));
   app.setScreen('kart', html`
     <div class="menu panel wide">
-      <h2>Kart-Rennen</h2>
-      <p class="hint">Fahr durch die ?-Boxen und schnapp dir ein Item: Blaster, Zielsucher, Mine, Turbo oder Schild. Driften (Handbremse + Lenken) lädt einen Turbo auf.</p>
+      <h2>${battle ? 'Kart-Battle' : 'Kart-Rennen'}</h2>
+      <div class="toggle town-row">
+        <button class="${battle ? '' : 'sel'}" data-a="mode" data-id="race">Rennen auf einer Strecke</button>
+        <button class="${battle ? 'sel' : ''}" data-a="mode" data-id="battle">Battle in der Stadt</button>
+      </div>
+      <p class="hint">${battle
+        ? 'Jedes Kart hat 3 Ballons. Jeder Treffer kostet einen, wer ins Hafenbecken fällt, verliert alle. Wer zuletzt noch Ballons hat, gewinnt – spätestens nach 3 Minuten. Die ?-Boxen stehen auf den Kreuzungen.'
+        : 'Fahr durch die ?-Boxen und schnapp dir ein Item: Blaster, Zielsucher, Mine, Turbo oder Schild. Driften (Handbremse + Lenken) lädt einen Turbo auf.'}</p>
       <div class="toggle town-row">
         <button class="${humans === 1 ? 'sel' : ''}" data-a="players" data-id="1">1 Spieler</button>
         <button class="${humans === 2 ? 'sel' : ''}" data-a="players" data-id="2">2 Spieler (Splitscreen)</button>
       </div>
       <div class="players">${playerPanel(app, 0, 'kart')}${humans > 1 ? playerPanel(app, 1, 'kart') : ''}</div>
-      ${settingsBlock(s, true, maxAi, KART_TRACKS)}
-      <div class="row"><button data-a="back">Zurück</button><button class="go" data-a="start">Rennen starten ▶</button></div>
+      ${battle
+        ? html`<div class="opts"><label>Computer-Karts <span class="stepper"><button data-a="botsDown">−</button><b>${bots}</b><button data-a="botsUp">+</button></span></label></div>`
+        : settingsBlock(s, true, maxAi, KART_TRACKS)}
+      <div class="row"><button data-a="back">Zurück</button><button class="go" data-a="start">${battle ? 'Battle starten ▶' : 'Rennen starten ▶'}</button></div>
     </div>`);
   app.bind({
     ...playerActions(app, refresh, () => 'kart'),
@@ -143,8 +154,11 @@ export function showKartSetup(app: App) {
       refresh();
     }),
     players: (el) => { pr.kartPlayers = Number(el.dataset.id); app.savePrefs(); refresh(); },
+    mode: (el) => { pr.kartMode = el.dataset.id === 'battle' ? 'battle' : 'race'; app.savePrefs(); refresh(); },
+    botsDown: () => { pr.kartBots = Math.max(0, bots - 1); app.savePrefs(); refresh(); },
+    botsUp: () => { pr.kartBots = Math.min(4, bots + 1); app.savePrefs(); refresh(); },
     back: () => app.showMain(),
-    start: () => app.startKart(),
+    start: () => (battle ? app.startBattle() : app.startKart()),
   });
 }
 

@@ -2,6 +2,18 @@
 
 Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.15.0] – 2026-10-15
+
+### Hinzugefügt
+- **Kart-Battle in der Stadt** (Kart-Menü → „Battle in der Stadt“): 1 oder 2 Spieler im Splitscreen und 0–4 Computer-Karts
+  - je 3 Ballons über dem Fahrer, ein Treffer kostet einen, ein Sturz ins Hafenbecken alle; wer zuletzt Ballons hat, gewinnt, spätestens nach 3 Minuten
+  - ?-Boxen auf jeder zweiten Kreuzung, Projektile prallen an Gebäuden ab, Zielsucher jagen das nächste Kart
+  - Bots fahren über das Strassenraster zu Boxen und Gegnern und setzen ihre Items gezielt ein
+  - HUD mit Ballons aller Karts, Restzeit, Item-Slot; Ergebnis mit Platzierung, Ballons und Treffern
+
+### Geändert
+- Die Item-Logik arbeitet mit „Arenen“ (Strecke oder Stadt), die Kart-Regeln mit beliebiger Fahrphysik darunter
+
 ## [0.14.0] – 2026-10-15
 
 ### Geändert
@@ -226,6 +238,7 @@ Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog]
 - Docker-Image und docker-compose (Port 8090)
 
 [0.6.0]: https://github.com/defendeggu/spidi-race/compare/v0.5.0...v0.6.0
+[0.15.0]: https://github.com/defendeggu/spidi-race/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/defendeggu/spidi-race/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/defendeggu/spidi-race/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/defendeggu/spidi-race/compare/v0.11.2...v0.12.0

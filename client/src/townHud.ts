@@ -1,4 +1,5 @@
-import { HARBOR, LINES, RAIL, TOWN_BOUNDS, type CarInput, type TownMap, type TownTask } from '@spidi/shared';
+import { HARBOR, LINES, RAIL, TOWN_BOUNDS, type CarInput, type KartState, type TownMap, type TownTask } from '@spidi/shared';
+import { ItemSlot } from './itemSlot';
 import { CAMERA_MODES } from './render/cameras';
 import type { KeyMap } from './input';
 import type { PadKind } from './padMapping';
@@ -31,14 +32,18 @@ export class TownHud {
   private padMode: PadKind | null | undefined = undefined;
   private lastCenter = '';
 
-  constructor(parent: HTMLElement, private town: TownMap, task: TownTask, duel: boolean, private keymap: KeyMap, compact: boolean) {
+  private item: ItemSlot;
+
+  /** title: replaces the task title (kart battle) */
+  constructor(parent: HTMLElement, private town: TownMap, task: TownTask, duel: boolean, private keymap: KeyMap, compact: boolean, title?: string) {
     this.root = document.createElement('div');
     this.root.className = 'hud town-hud' + (compact ? ' compact' : '');
     setHtml(this.root, html`
       <div class="hud-tl">
-        <div class="town-task">${duel ? 'DUELL · ' : ''}${TASK_TITLE[task]}</div>
+        <div class="town-task">${title ?? html`${duel ? 'DUELL · ' : ''}${TASK_TITLE[task]}`}</div>
         <div class="town-count" data-k="count"></div>
         <div class="town-time" data-k="time"></div>
+        <div class="town-standings" data-k="standings"></div>
       </div>
       <div class="hud-center" data-k="center"></div>
       <div class="town-goal" data-k="goal">
@@ -60,6 +65,7 @@ export class TownHud {
     this.map.className = 'hud-map';
     this.map.width = this.map.height = this.mapBg.width = this.mapBg.height = size;
     this.root.appendChild(this.map);
+    this.item = new ItemSlot(this.root);
     parent.appendChild(this.root);
     this.drawMapBackground(size);
   }
@@ -119,6 +125,12 @@ export class TownHud {
     this.el.msg.textContent = text;
     this.el.msg.classList.add('show');
     this.msgTimer = seconds;
+  }
+
+  /** Kart battle: item slot and the list of karts with their balloons. */
+  updateBattle(ks: KartState | undefined, rows: { name: string; color: string; balloons: number; me: boolean }[], dt: number) {
+    this.item.update(ks, dt);
+    setHtml(this.el.standings, html`${rows.map((r) => html`<div class="${r.me ? 'me' : ''} ${r.balloons ? '' : 'out'}"><i style="background:${r.color}"></i>${r.name} <b>${r.balloons ? '🎈'.repeat(r.balloons) : '✗'}</b></div>`)}`);
   }
 
   toggleHelp() {

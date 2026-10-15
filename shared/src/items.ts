@@ -1,6 +1,7 @@
 import { hitKart, newKartState, SHIELD_TIME, TURBO_TIME, type ItemKind, type KartState } from './kart';
 import { clamp, mulberry32, wrapAngle } from './math';
 import { forwardSpeed, type CarState } from './physics';
+import { HARBOR, LINE_COUNT, LINES, type TownMap } from './town';
 import { WALL_OFFSET, type Track } from './track';
 
 /**
@@ -88,6 +89,82 @@ export function rollItem(pos: number, n: number, rnd: () => number): ItemKind {
   return kinds[kinds.length - 1];
 }
 
+/**
+ * Where the items live: positions of the item boxes, how projectiles bounce off walls and follow the
+ * ground, and where a homing projectile flies when its target is far away.
+ */
+export interface ItemArena {
+  boxes: { x: number; y: number; z: number }[];
+  /** keep a projectile on the ground and out of walls; true if it bounced off one this step */
+  collide(p: Projectile): boolean;
+  /** direction for a homing projectile without a near target */
+  ahead(p: Projectile): { x: number; z: number };
+}
+
+/** Race track: rows of four boxes at 20 %, 55 % and 85 % of the lap, the barriers bounce projectiles. */
+export function trackArena(track: Track): ItemArena {
+  const boxes: ItemArena['boxes'] = [];
+  for (const f of [0.2, 0.55, 0.85]) {
+    const s = track.length * f;
+    const i = Math.floor(s / track.ds) % track.n;
+    for (const lat of [-0.6, -0.2, 0.2, 0.6]) {
+      const p = track.pointAt(s, lat * track.hw[i]);
+      boxes.push({ x: p.x, y: p.y, z: p.z });
+    }
+  }
+  return {
+    boxes,
+    collide(p) {
+      const pr = track.project(p.x, p.z, p.idx);
+      p.idx = pr.idx;
+      p.y = pr.y + 0.6;
+      const wall = pr.halfWidth + WALL_OFFSET - 0.4;
+      if (Math.abs(pr.lat) <= wall) return false;
+      const sgn = Math.sign(pr.lat);
+      p.x -= pr.rx * (pr.lat - sgn * wall);
+      p.z -= pr.rz * (pr.lat - sgn * wall);
+      const vn = p.vx * pr.rx + p.vz * pr.rz;
+      if (vn * sgn <= 0) return false;
+      p.vx -= 2 * vn * pr.rx;
+      p.vz -= 2 * vn * pr.rz;
+      return true;
+    },
+    ahead(p) {
+      const pr = track.project(p.x, p.z, p.idx);
+      return track.pointAt(pr.s + 20, 0);
+    },
+  };
+}
+
+/** Practice town (kart battle): boxes on every other intersection, buildings bounce projectiles. */
+export function townArena(town: TownMap): ItemArena {
+  const boxes: ItemArena['boxes'] = [];
+  for (let a = 1; a < LINE_COUNT - 1; a++) {
+    for (let b = 1; b < LINE_COUNT - 1; b++) {
+      if ((a + b) % 2 === 0) boxes.push({ x: LINES[a], y: 0, z: LINES[b] });
+    }
+  }
+  return {
+    boxes,
+    collide(p) {
+      p.y = town.heightAt(p.x, p.z) + 0.6;
+      if (town.inWater(p.x, p.z)) p.y = HARBOR.waterY + 0.6;
+      const hit = town.pointHit(p.x, p.z, 0.3);
+      if (!hit) return false;
+      p.x += hit.nx * hit.pen;
+      p.z += hit.nz * hit.pen;
+      const vn = p.vx * hit.nx + p.vz * hit.nz;
+      if (vn >= 0) return false;
+      p.vx -= 2 * vn * hit.nx;
+      p.vz -= 2 * vn * hit.nz;
+      return true;
+    },
+    ahead(p) {
+      return { x: p.x + p.vx, z: p.z + p.vz };
+    },
+  };
+}
+
 export class ItemWorld {
   readonly boxes: ItemBox[] = [];
   readonly karts = new Map<string, KartState>();
@@ -101,18 +178,14 @@ export class ItemWorld {
   /** projectiles are pooled: no garbage while racing */
   private pool: Projectile[] = [];
 
-  constructor(private track: Track, ids: string[], seed = 1) {
+  private arena: ItemArena;
+
+  /** On a race track (rows of boxes, barriers) or in any other arena, e.g. the town for a battle. */
+  constructor(where: Track | ItemArena, ids: string[], seed = 1) {
     this.rnd = mulberry32(seed);
+    this.arena = 'collide' in where ? where : trackArena(where);
     for (const id of ids) this.karts.set(id, newKartState(id));
-    // rows of four boxes across the road at 20 %, 55 % and 85 % of the lap
-    for (const f of [0.2, 0.55, 0.85]) {
-      const s = track.length * f;
-      const i = Math.floor(s / track.ds) % track.n;
-      for (const lat of [-0.6, -0.2, 0.2, 0.6]) {
-        const p = track.pointAt(s, lat * track.hw[i]);
-        this.boxes.push({ x: p.x, y: p.y, z: p.z, respawn: 0 });
-      }
-    }
+    for (const b of this.arena.boxes) this.boxes.push({ ...b, respawn: 0 });
   }
 
   kart(id: string) {
@@ -171,24 +244,10 @@ export class ItemWorld {
       if (p.kind === 'homing') this.steer(p, byId, dt);
       p.x += p.vx * dt;
       p.z += p.vz * dt;
-      const pr = this.track.project(p.x, p.z, p.idx);
-      p.idx = pr.idx;
-      p.y = pr.y + 0.6;
-      // bounce off the barriers
-      const wall = pr.halfWidth + WALL_OFFSET - 0.4;
-      if (Math.abs(pr.lat) > wall) {
-        const sgn = Math.sign(pr.lat);
-        p.x -= pr.rx * (pr.lat - sgn * wall);
-        p.z -= pr.rz * (pr.lat - sgn * wall);
-        const vn = p.vx * pr.rx + p.vz * pr.rz;
-        if (vn * sgn > 0) {
-          p.vx -= 2 * vn * pr.rx;
-          p.vz -= 2 * vn * pr.rz;
-          if (++p.bounces > MAX_BOUNCES) {
-            this.remove(k, 'wall');
-            continue;
-          }
-        }
+      // follow the ground, bounce off barriers / buildings
+      if (this.arena.collide(p) && ++p.bounces > MAX_BOUNCES) {
+        this.remove(k, 'wall');
+        continue;
       }
       if (p.age > PROJECTILE_LIFE) {
         this.remove(k, 'timeout');
@@ -271,8 +330,7 @@ export class ItemWorld {
       ax = t.x;
       az = t.z;
     } else {
-      const pr = this.track.project(p.x, p.z, p.idx);
-      const ahead = this.track.pointAt(pr.s + 20, 0);
+      const ahead = this.arena.ahead(p);
       ax = ahead.x;
       az = ahead.z;
     }
