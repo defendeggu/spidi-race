@@ -14,7 +14,7 @@ type Kit = 'suburban' | 'commercial' | 'industrial' | 'fantasy' | 'retro' | 'oth
 export function kitOf(model: string): Kit {
   if (model.startsWith('building-type')) return 'suburban';
   if (model.startsWith('ind-')) return 'industrial';
-  if (model.startsWith('fan-') || model.startsWith('tpl-fantasy')) return 'fantasy';
+  if (model.startsWith('fan-') || model.startsWith('tpl-fantasy') || model.startsWith('tpl-church')) return 'fantasy';
   if (model.startsWith('ret-') || model.startsWith('tpl-retro')) return 'retro';
   if (model.startsWith('building-') || model.startsWith('low-detail')) return 'commercial';
   return 'other';
@@ -31,6 +31,8 @@ const INDUSTRY_WALLS = ['#c8c0b0', '#b8a890', '#a8b0b8', '#d0c8b8', '#b0b8a0', '
 /** Wall and roof colour of a building (linear colours for the shader). */
 export function variantColors(b: Building) {
   const v = b.variant;
+  // the church is light stone with a slate roof
+  if (b.model.startsWith('tpl-church')) return { wall: new THREE.Color('#e8e2d4'), roof: new THREE.Color('#4f5866') };
   const kit = kitOf(b.model);
   const tower = b.model.startsWith('building-skyscraper') || /^building-[lmn]$/.test(b.model);
   const walls = tower ? TOWER_WALLS : kit === 'industrial' ? INDUSTRY_WALLS : WALLS;
@@ -325,6 +327,66 @@ function fantasyHouse(name: string, cx: number, cz: number, floors: number): Par
   return parts;
 }
 
+/**
+ * Church from Fantasy Town Kit stone walls: a nave of cx × (cz − 2) cells with round-arched windows and
+ * a gable roof along its length, and a 2 × 2 tower of twice the height at the front (+z) with a portal,
+ * a pyramid spire and a cross.
+ */
+function churchHouse(cx: number, cz: number, floors: number): Part[] {
+  const pal = kitPalette('fantasy', ['fan-wall', 'fan-wall-wood', 'fan-roof', 'fan-wall-window-shutters']);
+  const parts: Part[] = [];
+  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0);
+  const marker = kitMarker('fantasy');
+  const place = (piece: string, x: number, y: number, z: number, rot: number) => {
+    q.setFromAxisAngle(up, rot);
+    m.compose(new THREE.Vector3(x, y, z), q, new THREE.Vector3(1, 1, 1));
+    for (const p of modelParts(piece, m.clone(), false)) parts.push((p.material as THREE.MeshStandardMaterial).map ? { ...p, material: marker } : p);
+  };
+  /** walls around a w × d rectangle centred at (ox, oz); piece(side, k, floor) picks the module */
+  const walls = (w: number, d: number, ox: number, oz: number, levels: number, piece: (front: boolean, k: number, f: number) => string) => {
+    const sides = [
+      { n: [0, 1], rot: -Math.PI / 2 },
+      { n: [0, -1], rot: Math.PI / 2 },
+      { n: [1, 0], rot: 0 },
+      { n: [-1, 0], rot: Math.PI },
+    ];
+    for (let f = 0; f < levels; f++) {
+      for (const s of sides) {
+        const along = s.n[0] === 0 ? w : d;
+        for (let k = 0; k < along; k++) {
+          const x = s.n[0] === 0 ? -w / 2 + 0.5 + k : (s.n[0] * (w - 1)) / 2;
+          const z = s.n[0] === 0 ? (s.n[1] * (d - 1)) / 2 : -d / 2 + 0.5 + k;
+          place(piece(s.n[1] === 1, k, f), ox + x, f, oz + z, s.rot);
+        }
+      }
+    }
+  };
+  const naveD = cz - 2, naveZ = -1;
+  walls(cx, naveD, 0, naveZ, floors, (_front, k, f) => (f === 1 && k % 2 === 0 ? 'fan-wall-window-round' : f === 0 && k % 3 === 1 ? 'fan-wall-arch' : 'fan-wall'));
+  const towerFloors = floors * 2, towerZ = cz / 2 - 1;
+  walls(2, 2, 0, towerZ, towerFloors, (front, k, f) =>
+    f === 0 && front ? (k === 0 ? 'fan-wall-doorway-round' : 'fan-wall') : f % 2 === 1 && f > 1 ? 'fan-wall-window-round' : 'fan-wall');
+  if (pal) {
+    const roof = gableRoof(naveD, cx, 1.8, 0.15);
+    const rot = (g: THREE.BufferGeometry) => g.rotateY(Math.PI / 2).translate(0, floors, naveZ);
+    parts.push({ geometry: withUv(rot(roof.slope), pal.roofUv), material: marker });
+    parts.push({ geometry: withUv(rot(roof.gable), pal.wallUv), material: marker });
+    const spire = new THREE.ConeGeometry(1.5, 3.6, 4).rotateY(Math.PI / 4).translate(0, towerFloors + 1.8, towerZ);
+    parts.push({ geometry: withUv(spire, pal.roofUv), material: marker });
+  }
+  const cross = mergeGeometries([
+    new THREE.BoxGeometry(0.08, 0.9, 0.08).translate(0, towerFloors + 3.95, towerZ),
+    new THREE.BoxGeometry(0.5, 0.08, 0.08).translate(0, towerFloors + 4.1, towerZ),
+  ])!;
+  parts.push({ geometry: cross, material: mats().gold });
+  return parts;
+}
+
+/** Tunnel portal: a stone block (unit size, scaled per instance) – the dark opening is drawn by the town. */
+function portalUnit(): Part[] {
+  return [{ geometry: new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0), material: mats().stone }];
+}
+
 const retroMats = new Map<string, THREE.Material>();
 /**
  * One material per retro texture name, so all parts with the same texture merge. Each kit file maps
@@ -468,6 +530,8 @@ function mats() {
     metal: new THREE.MeshLambertMaterial({ color: '#8a9096' }),
     green: new THREE.MeshLambertMaterial({ color: '#3f8a3a' }),
     fence: new THREE.MeshLambertMaterial({ color: '#6f767c', transparent: true, opacity: 0.85 }),
+    gold: new THREE.MeshLambertMaterial({ color: '#d8b040', emissive: '#3a2a00' }),
+    stone: new THREE.MeshLambertMaterial({ color: '#8f8a80', map: wallMap }),
   };
   for (const m of Object.values(specialMats)) m.userData.keep = true;
   return specialMats;
@@ -519,10 +583,14 @@ function partsFor(model: string): Part[] {
   let parts = templateCache.get(model);
   if (parts) return parts;
   const tpl = templateCells(model);
-  if (tpl) parts = mergeParts(tpl.kit === 'fantasy' ? fantasyHouse(model, tpl.x, tpl.z, tpl.floors) : retroHouse(model, tpl.x, tpl.z, tpl.floors));
+  if (tpl) {
+    parts = mergeParts(tpl.kit === 'fantasy' ? fantasyHouse(model, tpl.x, tpl.z, tpl.floors)
+      : tpl.kit === 'church' ? churchHouse(tpl.x, tpl.z, tpl.floors) : retroHouse(model, tpl.x, tpl.z, tpl.floors));
+  }
   else if (model === 'supermarket') parts = supermarket();
   else if (model === 'cart-shelter') parts = cartShelter();
   else if (model === 'fence') parts = fenceUnit();
+  else if (model === 'tunnel-portal') parts = portalUnit();
   else parts = mergeParts(modelParts(model));
   templateCache.set(model, parts);
   return parts;

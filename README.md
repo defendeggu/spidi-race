@@ -1,6 +1,6 @@
 # Spidi Race 🏁
 
-![Version](https://img.shields.io/badge/version-0.11.2-ffcc00)
+![Version](https://img.shields.io/badge/version-0.12.0-ffcc00)
 ![Lizenz Code](https://img.shields.io/badge/code-MIT-blue)
 ![Lizenz Assets](https://img.shields.io/badge/assets-CC0-green)
 ![Docker](https://img.shields.io/badge/docker-ready-2496ED)
@@ -137,8 +137,9 @@ Hauptmenü → **Übungsfahrt in der Stadt**. Gedacht für Kinder und alle, die 
 
 | Was | Details |
 |---|---|
-| Stadt | 1 × 1 km, Strassen alle 100 m mit zwei Spuren (Rechtsverkehr), 5 Parkplätze und ein Übungsplatz mit Pylonen. Gärten und Innenhöfe sind befahrbar, nur aussen steht eine Mauer |
-| Quartiere | bunte Einfamilienhäuser, Geschäftsstrassen, Hochhauszone mit Plaza in der Mitte, **Backstein-Viertel**, **Altstadt** mit Fachwerkhäusern und Marktplatz, **Industriequartier** mit Wasserturm und Windrad, **Kraftwerk**, Parks und **zwei Supermärkte** direkt neben Parkplätzen. Wände und Dächer haben pro Gebäude eigene Farben |
+| Stadt | gut 1 × 1 km, Strassen alle 100 m mit zwei Spuren (Rechtsverkehr), Parkplätze und ein Übungsplatz mit Pylonen. Gärten und Innenhöfe sind befahrbar, aussen steht eine Mauer |
+| Am Stadtrand | **Hafen** im Süden: Kai mit Pollern, Lagerhallen, Containerstapel und Parkfelder, im Wasser Frachter, Schlepper, Fischer- und Hausboote, Boote fahren durchs Becken · **Bahn** im Osten: eingezäuntes Gleis zwischen zwei Tunnelportalen, Backstein-Bahnhof mit Bahnsteig, Vordach und Parkplatz; S-Bahn und Güterzug halten abwechselnd |
+| Quartiere | bunte Einfamilienhäuser, Geschäftsstrassen, Hochhauszone mit Plaza in der Mitte, **Backstein-Viertel**, **Altstadt** mit Fachwerkhäusern und Marktplatz, **Industriequartier** mit Wasserturm und Windrad, **Kraftwerk**, Parks, **zwei Supermärkte** direkt neben Parkplätzen, eine **Kirche mit Friedhof** und ein befahrbarer **Skaterpark** mit Funbox, Kicker zum Springen, Halfpipe und Quarterpipe. Wände und Dächer haben pro Gebäude eigene Farben |
 | Start | auf dem Übungsplatz (gelbe Startfelder) neben Slalom und Pylonenkreis |
 | Autos | Familienauto, Taxi, Polizeiauto, Feuerwehr: gutmütig, viel Grip, Spitze ca. 65 km/h (Feuerwehr etwas langsamer). Kaito ZX: Formelwagen mit ca. 90 km/h für Fortgeschrittene |
 | Allein | Bei Sterne sammeln und Einparken wählt man **5, 10 oder 20 Ziele**. Nach einem Countdown läuft die Zeit, bis alle geschafft sind. Die Zeit kommt in die **Rangliste** („Stadt: Sterne“ bzw. „Stadt: Einparken“, getrennt nach Anzahl) |
@@ -219,9 +220,14 @@ Alle Modelle und Texturen stehen unter **CC0 (Public Domain)** und liegen in [`c
 | [Kenney](https://kenney.nl/assets/city-kit-suburban) | City Kit (Suburban) | Häuser im Dorf, Chalets |
 | [Kenney](https://kenney.nl/assets/city-kit-commercial) | City Kit (Commercial) | Geschäftshäuser und Hochhäuser in Downtown und der Übungsstadt |
 | [Kenney](https://kenney.nl/assets/city-kit-industrial) | City Kit (Industrial) | Hallen, Fabriken, Wasserturm, Schornsteine, Container, Windrad (Übungsstadt) |
-| [Kenney](https://kenney.nl/assets/fantasy-town-kit) | Fantasy Town Kit | Fachwerkwände, Brunnen, Marktstände, Laternen der Altstadt |
+| [Kenney](https://kenney.nl/assets/fantasy-town-kit) | Fantasy Town Kit | Fachwerkwände, Brunnen, Marktstände, Laternen der Altstadt; Steinwände und Rundbogenfenster der Kirche |
 | [Kenney](https://kenney.nl/assets/retro-urban-kit) | Retro Urban Kit | Fassaden, Markisen und Bänke des Backstein-Viertels |
 | [Kenney](https://kenney.nl/assets/food-kit) | Food Kit | Frühstückstisch: Müslischale, Tassen, Teller, Croissant, Besteck, Obst |
+| [Kenney](https://kenney.nl/assets/mini-skate) | Mini Skate | Rails, Grind-Boxen, Bänke und Skater im Skaterpark |
+| [Kenney](https://kenney.nl/assets/watercraft-kit) | Watercraft Kit | Frachter, Schlepper, Boote, Container und Bojen im Hafen |
+| [Kenney](https://kenney.nl/assets/train-kit) | Train Kit | S-Bahn, Lok und Güterwagen |
+| [Kenney](https://kenney.nl/assets/graveyard-kit) | Graveyard Kit | Grabsteine, Grüfte, Eisenzaun, Laternen und Kiefern des Friedhofs |
+| [Kenney](https://kenney.nl/assets/blaster-kit) | Blaster Kit | (für den Kart-Modus) |
 | [ambientCG](https://ambientcg.com) | Asphalt031, Grass004, Rock064, Snow010A, Ground080, Gravel043, Concrete034 | Strasse, Gelände, Bankett, Mauern |
 | [ambientCG](https://ambientcg.com) | Ground106, Ground037, Ground071, Ground093C, Rock029, Ground097 | Offroad: Waldweg, Waldboden, Schlamm, Dünen, roter Fels, Wüstenpiste |
 | [ambientCG](https://ambientcg.com) | Wood049 | Micro: Holztisch |
@@ -254,7 +260,7 @@ scripts/  Asset-Download
 
 ## Versionierung
 
-Das Projekt folgt [Semantic Versioning](https://semver.org/lang/de/). Die aktuelle Version ist **0.11.2**. Änderungen stehen im [CHANGELOG](CHANGELOG.md), Releases sind als Git-Tags `vX.Y.Z` markiert. Die Version steht auch unten rechts im Hauptmenü.
+Das Projekt folgt [Semantic Versioning](https://semver.org/lang/de/). Die aktuelle Version ist **0.12.0**. Änderungen stehen im [CHANGELOG](CHANGELOG.md), Releases sind als Git-Tags `vX.Y.Z` markiert. Die Version steht auch unten rechts im Hauptmenü.
 
 ## Lizenz und Credits
 

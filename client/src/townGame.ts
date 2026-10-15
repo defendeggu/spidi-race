@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {
   collideCars, createTownCar, formatTime, forwardSpeed, getCar, idleCar, lerp, lerpAngle, NO_INPUT, PARKING_BAY, SURFACE_PROPS,
   stepCarTown, TownSession, Traffic,
-  type CarInput, type CarSpec, type CarState, type TaskTracker, type TownResult, type TownTask, type TrafficCar,
+  type CarInput, type CarSpec, type CarState, type TaskTracker, type TownMap, type TownResult, type TownTask, type TrafficCar,
 } from '@spidi/shared';
 import { audio, EngineVoice } from './audio';
 import { townSpec } from './cheats';
@@ -15,6 +15,19 @@ import { TownHud, type TownDot } from './townHud';
 
 const STEP = 1 / 60;
 const UP = { x: 0, y: 1, z: 0 };
+const normal = { x: 0, y: 1, z: 0 };
+
+/** Surface normal of the town ground (tilted on the skate park ramps). */
+function groundNormal(town: TownMap, x: number, z: number) {
+  const e = 0.6;
+  const hx = town.heightAt(x + e, z) - town.heightAt(x - e, z), hz = town.heightAt(x, z + e) - town.heightAt(x, z - e);
+  if (hx === 0 && hz === 0) return UP;
+  const l = Math.hypot(hx, 2 * e, hz);
+  normal.x = -hx / l;
+  normal.y = (2 * e) / l;
+  normal.z = -hz / l;
+  return normal;
+}
 const GOAL_COLORS = ['#ffd400', '#36d1ff'];
 const PRAISE = ['Super!', 'Toll gemacht!', 'Klasse!', 'Prima!', 'Weiter so!'];
 
@@ -37,6 +50,7 @@ export interface TownOptions {
 
 interface Prev {
   x: number;
+  y: number;
   z: number;
   heading: number;
 }
@@ -119,6 +133,8 @@ export class TownGame {
   private last = 0;
   private raf = 0;
   private time = 0;
+  /** real time since the start (also while paused the trains and boats keep moving) */
+  private clock = 0;
   private lastBeep = -1;
   private finishTimer = -1;
   readonly session: TownSession;
@@ -155,7 +171,7 @@ export class TownGame {
       const pitch = spec.id === 'feuerwehr' ? 0.8 : 1;
       this.players.push({
         cfg, spec, state, visual, color: carColor(spec), renderHeading: state.heading,
-        prev: { x: state.x, z: state.z, heading: state.heading },
+        prev: { x: state.x, y: state.y, z: state.z, heading: state.heading },
         cam: new ChaseCamera(0, viewForCar(spec.shape.length, visual.height)),
         hud: new TownHud(holder, town, opts.task, duel, cfg.keymap, split),
         voice: audio.ctx ? new EngineVoice(split ? (k === 0 ? -0.45 : 0.45) : 0, split ? 0.75 : 1, pitch) : null,
@@ -172,7 +188,7 @@ export class TownGame {
       const spec: CarSpec = { ...base, id: car.state.id, model: car.model, keepPaint: true, shape: { ...base.shape, length: car.model === 'delivery' ? 4.9 : 4.4 } };
       const visual = new CarVisual(spec);
       this.world.dynamic.add(visual.group);
-      this.trafficVisuals.push({ car, visual, prev: { x: car.state.x, z: car.state.z, heading: car.state.heading } });
+      this.trafficVisuals.push({ car, visual, prev: { x: car.state.x, y: 0, z: car.state.z, heading: car.state.heading } });
     }
   }
 
@@ -193,7 +209,7 @@ export class TownGame {
     this.players.forEach((p, k) => {
       const s = createTownCar(p.state.id, this.session.spawn(k));
       Object.assign(p.state, s);
-      p.prev = { x: s.x, z: s.z, heading: s.heading };
+      p.prev = { x: s.x, y: s.y, z: s.z, heading: s.heading };
     });
   }
 
@@ -203,13 +219,15 @@ export class TownGame {
       const t = p.tasks.target;
       p.goal.visible = !!t && !p.goal.userData.hidden && this.session.phase !== 'finished';
       if (t) {
-        p.goal.position.set(t.x, 0, t.z);
+        // stars on a ramp (skate park fun box) float above the ramp
+        p.goal.position.set(t.x, this.opts.task === 'stars' ? this.world.town.heightAt(t.x, t.z) : 0, t.z);
         p.goal.rotation.y = this.opts.task === 'parking' ? t.heading : 0;
       }
     }
   }
 
   private frame(dt: number) {
+    this.clock += dt;
     const padPause = this.players.map((p) => input.consumePad(p.cfg.pad, 'pause')).some(Boolean);
     if (input.consume(['Escape']) || padPause) this.onPause?.();
     if (input.consume(['KeyM'])) {
@@ -239,6 +257,7 @@ export class TownGame {
     for (const p of this.players) {
       const s = p.state;
       p.prev.x = s.x;
+      p.prev.y = s.y;
       p.prev.z = s.z;
       p.prev.heading = s.heading;
       p.lastInput = input.carInput(p.cfg.keymap, p.cfg.pad);
@@ -308,6 +327,7 @@ export class TownGame {
 
   private render(alpha: number, dt: number) {
     const town = this.world.town;
+    this.world.life.update(this.clock);
     // countdown beeps like at the start of a race
     const se = this.session;
     if (se.phase === 'countdown') {
@@ -326,7 +346,7 @@ export class TownGame {
       const s = p.state;
       p.renderHeading = lerpAngle(p.prev.heading, s.heading, alpha);
       const rough = SURFACE_PROPS[town.surfaceAt(s.x, s.z)].rough;
-      p.visual.update(lerp(p.prev.x, s.x, alpha), 0, lerp(p.prev.z, s.z, alpha), p.renderHeading, s, dt, UP, rough);
+      p.visual.update(lerp(p.prev.x, s.x, alpha), lerp(p.prev.y, s.y, alpha), lerp(p.prev.z, s.z, alpha), p.renderHeading, s, dt, groundNormal(town, s.x, s.z), rough);
       const spin = p.goal.getObjectByName('spin');
       if (spin) spin.rotation.y += dt * 2;
       const pulse = p.goal.getObjectByName('pulse') as THREE.Mesh | undefined;

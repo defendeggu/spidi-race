@@ -1,6 +1,6 @@
 import type { CarSpec } from './cars';
 import { clamp, mulberry32, wrapAngle } from './math';
-import { CIRCLE_R, driveCar, newCarState, updateGearbox, type CarInput, type CarState, type DriveGround } from './physics';
+import { CIRCLE_R, driveCar, newCarState, updateGearbox, updateVertical, type CarInput, type CarState, type DriveGround } from './physics';
 import { SURFACE_PROPS, type Surface } from './track';
 import { TOWN_FOOTPRINTS } from './townFootprints';
 
@@ -10,7 +10,7 @@ import { TOWN_FOOTPRINTS } from './townFootprints';
  * (rendering) and tests see the same map.
  */
 
-/** the town spans -TOWN_HALF..TOWN_HALF in x and z; a wall surrounds it */
+/** the old town spans -TOWN_HALF..TOWN_HALF in x and z */
 export const TOWN_HALF = 500;
 /** distance between parallel streets */
 export const GRID = 100;
@@ -28,11 +28,69 @@ export const BLOCK_INNER = BLOCK_HALF - SIDEWALK;
 
 /** street centre lines (same values for x and z) */
 export const LINES = Array.from({ length: LINE_COUNT }, (_, k) => -((LINE_COUNT - 1) * GRID) / 2 + k * GRID);
-const OUTER = LINES[LINE_COUNT - 1] + ROAD_HW + SIDEWALK;
+/** outer edge of the sidewalk along the outer ring street */
+export const OUTER = LINES[LINE_COUNT - 1] + ROAD_HW + SIDEWALK;
+
+/**
+ * The drivable town: the old town plus the harbour strip in the south (−z, ending at the quay edge)
+ * and the railway strip in the east (−x; on the minimap and in the chase view −x is to the right).
+ * A wall closes the other sides, the quay edge has a barrier.
+ */
+export const TOWN_BOUNDS = { minX: -570, maxX: TOWN_HALF, minZ: -540, maxZ: TOWN_HALF };
+export const HARBOR = { quayZ: TOWN_BOUNDS.minZ, waterY: -1.6 };
+/** railway along the east strip: track, fence towards the town, platform and station forecourt */
+export const RAIL = {
+  trackX: -522,
+  fenceX: -507,
+  /** the track runs between two tunnel portals */
+  north: 486,
+  south: -446,
+  platform: [-519.6, -508] as const,
+  /** station forecourt (asphalt, parking bays) */
+  forecourt: { x0: -505, x1: -OUTER, z0: -70, z1: 70 },
+  /** station building between forecourt and platform */
+  station: { x: -499, z: 0, w: 16, d: 40 },
+};
+
+/**
+ * A drivable ramp (skate park). The profile runs along +u = (sin rot, cos rot) from (x, z):
+ * it rises over `up` metres to `height` (straight, kicker = steepening, quarter = concave like a
+ * quarter pipe), stays flat for `top` metres and falls again over `down` metres (0 = sharp edge).
+ */
+export interface Ramp {
+  x: number;
+  z: number;
+  rot: number;
+  width: number;
+  height: number;
+  up: number;
+  top: number;
+  down: number;
+  curve: 'straight' | 'kicker' | 'quarter';
+}
+
+/** Height of a ramp at (x, z), or -1 if the point is not on it. */
+export function rampHeight(r: Ramp, x: number, z: number) {
+  const fx = Math.sin(r.rot), fz = Math.cos(r.rot);
+  const dx = x - r.x, dz = z - r.z;
+  const u = dx * fx + dz * fz, v = -dx * fz + dz * fx;
+  const len = r.up + r.top + r.down;
+  if (u < 0 || u > len || Math.abs(v) > r.width / 2) return -1;
+  if (u < r.up) {
+    const f = u / r.up;
+    if (r.curve === 'straight') return r.height * f;
+    if (r.curve === 'kicker') return r.height * f * f;
+    // quarter pipe: a circle arc up to 60°
+    const sn = f * Math.sin(Math.PI / 3);
+    return (r.height * (1 - Math.sqrt(1 - sn * sn))) / (1 - Math.cos(Math.PI / 3));
+  }
+  if (u <= r.up + r.top || r.down <= 0) return r.height;
+  return r.height * (1 - (u - r.up - r.top) / r.down);
+}
 
 export type BlockKind =
   | 'tower' | 'shop' | 'house' | 'park' | 'parking' | 'practice'
-  | 'brick' | 'oldtown' | 'industry' | 'power' | 'supermarket' | 'plaza' | 'towerplaza';
+  | 'brick' | 'oldtown' | 'industry' | 'power' | 'supermarket' | 'plaza' | 'towerplaza' | 'skate' | 'church';
 
 export interface Block {
   i: number;
@@ -56,7 +114,7 @@ export interface CircleObstacle {
   z: number;
   r: number;
   /** 'prop': collision of a modelled prop (fountain, chimney …), drawn via TownMap.props */
-  kind: 'tree' | 'cone' | 'lamp' | 'prop';
+  kind: 'tree' | 'cone' | 'lamp' | 'prop' | 'bollard';
 }
 
 /** A marked parking bay. heading points into the bay (the way a car facing the back wall would look). */
@@ -88,6 +146,8 @@ export interface Building {
   h: number;
   /** colour variant (wall / roof palette) chosen per building */
   variant: number;
+  /** height of the model's base (default 0; ships float on the water) */
+  y?: number;
 }
 
 /** number of colour variants a building can get */
@@ -161,11 +221,11 @@ const CELL = 50;
 const BLOCK_PLAN = [
   // one row per block row j (z), one letter per block column i (x)
   'hhhBBBBhh',
-  'hXPMBBpsh',
+  'hXPMBBSsh',
   'AsssssPsh',
   'AAsTTTshh',
   'AFsTZTsph',
-  'hPsTTTshh',
+  'CPsTTTshh',
   'hsssssMPh',
   'hhphPIsII',
   'hhhhIIIIK',
@@ -173,7 +233,14 @@ const BLOCK_PLAN = [
 const PLAN_KIND: Record<string, BlockKind> = {
   h: 'house', s: 'shop', T: 'tower', p: 'park', P: 'parking', X: 'practice',
   B: 'brick', A: 'oldtown', I: 'industry', K: 'power', M: 'supermarket', F: 'plaza', Z: 'towerplaza',
+  S: 'skate', C: 'church',
 };
+/**
+ * Blocks that replaced older ones (skate park instead of a park, church instead of houses). They first
+ * run the old generator and throw its result away, so the random numbers of all other blocks – and
+ * with them the familiar town – stay exactly the same.
+ */
+const REPLACED: Partial<Record<BlockKind, BlockKind>> = { skate: 'park', church: 'house' };
 
 export class TownMap {
   readonly blocks: Block[] = [];
@@ -181,6 +248,9 @@ export class TownMap {
   readonly circles: CircleObstacle[] = [];
   readonly bays: ParkingBay[] = [];
   readonly buildings: Building[] = [];
+  /** drivable ramps (skate park) */
+  readonly ramps: Ramp[] = [];
+  private rampBox = { minX: Infinity, maxX: -Infinity, minZ: Infinity, maxZ: -Infinity };
   /** non-building objects with a model (fountains, chimneys, containers, stalls, fences …) */
   readonly props: Building[] = [];
   private lots = 0;
@@ -192,12 +262,17 @@ export class TownMap {
 
   constructor(readonly seed = 2024) {
     const rnd = mulberry32(seed);
+    const later: Block[] = [];
     for (let j = 0; j < LINE_COUNT - 1; j++) {
       for (let i = 0; i < LINE_COUNT - 1; i++) {
         const kind = PLAN_KIND[BLOCK_PLAN[j][i]];
         const b: Block = { i, j, cx: LINES[i] + GRID / 2, cz: LINES[j] + GRID / 2, kind };
         this.blocks.push(b);
-        this.buildBlock(b, rnd);
+        const was = REPLACED[kind];
+        if (was) {
+          this.discard(() => this.buildBlock({ ...b, kind: was }, rnd));
+          later.push(b);
+        } else this.buildBlock(b, rnd);
       }
     }
     // street lamps at the block corners, on the sidewalk
@@ -212,23 +287,35 @@ export class TownMap {
         this.starSpots.push({ x: LINES[a], z: mid, heading: 0 }, { x: mid, z: LINES[a], heading: Math.PI / 2 });
       }
     }
-    // the wall around the town; trees on the grass strip in front of it
-    const W = TOWN_HALF, T = 4;
+    // the wall around the town (the harbour ends at the quay edge); trees on the grass strips
+    const { minX, maxX, minZ, maxZ } = TOWN_BOUNDS, T = 4;
     this.boxes.push(
-      { minX: -W - T, maxX: W + T, minZ: W, maxZ: W + T, solid: true },
-      { minX: -W - T, maxX: W + T, minZ: -W - T, maxZ: -W, solid: true },
-      { minX: W, maxX: W + T, minZ: -W, maxZ: W, solid: true },
-      { minX: -W - T, maxX: -W, minZ: -W, maxZ: W, solid: true },
+      { minX: minX - T, maxX: maxX + T, minZ: maxZ, maxZ: maxZ + T, solid: true },
+      { minX: minX - T, maxX: maxX + T, minZ: minZ - T, maxZ: minZ, solid: true },
+      { minX: maxX, maxX: maxX + T, minZ, maxZ, solid: true },
+      { minX: minX - T, maxX: minX, minZ, maxZ, solid: true },
     );
+    const W = TOWN_HALF;
     for (let k = 0; k < 160; k++) {
       const along = (rnd() * 2 - 1) * (W - 8);
       const inset = W - 6 - rnd() * 22;
       const side = k % 4;
       const x = side === 0 ? along : side === 1 ? along : side === 2 ? inset : -inset;
       const z = side === 0 ? inset : side === 1 ? -inset : along;
+      // the south (harbour) and east (railway) strips are laid out separately
+      if (side === 1 || side === 3) continue;
       if (this.circles.some((c) => c.kind === 'tree' && Math.hypot(c.x - x, c.z - z) < 7)) continue;
       this.circles.push({ x, z, r: 0.6, kind: 'tree' });
     }
+
+    // new areas with their own random numbers (after everything else, see REPLACED)
+    const xr = mulberry32(seed + 77);
+    for (const b of later) {
+      if (b.kind === 'skate') this.skatePark(b, xr);
+      else if (b.kind === 'church') this.churchYard(b, xr);
+    }
+    this.harbour(xr);
+    this.railway(xr);
 
     for (const o of this.boxes) this.insert(o.minX, o.maxX, o.minZ, o.maxZ, (c) => c.boxes.push(o));
     for (const o of this.circles) this.insert(o.x - o.r, o.x + o.r, o.z - o.r, o.z + o.r, (c) => c.circles.push(o));
@@ -490,6 +577,216 @@ export class TownMap {
     this.starSpots.push({ x: cx + 5, z: cz + 30, heading: 0 });
   }
 
+  /** Run a generator and throw away everything it added (keeps the random number streams in step). */
+  private discard(fn: () => void) {
+    const n = [this.buildings.length, this.props.length, this.boxes.length, this.circles.length, this.bays.length, this.starSpots.length];
+    fn();
+    this.buildings.length = n[0];
+    this.props.length = n[1];
+    this.boxes.length = n[2];
+    this.circles.length = n[3];
+    this.bays.length = n[4];
+    this.starSpots.length = n[5];
+  }
+
+  private addRamp(r: Ramp) {
+    this.ramps.push(r);
+    const len = r.up + r.top + r.down, fx = Math.sin(r.rot), fz = Math.cos(r.rot);
+    for (const [u, v] of [[0, -1], [0, 1], [len, -1], [len, 1]]) {
+      const x = r.x + fx * u - fz * v * (r.width / 2), z = r.z + fz * u + fx * v * (r.width / 2);
+      const b = this.rampBox;
+      b.minX = Math.min(b.minX, x); b.maxX = Math.max(b.maxX, x);
+      b.minZ = Math.min(b.minZ, z); b.maxZ = Math.max(b.maxZ, z);
+    }
+    // a quarter pipe ends in a wall: cars bounce back down instead of falling off the back
+    if (r.down === 0 && r.curve === 'quarter') {
+      const u = len + 0.4, cxw = r.x + fx * u, czw = r.z + fz * u;
+      const hx = Math.abs(fx) * 0.4 + Math.abs(fz) * (r.width / 2), hz = Math.abs(fz) * 0.4 + Math.abs(fx) * (r.width / 2);
+      this.boxes.push({ minX: cxw - hx, maxX: cxw + hx, minZ: czw - hz, maxZ: czw + hz, solid: true });
+    }
+  }
+
+  /** Ground height at (x, z): 0 except on the ramps of the skate park. */
+  heightAt(x: number, z: number) {
+    const b = this.rampBox;
+    if (x < b.minX || x > b.maxX || z < b.minZ || z > b.maxZ) return 0;
+    let h = 0;
+    for (const r of this.ramps) h = Math.max(h, rampHeight(r, x, z));
+    return h;
+  }
+
+  /**
+   * Skate park: a fun box in the middle, a jump line (kicker, gap, landing), a half pipe and a quarter
+   * pipe, plus rails, grind boxes, benches and a few skaters. All ramps are drivable.
+   */
+  private skatePark(b: Block, rnd: () => number) {
+    const { cx, cz } = b;
+    const ramp = (dx: number, dz: number, rot: number, width: number, height: number, up: number, top: number, down: number, curve: Ramp['curve']) =>
+      this.addRamp({ x: cx + dx, z: cz + dz, rot, width, height, up, top, down, curve });
+    ramp(-10, -11, 0, 10, 1.6, 7, 8, 7, 'straight');
+    ramp(-30, -36, 0, 8, 1.5, 6, 0, 0, 'kicker');
+    ramp(-30, -14, 0, 8, 1.5, 4, 6, 12, 'straight');
+    ramp(28, 6, 0, 20, 3, 6, 1, 0, 'quarter');
+    ramp(28, -6, Math.PI, 20, 3, 6, 1, 0, 'quarter');
+    ramp(-8, 30, 0, 24, 2.5, 6, 1, 0, 'quarter');
+    // rails and grind boxes are obstacles
+    this.addProp('sk-rail-high', 6, cx + 8, cz - 26, 0, 'box', 0, [0.7, 6, 2.7]);
+    this.addProp('sk-rail-low', 6, cx + 2, cz + 20, Math.PI / 2, 'box', 0, [0.7, 6, 1.5]);
+    this.addProp('sk-obstacle-box', 4, cx + 30, cz - 30, 0, 'box', 0, [4, 4, 0.85]);
+    this.addProp('sk-obstacle-box-grind', 4, cx + 12, cz + 34, Math.PI / 2, 'box', 0, [2, 4, 0.85]);
+    for (const [dx, dz, rot] of [[-38, 0, Math.PI / 2], [38, 26, -Math.PI / 2], [0, -39, 0], [20, 39, Math.PI]]) {
+      this.addProp('sk-benches', 3, cx + dx, cz + dz, rot, 'box', 0, [3, 3.3, 2]);
+    }
+    const skaters = ['sk-character-skate-boy', 'sk-character-skate-girl'];
+    for (const [dx, dz] of [[-37, -20], [38, 12], [-20, 38], [14, -38]]) {
+      this.addProp(skaters[Math.floor(rnd() * 2)], 2.3, cx + dx, cz + dz, rnd() * Math.PI * 2, 'circle', 0.7);
+    }
+    this.addProp('sk-pallet', 4, cx + 22, cz - 30, 0.3, 'box', 0, [2, 2, 0.6]);
+    this.starSpots.push({ x: cx - 10, z: cz, heading: 0 }, { x: cx - 30, z: cz - 6, heading: 0 }, { x: cx + 28, z: cz, heading: Math.PI / 2 });
+  }
+
+  /**
+   * Church with its tower towards the street and a quiet cemetery behind it: iron fence with two
+   * gates, rows of graves, crypts, pines, lanterns and benches.
+   */
+  private churchYard(b: Block, rnd: () => number) {
+    const { cx, cz } = b;
+    this.addBuilding(['tpl-church-4x8x3', 4, 8, 7], 4.5, cx, cz + 16, 0);
+    // cemetery: z from cz-40 to cz-6, fence with a gate on the north and south side
+    const x0 = cx - 38, x1 = cx + 38, z0 = cz - 40, z1 = cz - 6, gate = 4;
+    const seg = 2.2;
+    const fence = (ax: number, az: number, bx: number, bz: number) => {
+      const len = Math.hypot(bx - ax, bz - az), rot = Math.atan2(bx - ax, bz - az) + Math.PI / 2;
+      const n = Math.max(1, Math.round(len / seg));
+      for (let k = 0; k < n; k++) {
+        const t = (k + 0.5) / n;
+        this.addProp('gy-iron-fence', seg, ax + (bx - ax) * t, az + (bz - az) * t, rot, 'none', 0, [seg, 0.3, 1.9]);
+      }
+      const hx = Math.max(0.2, Math.abs(bx - ax) / 2), hz = Math.max(0.2, Math.abs(bz - az) / 2);
+      this.boxes.push({ minX: (ax + bx) / 2 - hx, maxX: (ax + bx) / 2 + hx, minZ: (az + bz) / 2 - hz, maxZ: (az + bz) / 2 + hz, solid: true });
+    };
+    for (const z of [z0, z1]) {
+      fence(x0, z, cx - gate, z);
+      fence(cx + gate, z, x1, z);
+      for (const sx of [-1, 1]) this.addProp('gy-iron-fence-border-column', 2.2, cx + sx * gate, z, 0, 'circle', 0.35);
+    }
+    fence(x0, z0, x0, z1);
+    fence(x1, z0, x1, z1);
+    // graves in rows, the path along x = cx stays free
+    const stones = ['gy-gravestone-cross', 'gy-gravestone-round', 'gy-gravestone-bevel', 'gy-gravestone-wide', 'gy-gravestone-roof', 'gy-gravestone-decorative'];
+    for (let gx = x0 + 5; gx <= x1 - 4; gx += 5) {
+      if (Math.abs(gx - cx) < 6) continue;
+      for (let gz = z0 + 6; gz <= z1 - 5; gz += 7) {
+        if (rnd() < 0.15) continue;
+        this.addProp(rnd() < 0.5 ? 'gy-grave' : 'gy-grave-border', 2.2, gx, gz, 0, 'none', 0, [1.6, 2.9, 0.2]);
+        this.addProp(stones[Math.floor(rnd() * stones.length)], 2.2, gx, gz + 1.9, 0, 'box', 0, [1.1, 0.6, 1.3]);
+      }
+    }
+    this.addProp('gy-crypt-small', 4, x0 + 6, z0 + 5, 0, 'box', 0, [5.4, 5.6, 4]);
+    this.addProp('gy-crypt-small', 4, x1 - 6, z0 + 5, 0, 'box', 0, [5.4, 5.6, 4]);
+    this.addProp('gy-pillar-obelisk', 3, cx - 5.5, cz - 23, 0, 'circle', 0.6);
+    for (const [px, pz] of [[x0 + 2.5, z1 - 2.5], [x1 - 2.5, z1 - 2.5], [x0 + 2.5, cz - 23], [x1 - 2.5, cz - 23]]) {
+      this.addProp(rnd() < 0.5 ? 'gy-pine' : 'gy-pine-crooked', 4, px, pz, rnd() * Math.PI * 2, 'circle', 0.8);
+    }
+    for (const pz of [z0 + 8, cz - 16, z1 - 4]) {
+      for (const sx of [-1, 1]) this.addProp('gy-lightpost-single', 2.5, cx + sx * 3.5, pz, sx > 0 ? -Math.PI / 2 : Math.PI / 2, 'circle', 0.25);
+    }
+    for (const sx of [-1, 1]) this.addProp('gy-bench', 2.5, cx + sx * 4, cz - 30, sx > 0 ? -Math.PI / 2 : Math.PI / 2, 'box', 0, [1.2, 2, 1.3]);
+    // trees beside the church
+    for (let k = 0; k < 8; k++) {
+      const sx = k % 2 ? 1 : -1, x = cx + sx * (16 + rnd() * 20), z = cz + rnd() * 34;
+      if (this.buildingsFree(x, z, 4) && this.propsFree(x, z, 4)) this.circles.push({ x, z, r: 0.6, kind: 'tree' });
+    }
+    this.starSpots.push({ x: cx, z: cz - 14, heading: 0 }, { x: cx + 14, z: cz + 38, heading: Math.PI / 2 });
+  }
+
+  /**
+   * Harbour along the south edge: a wide quay apron with warehouses, container stacks and parking,
+   * bollards along the quay edge and ships moored in the water.
+   */
+  private harbour(rnd: () => number) {
+    const Q = HARBOR.quayZ, { minX, maxX } = TOWN_BOUNDS;
+    for (let x = minX + 6; x < maxX - 4; x += 12) this.circles.push({ x, z: Q + 1.5, r: 0.35, kind: 'bollard' });
+    // ships and boats in the water (no collision, the quay barrier keeps cars out)
+    const moor = (model: string, scale: number, x: number, len: number, wid: number, rot = Math.PI / 2) => {
+      this.addProp(model, scale, x, Q - 2 - wid / 2, rot, 'none', 0, [wid, len, len * 0.3]);
+      // the hull sits a bit below the water line
+      this.props[this.props.length - 1].y = HARBOR.waterY - 0.6 - len * 0.02;
+    };
+    moor('wc-ship-cargo-a', 5, -170, 53, 19.6);
+    moor('wc-ship-cargo-b', 5, 170, 53, 19.6, -Math.PI / 2);
+    moor('wc-boat-tug-a', 4, 30, 14, 7.1);
+    moor('wc-boat-tug-a', 4, 60, 14, 7.1, -Math.PI / 2);
+    ['wc-boat-fishing-small', 'wc-boat-house-a', 'wc-boat-fishing-small', 'wc-boat-house-b', 'wc-boat-sail-a', 'wc-boat-row-small']
+      .forEach((m, k) => moor(m, 3, -460 + k * 16, 13, 6));
+    ['wc-boat-sail-b', 'wc-boat-house-a', 'wc-boat-speed-a', 'wc-boat-fishing-small'].forEach((m, k) => moor(m, 3, 330 + k * 18, 13, 6, -Math.PI / 2));
+    for (let k = 0; k < 6; k++) {
+      this.addProp(k % 2 ? 'wc-buoy-flag' : 'wc-buoy', 3, -400 + k * 160, Q - 70 - rnd() * 20, 0, 'none', 0, [2.8, 2.8, 5]);
+      this.props[this.props.length - 1].y = HARBOR.waterY;
+    }
+    // warehouses in the middle of the apron
+    this.addBuilding(['ind-building-r', 2.48, 1.27, 1.39], 12, -30, -505, 0);
+    this.addBuilding(['ind-building-q', 2.14, 1.77, 0.88], 12, 60, -505, 0);
+    // container stacks and cargo piles in the east part
+    const boxes = ['wc-cargo-container-a', 'wc-cargo-container-b', 'wc-cargo-container-c'];
+    for (let x = 200; x <= 440; x += 16) {
+      for (const z of [-482, -512]) {
+        if (rnd() < 0.2) continue;
+        const pile = rnd() < 0.35;
+        if (pile) this.addProp(rnd() < 0.5 ? 'wc-cargo-pile-a' : 'wc-cargo-pile-b', 5, x, z, 0, 'box', 0, [13.5, 14.5, 6]);
+        else this.addProp(boxes[Math.floor(rnd() * 3)], 4.4, x, z, 0, 'box', 0, [6.1, 12.2, 4.8]);
+      }
+    }
+    // parking bays in the west part, facing the water
+    for (let k = 0; k < 16; k++) {
+      const x = -330 + k * PARKING_BAY.width, z = -480;
+      const parked = rnd() < 0.3 ? Math.floor(rnd() * 7) : -1;
+      this.bays.push({ x, z, heading: Math.PI, parked });
+      if (parked >= 0) this.boxes.push({ minX: x - 1.2, maxX: x + 1.2, minZ: z - 2.3, maxZ: z + 2.3, solid: false });
+    }
+    this.starSpots.push(
+      { x: -250, z: -510, heading: Math.PI / 2 }, { x: 120, z: -478, heading: Math.PI / 2 },
+      { x: 320, z: -527, heading: Math.PI / 2 }, { x: -480, z: -500, heading: Math.PI / 2 },
+    );
+  }
+
+  /**
+   * Railway along the east strip: a fenced track between two tunnel portals, a brick station with a
+   * forecourt and parking, trees on the grass.
+   */
+  private railway(rnd: () => number) {
+    const R = RAIL, { minX, maxZ } = TOWN_BOUNDS;
+    const st = R.station;
+    // station building closes the fence between forecourt and platform
+    this.addBuilding(['tpl-retro-10x4x3', 10, 4, 3.3], 4, st.x, st.z, Math.PI / 2);
+    const fence = (z0: number, z1: number) => this.addProp('fence', 1, R.fenceX, (z0 + z1) / 2, Math.PI / 2, 'box', 0, [z1 - z0, 0.3, 2.2]);
+    fence(R.south, st.z - st.d / 2);
+    fence(st.z + st.d / 2, R.north);
+    // tunnel portals close the track corridor at both ends
+    const portal = (z0: number, z1: number) =>
+      this.addProp('tunnel-portal', 1, (minX + R.fenceX) / 2, (z0 + z1) / 2, 0, 'box', 0, [R.fenceX - minX, z1 - z0, 9]);
+    portal(R.north, maxZ);
+    portal(R.south - 16, R.south);
+    // parking bays on the forecourt, facing the station
+    const f = R.forecourt;
+    for (let z = f.z0 + 6; z <= f.z1 - 6; z += PARKING_BAY.width) {
+      if (Math.abs(z) < 9) continue;
+      const parked = rnd() < 0.3 ? Math.floor(rnd() * 7) : -1;
+      this.bays.push({ x: -476, z, heading: -Math.PI / 2, parked });
+      if (parked >= 0) this.boxes.push({ minX: -478.3, maxX: -473.7, minZ: z - 1.2, maxZ: z + 1.2, solid: false });
+    }
+    this.starSpots.push({ x: -485, z: 0, heading: 0 }, { x: -470, z: 250, heading: 0 }, { x: -470, z: -250, heading: 0 });
+    // trees behind the track and on the grass between the town and the fence
+    for (let k = 0; k < 140; k++) {
+      const behind = k % 2 === 0;
+      const x = behind ? minX + 4 + rnd() * (R.trackX - 10 - minX - 4) : R.fenceX + 4 + rnd() * (-OUTER - 4 - R.fenceX - 4);
+      const z = R.south + rnd() * (R.north - R.south);
+      if (!behind && z > f.z0 - 6 && z < f.z1 + 6) continue;
+      if (this.circles.some((c) => c.kind === 'tree' && Math.hypot(c.x - x, c.z - z) < 8)) continue;
+      this.circles.push({ x, z, r: 0.6, kind: 'tree' });
+    }
+  }
+
   private buildingsFree(x: number, z: number, r: number) {
     return this.buildings.every((b) => Math.abs(x - b.x) > b.w / 2 + r || Math.abs(z - b.z) > b.d / 2 + r);
   }
@@ -549,8 +846,13 @@ export class TownMap {
 
   surfaceAt(x: number, z: number): Surface {
     if (this.roadDistance(x, z) <= ROAD_HW + SIDEWALK) return 'asphalt';
+    // harbour apron and station forecourt are paved, the rest outside the old town is grass
+    if (z < -OUTER) return 'asphalt';
+    const f = RAIL.forecourt;
+    if (x < -OUTER) return x >= f.x0 && z >= f.z0 && z <= f.z1 ? 'asphalt' : 'dirt';
     if (Math.abs(x) > OUTER || Math.abs(z) > OUTER) return 'dirt';
     const b = this.blockAt(x, z);
+    if (b?.kind === 'church') return Math.abs(x - b.cx) < 4 || z > b.cz + 33 ? 'asphalt' : 'dirt';
     // lawns in parks and gardens
     return b && (b.kind === 'park' || b.kind === 'house') ? 'dirt' : 'asphalt';
   }
@@ -660,15 +962,18 @@ export function createTownCar(id: string, spot: Spot) {
 
 const townGround: DriveGround = { grip: 1, drag: 0, offroad: false, bankGrip: 0, slope: 0 };
 
-/** One physics step in the flat town: same driving model as on the tracks, buildings instead of barriers. */
+/**
+ * One physics step in the town: same driving model as on the tracks, buildings instead of barriers.
+ * The ground is flat except for the skate park ramps, where cars climb, jump and land.
+ */
 export function stepCarTown(c: CarState, spec: CarSpec, inp: CarInput, map: TownMap, dt: number) {
   const sp = SURFACE_PROPS[map.surfaceAt(c.x, c.z)];
   townGround.grip = sp.grip;
   townGround.drag = sp.drag;
+  const fx = Math.sin(c.heading), fz = Math.cos(c.heading);
+  townGround.slope = (map.heightAt(c.x + fx * 0.6, c.z + fz * 0.6) - map.heightAt(c.x - fx * 0.6, c.z - fz * 0.6)) / 1.2;
   const vf = driveCar(c, spec, inp, townGround, dt);
   c.impact = map.collide(c, spec);
-  c.y = 0;
-  c.vy = 0;
-  c.landed = 0;
+  updateVertical(c, map.heightAt(c.x, c.z), dt, true);
   updateGearbox(c, spec, vf, dt);
 }

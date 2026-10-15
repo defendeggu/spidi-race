@@ -1,12 +1,14 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import {
-  BLOCK_HALF, BLOCK_INNER, getTown, LINE_COUNT, LINES, mulberry32, PARKING_BAY, ROAD_HW, SIDEWALK, TOWN_HALF, TRAFFIC_MODELS,
-  type TownMap,
+  BLOCK_HALF, BLOCK_INNER, getTown, HARBOR, LINE_COUNT, LINES, mulberry32, PARKING_BAY, RAIL, rampHeight, ROAD_HW, SIDEWALK,
+  TOWN_BOUNDS, TOWN_HALF, TRAFFIC_MODELS,
+  type Ramp, type TownMap,
 } from '@spidi/shared';
 import { assetsReady, getTexture, type TextureName } from './assets';
 import { buildingMeshes, variantColors, type BuildingInstance } from './buildingKit';
 import { colored, fallback, instanced, towerGeo, type Variant } from './scenery';
+import { TownLife } from './townLife';
 import { sky, THEMES } from './world';
 
 export interface TownWorld {
@@ -14,6 +16,36 @@ export interface TownWorld {
   scene: THREE.Scene;
   /** container for cars, stars and other per-session objects */
   dynamic: THREE.Group;
+  /** moving trains and boats (purely visual), updated with the game time */
+  life: TownLife;
+}
+
+/**
+ * Concrete body of a drivable ramp, built from the same height profile the physics uses: top surface,
+ * side walls and the back wall where the profile ends in an edge.
+ */
+function rampGeometry(r: Ramp) {
+  const len = r.up + r.top + r.down, n = 24;
+  const fx = Math.sin(r.rot), fz = Math.cos(r.rot), hw = r.width / 2;
+  const P = (u: number, v: number, h: number) => [r.x + fx * u - fz * v, h, r.z + fz * u + fx * v];
+  const us: number[] = [];
+  for (let k = 0; k <= n; k++) us.push((k / n) * len);
+  const h = (u: number) => Math.max(0, rampHeight(r, r.x + fx * Math.min(u, len - 1e-6), r.z + fz * Math.min(u, len - 1e-6)));
+  const pos: number[] = [];
+  const quad = (a: number[], b: number[], c: number[], d: number[]) => pos.push(...a, ...b, ...c, ...c, ...b, ...d);
+  for (let k = 0; k < n; k++) {
+    const u0 = us[k], u1 = us[k + 1], h0 = h(u0), h1 = h(u1);
+    quad(P(u0, -hw, h0), P(u0, hw, h0), P(u1, -hw, h1), P(u1, hw, h1));
+    // side walls
+    quad(P(u0, -hw, 0), P(u0, -hw, h0), P(u1, -hw, 0), P(u1, -hw, h1));
+    quad(P(u0, hw, h0), P(u0, hw, 0), P(u1, hw, h1), P(u1, hw, 0));
+  }
+  const hEnd = h(len);
+  if (hEnd > 0.01) quad(P(len, -hw, hEnd), P(len, hw, hEnd), P(len, -hw, 0), P(len, hw, 0));
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.computeVertexNormals();
+  return g;
 }
 
 /** Axis-aligned flat rectangles collected into one mesh; uv in metres. */
@@ -86,10 +118,14 @@ export function getTownWorld(): TownWorld {
   walk.add(ext, -ext, outer, ext);
   walk.add(-outer, -ext, -ext, ext);
   const far = TOWN_HALF + 400;
+  const { minX, maxX, maxZ } = TOWN_BOUNDS, Q = HARBOR.quayZ;
   grass.add(-far, outer, far, far);
-  grass.add(-far, -far, far, -outer);
   grass.add(outer, -outer, far, outer);
   grass.add(-far, -outer, -outer, outer);
+  // harbour apron down to the quay; beyond it only water
+  lot.add(minX, Q, maxX, -outer);
+  grass.add(-far, Q, minX, -outer);
+  grass.add(maxX, Q, far, -outer);
   const H = BLOCK_HALF, I = BLOCK_INNER;
   for (const b of town.blocks) {
     const { cx, cz } = b;
@@ -97,6 +133,14 @@ export function getTownWorld(): TownWorld {
     walk.add(cx - H, cz + I, cx + H, cz + H);
     walk.add(cx - H, cz - I, cx - I, cz + I);
     walk.add(cx + I, cz - I, cx + H, cz + I);
+    if (b.kind === 'church') {
+      // lawn with a paved path to the gates and a forecourt in front of the church
+      grass.add(cx - I, cz - I, cx - 4, cz + 33);
+      grass.add(cx + 4, cz - I, cx + I, cz + 33);
+      paved.add(cx - 4, cz - I, cx + 4, cz + 33);
+      paved.add(cx - I, cz + 33, cx + I, cz + I);
+      continue;
+    }
     const area = b.kind === 'house' || b.kind === 'park' ? grass
       : ['parking', 'practice', 'supermarket', 'industry', 'power'].includes(b.kind) ? lot
         : b.kind === 'oldtown' || b.kind === 'plaza' ? cobble : paved;
@@ -108,6 +152,52 @@ export function getTownWorld(): TownWorld {
   scene.add(paved.mesh(ground('concrete', 6, '#a8a49c', '#8f8b84')));
   scene.add(cobble.mesh(ground('gravel', 3, '#d8c4a8', '#a8957a')));
   scene.add(grass.mesh(ground('grass', 6, '#b8d49a', '#5f8a3c')));
+
+  // ---------------------------------------------------------------- harbour water and quay, railway strip
+  const water = new THREE.Mesh(
+    new THREE.PlaneGeometry(2 * far, far).rotateX(-Math.PI / 2).translate(0, HARBOR.waterY, Q - far / 2),
+    new THREE.MeshPhongMaterial({ color: '#2c7fae', shininess: 90, specular: '#9fd3ff', transparent: true, opacity: 0.92 }),
+  );
+  scene.add(water);
+  const quay: THREE.BufferGeometry[] = [
+    // quay wall down to the water and a yellow-black edge
+    colored(new THREE.BoxGeometry(maxX - minX, 6, 1).translate((minX + maxX) / 2, -3, Q - 0.5), '#8a857c'),
+    colored(new THREE.BoxGeometry(maxX - minX, 0.25, 0.5).translate((minX + maxX) / 2, 0.12, Q + 0.25), '#e0b820'),
+  ];
+  // overlays on the grass: station forecourt, track ballast, platform with canopy
+  const over = new Quads(), ballast = new Quads();
+  const f = RAIL.forecourt;
+  over.add(f.x0, f.z0, f.x1, f.z1, 0.01);
+  ballast.add(RAIL.trackX - 3, RAIL.south - 16, RAIL.trackX + 3, RAIL.north + 14, 0.01);
+  const overlay = (m: THREE.MeshLambertMaterial) => {
+    m.polygonOffset = true;
+    m.polygonOffsetFactor = -1;
+    m.polygonOffsetUnits = -2;
+    return m;
+  };
+  scene.add(over.mesh(overlay(ground('asphalt', 7, '#b4b4b4', '#66686b'))));
+  scene.add(ballast.mesh(overlay(ground('gravel', 3, '#9a948a', '#7a756c'))));
+  const [p0, p1] = RAIL.platform, pz = 60;
+  quay.push(colored(new THREE.BoxGeometry(p1 - p0, 0.9, 2 * pz).translate((p0 + p1) / 2, 0.45, 0), '#c9c4ba'));
+  quay.push(colored(new THREE.BoxGeometry(0.3, 0.02, 2 * pz).translate(p0 + 0.4, 0.91, 0), '#f0c420'));
+  quay.push(colored(new THREE.BoxGeometry(p1 - p0 + 1, 0.25, 2 * pz - 20).translate((p0 + p1) / 2, 4.6, 0), '#5d6670'));
+  for (let z = -pz + 12; z <= pz - 12; z += 12) quay.push(colored(new THREE.BoxGeometry(0.2, 3.7, 0.2).translate((p0 + p1) / 2 + 1, 2.75, z), '#5d6670'));
+  // rails and sleepers
+  for (const dx of [-0.8, 0.8]) quay.push(colored(new THREE.BoxGeometry(0.12, 0.16, RAIL.north - RAIL.south + 30).translate(RAIL.trackX + dx, 0.2, (RAIL.north + RAIL.south) / 2), '#7a7d82'));
+  const sleeper = colored(new THREE.BoxGeometry(2.6, 0.12, 0.35).translate(0, 0.08, 0), '#6b5642');
+  const sleepers: THREE.Matrix4[] = [];
+  for (let z = RAIL.south - 14; z <= RAIL.north + 12; z += 1.2) sleepers.push(new THREE.Matrix4().makeTranslation(RAIL.trackX, 0, z));
+  instanced({ geo: () => sleeper, scale: 1 }, sleepers).forEach((m) => scene.add(m));
+  // dark tunnel openings in the portals
+  for (const [z, dir] of [[RAIL.north, -1], [RAIL.south, 1]] as const) {
+    quay.push(colored(new THREE.BoxGeometry(5.2, 6, 0.2).translate(RAIL.trackX, 3, z + dir * 0.15), '#121212'));
+  }
+  scene.add(new THREE.Mesh(mergeGeometries(quay)!, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true })));
+  // skate park ramps
+  if (town.ramps.length) {
+    const rampMat = new THREE.MeshLambertMaterial({ color: '#c9c6bf', flatShading: true });
+    scene.add(new THREE.Mesh(mergeGeometries(town.ramps.map(rampGeometry))!, rampMat));
+  }
 
   // ---------------------------------------------------------------- markings
   const marks = new Quads(), yellow = new Quads();
@@ -183,15 +273,16 @@ export function getTownWorld(): TownWorld {
     const colors = variantColors(b);
     q.setFromAxisAngle(yAxis, b.rot);
     const turned = Math.abs(Math.sin(b.rot)) > 0.5;
-    if (b.model === 'fence' || !assetsReady()) {
-      // fence segments (and everything without assets): a box of the footprint, scaled per instance
+    const unit = b.model === 'fence' || b.model === 'tunnel-portal';
+    if (unit || !assetsReady()) {
+      // fence segments and portals (and everything without assets): a box of the footprint, scaled per instance
       const w = turned ? b.d : b.w, d = turned ? b.w : b.d;
-      const m = new THREE.Matrix4().compose(new THREE.Vector3(b.x, 0, b.z), q, new THREE.Vector3(w, b.h, d));
-      if (b.model === 'fence' && assetsReady()) (byModel.get('fence') ?? byModel.set('fence', []).get('fence')!).push({ matrix: m, ...colors });
+      const m = new THREE.Matrix4().compose(new THREE.Vector3(b.x, b.y ?? 0, b.z), q, new THREE.Vector3(w, b.h, d));
+      if (unit && assetsReady()) (byModel.get(b.model) ?? byModel.set(b.model, []).get(b.model)!).push({ matrix: m, ...colors });
       else fallbackBoxes.push({ matrix: m, ...colors });
       continue;
     }
-    const m = new THREE.Matrix4().compose(new THREE.Vector3(b.x, 0, b.z), q, new THREE.Vector3(b.scale, b.scale, b.scale));
+    const m = new THREE.Matrix4().compose(new THREE.Vector3(b.x, b.y ?? 0, b.z), q, new THREE.Vector3(b.scale, b.scale, b.scale));
     (byModel.get(b.model) ?? byModel.set(b.model, []).get(b.model)!).push({ matrix: m, ...colors });
   }
   for (const [model, items] of byModel) buildingMeshes(model, items).forEach((x) => city.add(x));
@@ -204,23 +295,23 @@ export function getTownWorld(): TownWorld {
     city.add(box);
   }
   addVariants(city, TREES, trees);
-  addVariants(city, TREES, trees);
 
   // the wall around the town and a skyline behind it
-  const W = TOWN_HALF, WT = 4, WH = 3;
+  const WT = 4, WH = 3, wallZ = maxZ - Q;
   fences.push(
-    colored(new THREE.BoxGeometry(2 * W + 2 * WT, WH, WT).translate(0, WH / 2, W + WT / 2), '#b8b2a6'),
-    colored(new THREE.BoxGeometry(2 * W + 2 * WT, WH, WT).translate(0, WH / 2, -W - WT / 2), '#b8b2a6'),
-    colored(new THREE.BoxGeometry(WT, WH, 2 * W).translate(W + WT / 2, WH / 2, 0), '#b8b2a6'),
-    colored(new THREE.BoxGeometry(WT, WH, 2 * W).translate(-W - WT / 2, WH / 2, 0), '#b8b2a6'),
+    colored(new THREE.BoxGeometry(maxX - minX + 2 * WT, WH, WT).translate((minX + maxX) / 2, WH / 2, maxZ + WT / 2), '#b8b2a6'),
+    colored(new THREE.BoxGeometry(WT, WH, wallZ).translate(maxX + WT / 2, WH / 2, (maxZ + Q) / 2), '#b8b2a6'),
+    colored(new THREE.BoxGeometry(WT, WH, wallZ).translate(minX - WT / 2, WH / 2, (maxZ + Q) / 2), '#b8b2a6'),
   );
   city.add(new THREE.Mesh(mergeGeometries(fences)!, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true })));
   const skyline: Variant[] = 'acfhl'.split('').map((c, i) => ({ model: `low-detail-building-${c}`, geo: towerGeo(40 + i * 6, '#8d97a3'), scale: 26 }));
   const sky2 = skyline.map(() => [] as THREE.Matrix4[]);
   for (let k = 0; k < 90; k++) {
-    const a = rnd() * Math.PI * 2, r = W + 80 + rnd() * 250;
+    const a = rnd() * Math.PI * 2, r = TOWN_HALF + 80 + rnd() * 250;
     const x = Math.sin(a) * r, z = Math.cos(a) * r;
-    if (Math.max(Math.abs(x), Math.abs(z)) < W + 60) continue;
+    // around the town, but not in the harbour basin
+    if (x > minX - 60 && x < maxX + 60 && z > Q - 60 && z < maxZ + 60) continue;
+    if (z < Q + 40) continue;
     o.position.set(x, 0, z);
     o.rotation.set(0, rnd() * Math.PI * 2, 0);
     o.scale.setScalar(0.8 + rnd() * 0.6);
@@ -242,9 +333,17 @@ export function getTownWorld(): TownWorld {
     colored(new THREE.CylinderGeometry(0.15, 0.22, 0.18, 10).translate(0, 0.45, 0), '#f4f4f4'),
     colored(new THREE.ConeGeometry(0.15, 0.25, 10).translate(0, 0.66, 0), '#ff6a13'),
   ])!;
-  const lamps: THREE.Matrix4[] = [], cones: THREE.Matrix4[] = [];
+  const bollard = mergeGeometries([
+    colored(new THREE.CylinderGeometry(0.3, 0.35, 0.7, 10).translate(0, 0.35, 0), '#2f3236'),
+    colored(new THREE.CylinderGeometry(0.42, 0.42, 0.12, 10).translate(0, 0.76, 0), '#2f3236'),
+  ])!;
+  const lamps: THREE.Matrix4[] = [], cones: THREE.Matrix4[] = [], bollards: THREE.Matrix4[] = [];
   for (const c of town.circles) {
     if (c.kind === 'tree' || c.kind === 'prop') continue;
+    if (c.kind === 'bollard') {
+      bollards.push(new THREE.Matrix4().makeTranslation(c.x, 0, c.z));
+      continue;
+    }
     const b = town.blockAt(c.x, c.z);
     o.position.set(c.x, 0, c.z);
     // lamp arms point over the corner of the street
@@ -254,6 +353,7 @@ export function getTownWorld(): TownWorld {
   }
   instanced({ geo: () => pole, scale: 1 }, lamps).forEach((m) => city.add(m));
   instanced({ geo: () => cone, scale: 1 }, cones).forEach((m) => city.add(m));
+  instanced({ geo: () => bollard, scale: 1 }, bollards).forEach((m) => city.add(m));
   const parkedVariants: Variant[] = TRAFFIC_MODELS.map((m) => ({
     model: m,
     geo: () => mergeGeometries([
@@ -275,6 +375,8 @@ export function getTownWorld(): TownWorld {
 
   const dynamic = new THREE.Group();
   scene.add(dynamic);
-  cached = { town, scene, dynamic };
+  const life = new TownLife();
+  scene.add(life.group);
+  cached = { town, scene, dynamic, life };
   return cached;
 }
