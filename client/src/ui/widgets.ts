@@ -10,7 +10,7 @@ export interface RaceSettings {
   aiSkill: number;
 }
 
-const CLASS_LABEL: Partial<Record<CarClass, string>> = { offroad: 'Offroad · ', micro: 'Micro · ', town: 'Stadt · ' };
+const CLASS_LABEL: Partial<Record<CarClass, string>> = { offroad: 'Offroad · ', micro: 'Micro · ', town: 'Stadt · ', kart: 'Kart · ' };
 
 /** Name and car of player k, with the car's ratings. */
 export function playerPanel(app: App, k: number, cls: CarClass) {

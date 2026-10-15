@@ -1,10 +1,10 @@
 import { TRACK_DEFS, type CarClass, type LobbyPlayer, type TownTask } from '@spidi/shared';
 
 /** a player's preferences: carId is the road car, offroadCarId / microCarId / townCarId the cars of the other classes */
-export type PlayerPref = LobbyPlayer & { offroadCarId?: string; microCarId?: string; townCarId?: string };
+export type PlayerPref = LobbyPlayer & { offroadCarId?: string; microCarId?: string; townCarId?: string; kartCarId?: string };
 
 /** the preference field holding the player's car for each class */
-export const CAR_PREF = { road: 'carId', offroad: 'offroadCarId', micro: 'microCarId', town: 'townCarId' } as const satisfies Record<CarClass, keyof PlayerPref>;
+export const CAR_PREF = { road: 'carId', offroad: 'offroadCarId', micro: 'microCarId', town: 'townCarId', kart: 'kartCarId' } as const satisfies Record<CarClass, keyof PlayerPref>;
 
 export type TrafficLevel = 'off' | 'few' | 'many';
 
@@ -21,6 +21,9 @@ export interface Prefs {
   townTraffic: TrafficLevel;
   /** goals of a solo run (5 / 10 / 20) */
   townGoals: number;
+  /** kart race: players (1/2) and track (road and offroad tracks only) */
+  kartPlayers: number;
+  kartTrackId: string;
 }
 
 export const TRAFFIC: { id: TrafficLevel; label: string; cars: number }[] = [
@@ -46,11 +49,12 @@ const KEY = 'spidi-race-prefs';
 export function loadPrefs(): Prefs {
   const def: Prefs = {
     players: [
-      { name: 'Spieler 1', carId: 'falcone', offroadCarId: 'bergziege', microCarId: 'blitz', townCarId: 'familie' },
-      { name: 'Spieler 2', carId: 'kaito', offroadCarId: 'raider', microCarId: 'flitzer', townCarId: 'polizei' },
+      { name: 'Spieler 1', carId: 'falcone', offroadCarId: 'bergziege', microCarId: 'blitz', townCarId: 'familie', kartCarId: 'kart-oobi' },
+      { name: 'Spieler 2', carId: 'kaito', offroadCarId: 'raider', microCarId: 'flitzer', townCarId: 'polizei', kartCarId: 'kart-ooli' },
     ],
     trackId: TRACK_DEFS[0].id, laps: 2, aiCount: 4, aiSkill: 0.93, onlineLocal: 1,
     townPlayers: 1, townTask: 'stars', townTraffic: 'few', townGoals: 10,
+    kartPlayers: 1, kartTrackId: 'alpenpass',
   };
   try {
     const raw = localStorage.getItem(KEY);

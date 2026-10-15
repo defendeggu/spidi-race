@@ -131,7 +131,8 @@ export class Room {
         if (players.length === 0) return;
         c.players = players.map((p, k) => ({
           name: String(p.name ?? '').replace(/[<>]/g, '').trim().slice(0, 16) || `Spieler ${k + 1}`,
-          carId: CARS.some((car) => car.id === p.carId) ? p.carId : CARS[0].id,
+          // karts race only locally for now (their items are not synchronised over the network)
+          carId: CARS.some((car) => car.id === p.carId && car.class !== 'kart') ? p.carId : CARS[0].id,
         }));
         this.broadcastLobby();
         break;

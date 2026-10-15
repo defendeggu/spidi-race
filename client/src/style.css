@@ -277,3 +277,18 @@ button.big.practice { border-left-color: #3ad16b; }
 .town-result { font-size: 22px; margin: 6px 0; }
 .town-result b { color: var(--gold); font-size: 30px; }
 .duel-hint b { color: var(--gold); }
+
+/* ---------------------------------------------------------------- kart items */
+.hud-item { position: absolute; left: 50%; top: 12px; width: 92px; margin-left: -46px; text-align: center; }
+.hud-item-icon {
+  width: 72px; height: 72px; margin: 0 auto; border-radius: 12px; border: 3px solid rgba(255,255,255,.6);
+  background: rgba(10, 16, 50, 0.55); font-size: 44px; line-height: 66px; font-style: normal; text-shadow: none;
+}
+.hud-item.full .hud-item-icon { border-color: var(--gold); box-shadow: 0 0 14px rgba(255, 204, 0, 0.6); }
+.hud-item-label { font-size: 14px; margin-top: 2px; min-height: 18px; }
+.hud-drift { height: 8px; width: 72px; margin: 4px auto 0; border-radius: 4px; background: transparent; transition: background 0.15s; }
+.hud-drift.l1 { background: #7fd4ff; }
+.hud-drift.l2 { background: #ff9a1f; }
+.hud-drift.l3 { background: #d36bff; box-shadow: 0 0 10px #d36bff; }
+.hud.compact .hud-item-icon { width: 52px; height: 52px; font-size: 30px; line-height: 46px; }
+button.big.kart { border-left-color: #ff5a3c; }

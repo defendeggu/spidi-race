@@ -8,7 +8,7 @@ import { TownGame } from '../townGame';
 import { Backdrop } from './backdrop';
 import { html, setHtml, type SafeHtml } from './html';
 import { leaveNet, showLobby, showOnlineSetup } from './lobby';
-import { showMain, showSetup, startLocal } from './menus';
+import { showKartSetup, showMain, showSetup, startKart, startLocal } from './menus';
 import { CAR_PREF, loadPrefs, savePrefs } from './prefs';
 import { showLeaderboard, showResults, type BoardView } from './results';
 import { showTownResults, showTownSetup, startTown } from './town';
@@ -29,7 +29,7 @@ export class App {
   lobby: { hostId: string; phase: 'lobby' | 'race'; settings: LobbySettings; clients: LobbyClient[] } | null = null;
   lobbyNotice = '';
   screen = '';
-  lastLocal: { mode: Mode } | null = null;
+  lastLocal: { mode: Mode; kart?: boolean } | null = null;
   /** starts the current local session again (pause menu) */
   restart: (() => void) | null = null;
 
@@ -65,6 +65,8 @@ export class App {
   showMain(error = '') { showMain(this, error); }
   showSetup(mode: Mode) { showSetup(this, mode); }
   startLocal(mode: Mode) { startLocal(this, mode); }
+  showKartSetup() { showKartSetup(this); }
+  startKart() { startKart(this); }
   showTownSetup() { showTownSetup(this); }
   startTown() { startTown(this); }
   showResults(results: ResultRow[], ranks?: Record<string, number>) { showResults(this, results, ranks); }

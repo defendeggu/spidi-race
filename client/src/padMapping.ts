@@ -27,6 +27,10 @@ export interface PadState {
   handbrake: boolean;
   camera: boolean;
   pause: boolean;
+  /** Y / △: also the item button in kart races */
+  item: boolean;
+  /** Back / Select or d-pad up: the camera button in kart races */
+  altCamera: boolean;
 }
 
 export const isPlayStation = (p: PadLike) => /054c|playstation|sony|dualshock|dualsense|wireless controller/i.test(p.id);
@@ -63,13 +67,15 @@ export function readPad(p: PadLike): PadState {
   const kind: PadKind = isPlayStation(p) ? 'playstation' : 'xbox';
 
   let south: boolean, east: boolean, west: boolean, north: boolean, bumper: boolean, start: boolean;
-  let rt: number, lt: number, sticks: number[], dpad: number;
+  let rt: number, lt: number, sticks: number[], dpad: number, select: boolean, up: boolean;
   if (p.mapping === 'standard') {
     [south, east, west, north, bumper, start] = [b(0), b(1), b(2), b(3), b(5), b(9)];
     rt = trig(7);
     lt = trig(6);
     sticks = [p.axes[0] ?? 0, p.axes[2] ?? 0];
     dpad = (b(15) ? 1 : 0) - (b(14) ? 1 : 0);
+    select = b(8);
+    up = b(12);
   } else if (isRawPs3(p)) {
     // cross, circle, triangle, square, L1, R1, L2, R2, select, start, …, dpad up/down/left/right 13–16
     [south, east, west, north, bumper, start] = [b(0), b(1), b(3), b(2), b(5), b(9)];
@@ -77,6 +83,8 @@ export function readPad(p: PadLike): PadState {
     lt = trig(6);
     sticks = [p.axes[0] ?? 0, p.axes[3] ?? 0];
     dpad = (b(16) ? 1 : 0) - (b(15) ? 1 : 0);
+    select = b(8);
+    up = b(13);
   } else {
     // Xbox evdev order: A B X Y LB RB back start guide LS RS; axes LX LY LT RX RY RT hatX hatY
     [south, east, west, north, bumper, start] = [b(0), b(1), b(2), b(3), b(5), b(7)];
@@ -85,6 +93,8 @@ export function readPad(p: PadLike): PadState {
     sticks = [p.axes[0] ?? 0, p.axes[3] ?? 0];
     const hat = p.axes[6] ?? 0;
     dpad = Math.abs(hat) > 0.5 ? Math.sign(hat) : 0;
+    select = b(6);
+    up = (p.axes[7] ?? 0) < -0.5;
   }
 
   // either stick steers, whichever is deflected further; the d-pad steers digitally
@@ -102,5 +112,7 @@ export function readPad(p: PadLike): PadState {
     handbrake: west || bumper,
     camera: north,
     pause: start,
+    item: north,
+    altCamera: select || up,
   };
 }

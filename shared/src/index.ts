@@ -10,3 +10,6 @@ export * from './leaderboard';
 export * from './town';
 export * from './traffic';
 export * from './townTasks';
+export * from './kart';
+export * from './items';
+export * from './kartAi';
