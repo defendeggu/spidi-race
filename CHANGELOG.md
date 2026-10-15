@@ -2,6 +2,20 @@
 
 Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.12.0] – 2026-10-15
+
+### Hinzugefügt
+- Übungsstadt erweitert, die bestehenden Quartiere bleiben unverändert:
+  - **Hafen** am Südrand: Kai mit Pollern und Barriere, Lagerhallen, Containerstapel, Parkfelder; im Wasser festgemachte Frachter, Schlepper, Fischer- und Hausboote, Bojen und drei fahrende Boote
+  - **Bahn** am Ostrand: eingezäuntes Gleis zwischen zwei Tunnelportalen, Backstein-Bahnhof mit Bahnsteig, Vordach und Parkplatz; S-Bahn und Güterzug fahren abwechselnd ein, halten 15 s und fahren weiter
+  - **Skaterpark** (statt eines Parks): Funbox, Kicker mit Landung, Halfpipe und Quarterpipe sind befahrbar – Autos fahren hoch, springen und landen; dazu Rails, Grind-Boxen, Bänke und Skater
+  - **Kirche mit Friedhof** (statt eines Häuserblocks neben der Altstadt): Kirche aus Steinwänden mit Turm, Spitzhelm und Kreuz; Friedhof mit Eisenzaun und zwei Toren, Grabreihen, Grüften, Laternen, Kiefern und Bänken
+  - Neue Sterne und Parkfelder im Hafen, am Bahnhof und im Skaterpark; die Stadtkarte zeigt Hafen und Bahn
+- Neue CC0-Modelle: Kenney Mini Skate, Watercraft Kit, Train Kit, Graveyard Kit, Blaster Kit (für den Kart-Modus) sowie Karts und Trümmerteile aus dem Car Kit
+
+### Behoben
+- Die Bäume der Übungsstadt wurden doppelt gezeichnet
+
 ## [0.11.2] – 2026-10-15
 
 ### Sicherheit
@@ -188,6 +202,7 @@ Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog]
 - Docker-Image und docker-compose (Port 8090)
 
 [0.6.0]: https://github.com/defendeggu/spidi-race/compare/v0.5.0...v0.6.0
+[0.12.0]: https://github.com/defendeggu/spidi-race/compare/v0.11.2...v0.12.0
 [0.11.2]: https://github.com/defendeggu/spidi-race/compare/v0.11.1...v0.11.2
 [0.11.1]: https://github.com/defendeggu/spidi-race/compare/v0.11.0...v0.11.1
 [0.11.0]: https://github.com/defendeggu/spidi-race/compare/v0.10.1...v0.11.0

@@ -11,6 +11,11 @@ Sie wurden mit `npm run assets` (scripts/fetch-assets.mjs) heruntergeladen. Dank
 - **Retro Urban Kit** von Kenney (www.kenney.nl), CC0 – https://kenney.nl/assets/retro-urban-kit → `retro/`
 - **Nature Kit** von Kenney (www.kenney.nl), CC0 – https://kenney.nl/assets/nature-kit → `nature/`
 - **Food Kit** von Kenney (www.kenney.nl), CC0 – https://kenney.nl/assets/food-kit → `food/`
+- **Mini Skate** von Kenney (www.kenney.nl), CC0 – https://kenney.nl/assets/mini-skate → `skate/`
+- **Watercraft Kit** von Kenney (www.kenney.nl), CC0 – https://kenney.nl/assets/watercraft-kit → `watercraft/`
+- **Train Kit** von Kenney (www.kenney.nl), CC0 – https://kenney.nl/assets/train-kit → `train/`
+- **Graveyard Kit** von Kenney (www.kenney.nl), CC0 – https://kenney.nl/assets/graveyard-kit → `graveyard/`
+- **Blaster Kit** von Kenney (www.kenney.nl), CC0 – https://kenney.nl/assets/blaster-kit → `blaster/`
 - **Asphalt031** von ambientCG (ambientcg.com), CC0 – https://ambientcg.com/view?id=Asphalt031 → `textures/asphalt.jpg`
 - **Grass004** von ambientCG (ambientcg.com), CC0 – https://ambientcg.com/view?id=Grass004 → `textures/grass.jpg`
 - **Rock064** von ambientCG (ambientcg.com), CC0 – https://ambientcg.com/view?id=Rock064 → `textures/rock.jpg`

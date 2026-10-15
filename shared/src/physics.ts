@@ -227,7 +227,7 @@ export function stepCar(c: CarState, spec: CarSpec, inp: CarInput, track: Track,
 }
 
 /** Ground following, take-off over crests and kickers, flight and landing. */
-function updateVertical(c: CarState, ground: number, dt: number, canFly: boolean) {
+export function updateVertical(c: CarState, ground: number, dt: number, canFly: boolean) {
   c.landed = 0;
   if (c.airborne) {
     c.vy -= GRAVITY * dt;

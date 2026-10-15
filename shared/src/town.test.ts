@@ -1,13 +1,22 @@
 import { describe, expect, it } from 'vitest';
 import { carsForClass, getCar } from './cars';
 import { forwardSpeed, NO_INPUT, type CarInput } from './physics';
-import { BLOCK_INNER, createTownCar, getTown, stepCarTown, TOWN_HALF } from './town';
+import { BLOCK_INNER, HARBOR, OUTER, RAIL, TOWN_BOUNDS, createTownCar, getTown, stepCarTown, TOWN_HALF } from './town';
 import { DUEL_SECONDS, TaskTracker, TownSession } from './townTasks';
 import { sanitizeSubmission } from './leaderboard';
 import { TRACK_DEFS } from './tracks';
 import { Traffic } from './traffic';
 
 const DT = 1 / 60;
+
+/** Inside the harbour (south) or railway (east) strip, within the town bounds. */
+const inStrips = (b: { x: number; z: number; w: number; d: number }) => {
+  const { minX, maxX, maxZ } = TOWN_BOUNDS;
+  const x0 = b.x - b.w / 2, x1 = b.x + b.w / 2, z0 = b.z - b.d / 2, z1 = b.z + b.d / 2;
+  const harbour = z1 <= -OUTER + 0.01 && z0 >= HARBOR.quayZ - 0.01 && x0 >= minX - 0.01 && x1 <= maxX + 0.01;
+  const rail = x1 <= -OUTER + 0.01 && x0 >= minX - 0.01 && z1 <= maxZ + 0.01 && z0 >= HARBOR.quayZ - 0.01;
+  return harbour || rail;
+};
 const town = getTown();
 const FULL: CarInput = { throttle: 1, brake: 0, steer: 0, handbrake: false };
 
@@ -68,7 +77,12 @@ describe('practice town', () => {
     const bs = town.buildings;
     const outside: string[] = [], overlaps: string[] = [];
     for (const b of bs) {
-      const block = town.blockAt(b.x, b.z)!;
+      const block = town.blockAt(b.x, b.z);
+      // harbour and railway buildings lie in the new strips outside the old town
+      if (!block) {
+        if (!inStrips(b)) outside.push(b.model);
+        continue;
+      }
       if (Math.abs(b.x - block.cx) + b.w / 2 > BLOCK_INNER + 0.01 || Math.abs(b.z - block.cz) + b.d / 2 > BLOCK_INNER + 0.01) outside.push(b.model);
       for (const o of bs) {
         if (o === b) continue;
@@ -133,8 +147,12 @@ describe('practice town', () => {
 
   it('props stay inside their block and off the streets', () => {
     for (const p of town.props) {
-      const block = town.blockAt(p.x, p.z)!;
-      expect(block, p.model).toBeDefined();
+      const block = town.blockAt(p.x, p.z);
+      if (!block) {
+        // harbour, railway and ships in the water
+        expect(inStrips(p) || (p.model.startsWith('wc-') && p.z < HARBOR.quayZ), p.model).toBe(true);
+        continue;
+      }
       expect(Math.abs(p.x - block.cx) + p.w / 2, p.model).toBeLessThanOrEqual(BLOCK_INNER + 0.01);
       expect(Math.abs(p.z - block.cz) + p.d / 2, p.model).toBeLessThanOrEqual(BLOCK_INNER + 0.01);
     }
@@ -332,5 +350,68 @@ describe('town leaderboard', () => {
     expect(sanitizeSubmission({ ...ok, bestLap: 1 })).toBeNull();
     expect(sanitizeSubmission({ ...ok, time: 50 })).toBeNull();
     expect(sanitizeSubmission({ ...ok, trackId: 'town-nonsense' })).toBeNull();
+  });
+});
+
+describe('town extensions', () => {
+  const drive = (x: number, z: number, heading: number, seconds: number, spec = getCar('familie')) => {
+    const c = createTownCar('t', { x, z, heading });
+    let flew = 0, maxY = 0;
+    for (let i = 0; i < 60 * seconds; i++) {
+      stepCarTown(c, spec, FULL, town, DT);
+      if (c.airborne) flew += DT;
+      maxY = Math.max(maxY, c.y);
+    }
+    return { c, flew, maxY };
+  };
+
+  it('keeps the familiar old town (replaced blocks do not reshuffle the others)', () => {
+    // a park and a house block were replaced; every other block still has its buildings
+    expect(town.blocks.filter((b) => b.kind === 'skate')).toHaveLength(1);
+    expect(town.blocks.filter((b) => b.kind === 'church')).toHaveLength(1);
+    expect(town.buildings.some((b) => b.model.startsWith('tpl-church'))).toBe(true);
+    expect(town.buildings.filter((b) => b.model.startsWith('building-type')).length).toBeGreaterThan(150);
+  });
+
+  it('skate park: ramps have height, a fast car jumps the kicker and lands', () => {
+    const park = town.blocks.find((b) => b.kind === 'skate')!;
+    expect(town.heightAt(park.cx - 10, park.cz)).toBeCloseTo(1.6);
+    expect(town.heightAt(park.cx, park.cz - 40)).toBe(0);
+    // run-up from the street south of the park straight over the kicker of the jump line
+    const { c, flew, maxY } = drive(park.cx - 30, park.cz - 60, 0, 6, getCar('kaito-stadt'));
+    expect(flew).toBeGreaterThan(0.3);
+    expect(maxY).toBeGreaterThan(1.5);
+    expect(c.airborne).toBe(false);
+  });
+
+  it('cars climb a quarter pipe and roll back instead of flying off the back', () => {
+    const park = town.blocks.find((b) => b.kind === 'skate')!;
+    const { c, maxY } = drive(park.cx + 28, park.cz, 0, 4);
+    expect(maxY).toBeGreaterThan(1);
+    expect(c.z).toBeLessThan(park.cz + 14);
+  });
+
+  it('the quay edge keeps cars out of the water', () => {
+    const { c } = drive(0, -470, Math.PI, 12, getCar('feuerwehr'));
+    expect(c.z).toBeGreaterThan(HARBOR.quayZ);
+  });
+
+  it('the railway fence keeps cars off the track', () => {
+    for (const z of [-200, 0, 200, 400]) {
+      const { c } = drive(-462, z, -Math.PI / 2, 8);
+      expect(c.x, `z=${z}`).toBeGreaterThan(RAIL.fenceX);
+    }
+  });
+
+  it('new star spots and parking bays exist in harbour, station and skate park', () => {
+    expect(town.starSpots.filter((s) => s.z < -OUTER).length).toBeGreaterThanOrEqual(4);
+    expect(town.starSpots.filter((s) => s.x < -OUTER).length).toBeGreaterThanOrEqual(3);
+    expect(town.bays.filter((b) => b.z < -OUTER && b.parked < 0).length).toBeGreaterThan(5);
+    expect(town.bays.filter((b) => b.x < -OUTER && b.parked < 0).length).toBeGreaterThan(5);
+  });
+
+  it('the cemetery can be entered through its gate', () => {
+    const ch = town.blocks.find((b) => b.kind === 'church')!;
+    for (let z = ch.cz - 44; z < ch.cz - 8; z += 1) expect(town.isFree(ch.cx, z, 1.3), `z=${z}`).toBe(true);
   });
 });

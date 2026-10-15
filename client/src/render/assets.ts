@@ -6,6 +6,8 @@ const BASE = `${import.meta.env.BASE_URL}cc0/`;
 export const CAR_MODELS = [
   'sedan-sports', 'race-future', 'race', 'hatchback-sports', 'suv', 'suv-luxury', 'truck',
   'sedan', 'taxi', 'police', 'firetruck', 'van', 'delivery',
+  'kart-oobi', 'kart-oodi', 'kart-ooli', 'kart-oopi', 'kart-oozi',
+  'debris-bolt', 'debris-tire', 'debris-plate-small-a', 'debris-spoiler-a', 'debris-door',
 ];
 export const NATURE_MODELS = [
   'tree_pineTallA', 'tree_pineTallB', 'tree_pineDefaultA', 'tree_pineRoundA', 'tree_pineSmallA',
@@ -26,8 +28,32 @@ export const FANTASY_MODELS = [
   'wall', 'wall-wood', 'wall-window-shutters', 'wall-wood-window-shutters', 'wall-window-glass', 'wall-wood-window-glass',
   'wall-door', 'wall-wood-door', 'wall-doorway-round', 'wall-detail-cross', 'wall-wood-detail-cross', 'roof', 'roof-gable',
   'roof-high', 'roof-high-gable', 'roof-point', 'chimney', 'fountain-round-detail', 'stall-red', 'stall-green', 'lantern',
-  'hedge-large', 'overhang',
+  'hedge-large', 'overhang', 'wall-window-round', 'wall-arch', 'roof-high-point',
 ];
+/** Mini Skate (prefix 'sk-') */
+export const SKATE_MODELS = [
+  'rail-high', 'rail-low', 'rail-curve', 'obstacle-box', 'obstacle-box-grind', 'bench', 'benches',
+  'character-skate-boy', 'character-skate-girl', 'skateboard', 'pallet', 'scooter',
+];
+/** Watercraft Kit (prefix 'wc-') */
+export const WATERCRAFT_MODELS = [
+  'ship-cargo-a', 'ship-cargo-b', 'boat-tug-a', 'boat-fishing-small', 'boat-sail-a', 'boat-sail-b', 'boat-house-a',
+  'boat-house-b', 'boat-speed-a', 'boat-row-small', 'cargo-container-a', 'cargo-container-b', 'cargo-container-c',
+  'cargo-pile-a', 'cargo-pile-b', 'buoy', 'buoy-flag',
+];
+/** Train Kit (prefix 'tr-') */
+export const TRAIN_MODELS = [
+  'train-electric-city-a', 'train-electric-city-b', 'train-electric-city-c', 'train-locomotive-a',
+  'train-carriage-container-blue', 'train-carriage-container-red', 'train-carriage-container-green', 'train-carriage-tank',
+];
+/** Graveyard Kit (prefix 'gy-') */
+export const GRAVEYARD_MODELS = [
+  'gravestone-cross', 'gravestone-round', 'gravestone-bevel', 'gravestone-wide', 'gravestone-roof', 'gravestone-decorative',
+  'grave', 'grave-border', 'crypt', 'crypt-small', 'iron-fence', 'iron-fence-border-gate', 'iron-fence-border-column',
+  'lightpost-single', 'lightpost-double', 'pine', 'pine-crooked', 'bench', 'urn-round', 'pillar-obelisk', 'cross-column',
+];
+/** Blaster Kit (prefix 'bl-') */
+export const BLASTER_MODELS = ['blaster-a', 'blaster-d', 'blaster-h', 'blaster-l', 'bullet-foam', 'bullet-foam-thick', 'grenade-a', 'grenade-b', 'crate-small'];
 /** Retro Urban Kit parts (prefix 'ret-') */
 export const RETRO_MODELS = [
   'wall-a-flat', 'wall-a-flat-window', 'wall-a-flat-painted', 'wall-a-flat-garage', 'wall-b-flat', 'wall-b-flat-window',
@@ -101,6 +127,11 @@ export async function loadAssets(onProgress: (done: number, total: number) => vo
   INDUSTRIAL_MODELS.forEach((m) => addModel('industrial', m, 'ind-'));
   FANTASY_MODELS.forEach((m) => addModel('fantasy', m, 'fan-'));
   RETRO_MODELS.forEach((m) => addModel('retro', m, 'ret-'));
+  SKATE_MODELS.forEach((m) => addModel('skate', m, 'sk-'));
+  WATERCRAFT_MODELS.forEach((m) => addModel('watercraft', m, 'wc-'));
+  TRAIN_MODELS.forEach((m) => addModel('train', m, 'tr-'));
+  GRAVEYARD_MODELS.forEach((m) => addModel('graveyard', m, 'gy-'));
+  BLASTER_MODELS.forEach((m) => addModel('blaster', m, 'bl-'));
   FOOD_MODELS.forEach((m) => addModel('food', m));
   for (const t of TEXTURES)
     jobs.push(async () => {
