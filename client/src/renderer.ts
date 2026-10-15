@@ -1,8 +1,11 @@
 import * as THREE from 'three';
 
+/** phones and tablets get a lighter setting: no antialiasing and a lower resolution */
+const low = window.matchMedia?.('(pointer: coarse)').matches ?? false;
+
 /** One WebGL renderer for the whole app (menus and races). */
-export const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+export const renderer = new THREE.WebGLRenderer({ antialias: !low, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, low ? 1 : 1.5));
 renderer.domElement.id = 'view';
 document.getElementById('app')!.prepend(renderer.domElement);
 

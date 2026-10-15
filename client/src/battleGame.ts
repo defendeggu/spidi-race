@@ -80,10 +80,12 @@ export class BattleGame {
   private lastBeep = -1;
   private finishTimer = -1;
   paused = false;
+  /** HUD containers of this game (one per player) */
+  private holders: HTMLElement[] = [];
   onPause: (() => void) | null = null;
   onFinish: ((r: BattleResult) => void) | null = null;
 
-  constructor(private hudLayer: HTMLElement, readonly opts: BattleOptions) {
+  constructor(hudLayer: HTMLElement, readonly opts: BattleOptions) {
     this.world = getTownWorld();
     const town = this.world.town;
     const split = opts.players.length > 1;
@@ -114,6 +116,7 @@ export class BattleGame {
         holder.style.top = split ? `${pk * 50}%` : '0';
         holder.style.height = split ? '50%' : '100%';
         hudLayer.appendChild(holder);
+        this.holders.push(holder);
         const player: Player = {
           cfg: e.cfg, kart,
           cam: new ChaseCamera(0, viewForCar(spec.shape.length, visual.height)),
@@ -153,7 +156,8 @@ export class BattleGame {
     input.clearPressed();
     const frame = (now: number) => {
       this.raf = requestAnimationFrame(frame);
-      const dt = Math.min(0.1, (now - this.last) / 1000);
+      // never negative: the first animation frame time can lie before performance.now()
+      const dt = Math.max(0, Math.min(0.1, (now - this.last) / 1000));
       this.last = now;
       this.frame(dt);
     };
@@ -163,18 +167,19 @@ export class BattleGame {
   private frame(dt: number) {
     this.clock += dt;
     const padPause = this.players.map((p) => input.consumePad(p.cfg.pad, 'pause')).some(Boolean);
-    if (input.consume(['Escape']) || padPause) this.onPause?.();
+    if (input.consume(['Escape']) || padPause || input.consumeTouch('pause')) this.onPause?.();
     if (input.consume(['KeyM'])) {
       const m = audio.toggleMute();
       for (const p of this.players) p.hud.flash(m ? 'Ton aus' : 'Ton an', 1);
     }
     if (input.consume(['KeyH'])) for (const p of this.players) p.hud.toggleHelp();
     for (const p of this.players) {
-      if (input.consume(p.cfg.keymap.camera) || input.consumePad(p.cfg.pad, 'altCamera')) {
+      const touch = p.cfg.pad === 0;
+      if (input.consume(p.cfg.keymap.camera) || input.consumePad(p.cfg.pad, 'altCamera') || (touch && input.consumeTouch('camera'))) {
         p.cam.cycle();
         p.hud.showCameraMode(p.cam.mode);
       }
-      const fire = input.consume(p.cfg.keymap.item) || input.consumePad(p.cfg.pad, 'item');
+      const fire = input.consume(p.cfg.keymap.item) || input.consumePad(p.cfg.pad, 'item') || (touch && input.consumeTouch('item'));
       if (fire && !this.paused && this.session.phase === 'running' && this.session.alive(p.kart.id)) this.items.use(p.kart.id);
     }
     if (!this.paused) {
@@ -381,6 +386,7 @@ export class BattleGame {
       p.hud.dispose();
       p.voice?.dispose();
     }
-    this.hudLayer.innerHTML = '';
+    // only our own HUD: a new game may already have added its HUD (restart, "again")
+    for (const h of this.holders) h.remove();
   }
 }

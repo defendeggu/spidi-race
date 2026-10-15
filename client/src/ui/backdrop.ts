@@ -42,7 +42,7 @@ export class Backdrop {
       this.last = performance.now();
       const loop = (now: number) => {
         this.raf = requestAnimationFrame(loop);
-        this.render((now - this.last) / 1000);
+        this.render(Math.max(0, (now - this.last) / 1000));
         this.last = now;
       };
       this.raf = requestAnimationFrame(loop);
