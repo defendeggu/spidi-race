@@ -140,7 +140,7 @@ describe('kart driving', () => {
     expect(sanitizeSubmission(ok)).toMatchObject({ trackId: 'kart:alpenpass' });
     expect(sanitizeSubmission({ ...ok, carId: 'falcone' })).toBeNull();
     expect(sanitizeSubmission({ ...ok, trackId: 'kart:fruehstueck' })).toBeNull();
-    expect(sanitizeSubmission({ ...ok, bestLap: 60, time: 130 })).toBeNull();
+    expect(sanitizeSubmission({ ...ok, bestLap: 50, time: 110 })).toBeNull();
     expect(sanitizeSubmission({ ...ok, trackId: 'alpenpass' })).toBeNull();
   });
 });

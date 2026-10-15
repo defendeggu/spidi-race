@@ -339,6 +339,24 @@ describe('practice session', () => {
   });
 });
 
+describe('falling into the water', () => {
+  it('ends a solo run without a time and makes the other duel player win', () => {
+    const solo = new TownSession(town, 'stars', 1, 5, 1);
+    for (let i = 0; i <= 60 * 3; i++) solo.step(DT, [createTownCar('p', solo.spawn(0))]);
+    solo.knockOut(0);
+    expect(solo.phase).toBe('finished');
+    expect(solo.result().fell).toBe(0);
+    const duel = new TownSession(town, 'stars', 2, 5, 1);
+    duel.scores[1] = 0;
+    duel.scores[0] = 4;
+    duel.knockOut(0);
+    expect(duel.result()).toMatchObject({ winner: 1, fell: 0 });
+    const free = new TownSession(town, 'free', 1, 5, 1);
+    free.knockOut(0);
+    expect(free.phase).toBe('finished');
+  });
+});
+
 describe('town leaderboard', () => {
   const ok = { name: 'Lea', carId: 'taxi', trackId: 'town-parking', laps: 10, time: 300, bestLap: 12, mode: 'solo' as const };
   it('accepts plausible runs with a town car and a known goal count', () => {
@@ -384,16 +402,27 @@ describe('town extensions', () => {
     expect(c.airborne).toBe(false);
   });
 
-  it('cars climb a quarter pipe and roll back instead of flying off the back', () => {
+  it('a fast car flies over the top of a quarter pipe (no wall at the edge)', () => {
     const park = town.blocks.find((b) => b.kind === 'skate')!;
-    const { c, maxY } = drive(park.cx + 28, park.cz, 0, 4);
-    expect(maxY).toBeGreaterThan(1);
-    expect(c.z).toBeLessThan(park.cz + 14);
+    const { c, flew, maxY } = drive(park.cx + 28, park.cz - 3, 0, 4, getCar('kaito-stadt'));
+    expect(maxY).toBeGreaterThan(2.5);
+    expect(flew).toBeGreaterThan(0.2);
+    expect(c.z).toBeGreaterThan(park.cz + 14);
   });
 
-  it('the quay edge keeps cars out of the water', () => {
-    const { c } = drive(0, -470, Math.PI, 12, getCar('feuerwehr'));
-    expect(c.z).toBeGreaterThan(HARBOR.quayZ);
+  it('a car that drives over the quay edge falls into the water', () => {
+    const { c } = drive(-250, -470, Math.PI, 8, getCar('feuerwehr'));
+    expect(c.z).toBeLessThan(HARBOR.quayZ);
+    expect(c.y).toBeLessThan(-1);
+    expect(c.airborne).toBe(true);
+  });
+
+  it('containers have their real size', () => {
+    const boxes = town.props.filter((p) => p.model === 'container');
+    expect(boxes.length).toBeGreaterThan(150);
+    for (const b of boxes) expect(Math.min(b.w, b.d)).toBeCloseTo(2.44);
+    // some are stacked
+    expect(boxes.some((b) => (b.y ?? 0) > 5)).toBe(true);
   });
 
   it('the railway fence keeps cars off the track', () => {

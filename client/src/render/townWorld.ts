@@ -269,11 +269,17 @@ export function getTownWorld(): TownWorld {
   const byModel = new Map<string, BuildingInstance[]>();
   const fallbackBoxes: BuildingInstance[] = [];
   const q = new THREE.Quaternion(), yAxis = new THREE.Vector3(0, 1, 0);
+  const windmills: typeof town.props = [];
   for (const b of [...town.buildings, ...town.props]) {
+    // the wind turbine is drawn separately so its rotor can turn
+    if (b.model === 'ind-windmill' && assetsReady()) {
+      windmills.push(b);
+      continue;
+    }
     const colors = variantColors(b);
     q.setFromAxisAngle(yAxis, b.rot);
     const turned = Math.abs(Math.sin(b.rot)) > 0.5;
-    const unit = b.model === 'fence' || b.model === 'tunnel-portal';
+    const unit = b.model === 'fence' || b.model === 'tunnel-portal' || b.model === 'container';
     if (unit || !assetsReady()) {
       // fence segments and portals (and everything without assets): a box of the footprint, scaled per instance
       const w = turned ? b.d : b.w, d = turned ? b.w : b.d;
@@ -377,6 +383,7 @@ export function getTownWorld(): TownWorld {
   scene.add(dynamic);
   const life = new TownLife();
   scene.add(life.group);
+  for (const w of windmills) life.addWindmill(w.model, w.scale, w.x, w.z, w.rot);
   cached = { town, scene, dynamic, life };
   return cached;
 }

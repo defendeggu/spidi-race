@@ -2,6 +2,16 @@
 
 Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.14.0] – 2026-10-15
+
+### Geändert
+- Hafen: viel voller – zwei Containerlager mit Stapeln bis drei hoch, Sattelschlepper, zwei weitere Lagerhallen; Container und Lastwagen in echten Massen (40- und 20-Fuss-Container)
+- Hafen: kein Geländer und keine Poller mehr am Kai. Wer ins Wasser fährt, fällt hinein (mit Fontäne) und die Fahrt ist zu Ende – ohne Ranglisten-Eintrag; im Duell gewinnt dann der andere
+- Skaterpark: Die Quarterpipes haben oben keine Wand mehr, schnelle Autos springen über die Kante; die Figuren sind entfernt
+- Karts fahren etwa 30 % schneller (Höchstgeschwindigkeit und Beschleunigung jedes Karts im gleichen Verhältnis)
+- Industrieareal: Container in echter Grösse statt der viel zu breiten Kit-Modelle, teils gestapelt; das Windrad dreht sich
+- README: neues Übersichtsbild der Stadt aus der Vogelperspektive; `.nvmrc` mit Node 22
+
 ## [0.13.0] – 2026-10-15
 
 ### Hinzugefügt
@@ -216,6 +226,7 @@ Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog]
 - Docker-Image und docker-compose (Port 8090)
 
 [0.6.0]: https://github.com/defendeggu/spidi-race/compare/v0.5.0...v0.6.0
+[0.14.0]: https://github.com/defendeggu/spidi-race/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/defendeggu/spidi-race/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/defendeggu/spidi-race/compare/v0.11.2...v0.12.0
 [0.11.2]: https://github.com/defendeggu/spidi-race/compare/v0.11.1...v0.11.2

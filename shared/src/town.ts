@@ -132,6 +132,12 @@ export interface Spot {
   heading: number;
 }
 
+/** ISO shipping containers in metres: [width, length, height] (40 ft and 20 ft). */
+export const CONTAINER_40: [number, number, number] = [2.44, 12.19, 2.59];
+export const CONTAINER_20: [number, number, number] = [2.44, 6.06, 2.59];
+/** articulated lorry with a 40 ft container: [width, length, height] */
+export const SEMI_TRUCK: [number, number, number] = [2.55, 16.5, 4];
+
 /** A building with its footprint (already rotated: w along x, d along z). */
 export interface Building {
   model: string;
@@ -288,10 +294,10 @@ export class TownMap {
       }
     }
     // the wall around the town (the harbour ends at the quay edge); trees on the grass strips
+    // no wall along the quay: the harbour ends in the water
     const { minX, maxX, minZ, maxZ } = TOWN_BOUNDS, T = 4;
     this.boxes.push(
       { minX: minX - T, maxX: maxX + T, minZ: maxZ, maxZ: maxZ + T, solid: true },
-      { minX: minX - T, maxX: maxX + T, minZ: minZ - T, maxZ: minZ, solid: true },
       { minX: maxX, maxX: maxX + T, minZ, maxZ, solid: true },
       { minX: minX - T, maxX: minX, minZ, maxZ, solid: true },
     );
@@ -542,15 +548,20 @@ export class TownMap {
     else if (n === 2) this.addProp('ind-windmill', 12, cx, cz, rnd() * Math.PI * 2, 'circle', 2.2);
     else {
       // container stacks and tanks on the yard
-      const containers = ['ind-shipping-container-a', 'ind-shipping-container-b', 'ind-shipping-container-c'];
       for (let k = 0; k < 8; k++) {
         const x = cx + (rnd() * 2 - 1) * 16, z = cz + (rnd() * 2 - 1) * 16;
         const rot = rnd() < 0.5 ? 0 : Math.PI / 2;
         const tank = rnd() < 0.3;
-        const size: [number, number, number] = tank ? [12, 13, 8] : [5.6, 12.3, 5.2];
+        const size: [number, number, number] = tank ? [12, 13, 8] : CONTAINER_40;
         const r = Math.max(size[0], size[1]) / 2 + 1.5;
         if (!this.propsFree(x, z, r)) continue;
-        this.addProp(tank ? 'ind-detail-tank-large' : containers[Math.floor(rnd() * 3)], tank ? 8 : 4, x, z, rot, 'box', 0, size);
+        if (tank) this.addProp('ind-detail-tank-large', 8, x, z, rot, 'box', 0, size);
+        else {
+          // (the old model choice: keeps the random numbers – and the rest of the town – unchanged)
+          rnd();
+          // shipping containers in real size (the kit's model is far too wide), some stacked two high
+          this.containerStack(x, z, rot, k % 3 === 0 ? 2 : 1, CONTAINER_40);
+        }
       }
     }
     if (this.propsFree(cx + 20, cz + 20, 3)) this.starSpots.push({ x: cx + 20, z: cz + 20, heading: 0 });
@@ -598,12 +609,11 @@ export class TownMap {
       b.minX = Math.min(b.minX, x); b.maxX = Math.max(b.maxX, x);
       b.minZ = Math.min(b.minZ, z); b.maxZ = Math.max(b.maxZ, z);
     }
-    // a quarter pipe ends in a wall: cars bounce back down instead of falling off the back
-    if (r.down === 0 && r.curve === 'quarter') {
-      const u = len + 0.4, cxw = r.x + fx * u, czw = r.z + fz * u;
-      const hx = Math.abs(fx) * 0.4 + Math.abs(fz) * (r.width / 2), hz = Math.abs(fz) * 0.4 + Math.abs(fx) * (r.width / 2);
-      this.boxes.push({ minX: cxw - hx, maxX: cxw + hx, minZ: czw - hz, maxZ: czw + hz, solid: true });
-    }
+  }
+
+  /** True over the harbour basin (beyond the quay edge). */
+  inWater(x: number, z: number) {
+    return z < HARBOR.quayZ - 0.2 && x > TOWN_BOUNDS.minX - 400 && x < TOWN_BOUNDS.maxX + 400;
   }
 
   /** Ground height at (x, z): 0 except on the ramps of the skate park. */
@@ -636,10 +646,6 @@ export class TownMap {
     this.addProp('sk-obstacle-box-grind', 4, cx + 12, cz + 34, Math.PI / 2, 'box', 0, [2, 4, 0.85]);
     for (const [dx, dz, rot] of [[-38, 0, Math.PI / 2], [38, 26, -Math.PI / 2], [0, -39, 0], [20, 39, Math.PI]]) {
       this.addProp('sk-benches', 3, cx + dx, cz + dz, rot, 'box', 0, [3, 3.3, 2]);
-    }
-    const skaters = ['sk-character-skate-boy', 'sk-character-skate-girl'];
-    for (const [dx, dz] of [[-37, -20], [38, 12], [-20, 38], [14, -38]]) {
-      this.addProp(skaters[Math.floor(rnd() * 2)], 2.3, cx + dx, cz + dz, rnd() * Math.PI * 2, 'circle', 0.7);
     }
     this.addProp('sk-pallet', 4, cx + 22, cz - 30, 0.3, 'box', 0, [2, 2, 0.6]);
     this.starSpots.push({ x: cx - 10, z: cz, heading: 0 }, { x: cx - 30, z: cz - 6, heading: 0 }, { x: cx + 28, z: cz, heading: Math.PI / 2 });
@@ -704,10 +710,25 @@ export class TownMap {
    * Harbour along the south edge: a wide quay apron with warehouses, container stacks and parking,
    * bollards along the quay edge and ships moored in the water.
    */
+  /**
+   * A stack of shipping containers (size [w, l, h]); only the bottom one collides – the upper ones
+   * are out of reach anyway.
+   */
+  private containerStack(x: number, z: number, rot: number, levels: number, size: [number, number, number]) {
+    for (let l = 0; l < levels; l++) {
+      this.addProp('container', 1, x, z, rot, l === 0 ? 'box' : 'none', 0, size);
+      this.props[this.props.length - 1].y = l * size[2];
+    }
+  }
+
+  /**
+   * Harbour along the south edge: warehouses, container yards with stacks up to three high, lorries,
+   * parking and ships moored in the water. The quay edge has no barrier – a car that drives over it
+   * falls into the water.
+   */
   private harbour(rnd: () => number) {
-    const Q = HARBOR.quayZ, { minX, maxX } = TOWN_BOUNDS;
-    for (let x = minX + 6; x < maxX - 4; x += 12) this.circles.push({ x, z: Q + 1.5, r: 0.35, kind: 'bollard' });
-    // ships and boats in the water (no collision, the quay barrier keeps cars out)
+    const Q = HARBOR.quayZ;
+    // ships and boats in the water
     const moor = (model: string, scale: number, x: number, len: number, wid: number, rot = Math.PI / 2) => {
       this.addProp(model, scale, x, Q - 2 - wid / 2, rot, 'none', 0, [wid, len, len * 0.3]);
       // the hull sits a bit below the water line
@@ -724,18 +745,39 @@ export class TownMap {
       this.addProp(k % 2 ? 'wc-buoy-flag' : 'wc-buoy', 3, -400 + k * 160, Q - 70 - rnd() * 20, 0, 'none', 0, [2.8, 2.8, 5]);
       this.props[this.props.length - 1].y = HARBOR.waterY;
     }
-    // warehouses in the middle of the apron
+    // warehouses
     this.addBuilding(['ind-building-r', 2.48, 1.27, 1.39], 12, -30, -505, 0);
     this.addBuilding(['ind-building-q', 2.14, 1.77, 0.88], 12, 60, -505, 0);
-    // container stacks and cargo piles in the east part
-    const boxes = ['wc-cargo-container-a', 'wc-cargo-container-b', 'wc-cargo-container-c'];
-    for (let x = 200; x <= 440; x += 16) {
-      for (const z of [-482, -512]) {
-        if (rnd() < 0.2) continue;
-        const pile = rnd() < 0.35;
-        if (pile) this.addProp(rnd() < 0.5 ? 'wc-cargo-pile-a' : 'wc-cargo-pile-b', 5, x, z, 0, 'box', 0, [13.5, 14.5, 6]);
-        else this.addProp(boxes[Math.floor(rnd() * 3)], 4.4, x, z, 0, 'box', 0, [6.1, 12.2, 4.8]);
+    this.addBuilding(['ind-building-a', 2.08, 1.24, 1.47], 12, -150, -508, 0);
+    this.addBuilding(['ind-building-c', 1.87, 2.11, 1.25], 12, -360, -510, 0);
+    // container yards (east and west): three rows of containers with lanes between rows and blocks
+    const rows = [-478, -500, -522];
+    const yard = (x0: number, x1: number) => {
+      let col = 0;
+      for (let x = x0; x <= x1; x += 4, col++) {
+        // a 12 m lane after every 6 columns
+        if (col % 7 === 6) {
+          x += 8;
+          continue;
+        }
+        for (const z of rows) {
+          if (rnd() < 0.12) continue;
+          const levels = 1 + Math.floor(rnd() * 3);
+          this.containerStack(x, z, 0, levels, rnd() < 0.25 ? CONTAINER_20 : CONTAINER_40);
+        }
       }
+    };
+    yard(150, 480);
+    yard(-560, -400);
+    // lorries: waiting in front of the warehouses and in the yard lanes
+    const lorry = (x: number, z: number, rot: number) => this.addProp('semi-truck', 1, x, z, rot, 'box', 0, SEMI_TRUCK);
+    for (let k = 0; k < 4; k++) lorry(-120 + k * 22, -476, Math.PI / 2);
+    lorry(250, -489, Math.PI / 2);
+    lorry(400, -511, -Math.PI / 2);
+    lorry(-480, -489, -Math.PI / 2);
+    lorry(90, -530, Math.PI / 2);
+    for (const [x, z] of [[-5, -478], [110, -480], [-205, -520]]) {
+      this.addProp(rnd() < 0.5 ? 'wc-cargo-pile-a' : 'wc-cargo-pile-b', 5, x, z, 0, 'box', 0, [13.5, 14.5, 6]);
     }
     // parking bays in the west part, facing the water
     for (let k = 0; k < 16; k++) {
@@ -745,8 +787,8 @@ export class TownMap {
       if (parked >= 0) this.boxes.push({ minX: x - 1.2, maxX: x + 1.2, minZ: z - 2.3, maxZ: z + 2.3, solid: false });
     }
     this.starSpots.push(
-      { x: -250, z: -510, heading: Math.PI / 2 }, { x: 120, z: -478, heading: Math.PI / 2 },
-      { x: 320, z: -527, heading: Math.PI / 2 }, { x: -480, z: -500, heading: Math.PI / 2 },
+      { x: -250, z: -510, heading: Math.PI / 2 }, { x: 120, z: -462, heading: Math.PI / 2 },
+      { x: 320, z: -489, heading: Math.PI / 2 }, { x: -470, z: -511, heading: Math.PI / 2 },
     );
   }
 
@@ -974,6 +1016,7 @@ export function stepCarTown(c: CarState, spec: CarSpec, inp: CarInput, map: Town
   townGround.slope = (map.heightAt(c.x + fx * 0.6, c.z + fz * 0.6) - map.heightAt(c.x - fx * 0.6, c.z - fz * 0.6)) / 1.2;
   const vf = driveCar(c, spec, inp, townGround, dt);
   c.impact = map.collide(c, spec);
-  updateVertical(c, map.heightAt(c.x, c.z), dt, true);
+  // beyond the quay edge there is no ground: the car falls into the water
+  updateVertical(c, map.inWater(c.x, c.z) ? -100 : map.heightAt(c.x, c.z), dt, true);
   updateGearbox(c, spec, vf, dt);
 }
