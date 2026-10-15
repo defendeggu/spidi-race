@@ -107,6 +107,8 @@ export interface BoxObstacle {
   maxZ: number;
   /** large boxes (buildings, wall) turn the car along their face, like a guard rail */
   solid: boolean;
+  /** height of a low obstacle (rail, bench, container): a car flying higher passes over it */
+  top?: number;
 }
 
 export interface CircleObstacle {
@@ -133,6 +135,9 @@ export interface Spot {
 }
 
 /** ISO shipping containers in metres: [width, length, height] (40 ft and 20 ft). */
+/** obstacles up to this height (m) can be jumped over */
+const LOW_OBSTACLE = 3;
+
 export const CONTAINER_40: [number, number, number] = [2.44, 12.19, 2.59];
 export const CONTAINER_20: [number, number, number] = [2.44, 6.06, 2.59];
 /** articulated lorry with a 40 ft container: [width, length, height] */
@@ -495,7 +500,9 @@ export class TownMap {
     const w = size ? (turned ? size[1] : size[0]) : r * 2, d = size ? (turned ? size[0] : size[1]) : r * 2;
     this.props.push({ model, scale, x, z, rot, w, d, h: size?.[2] ?? r * 2, variant: Math.floor(this.vrnd() * BUILDING_VARIANTS) });
     if (shape === 'circle') this.circles.push({ x, z, r, kind: 'prop' });
-    if (shape === 'box') this.boxes.push({ minX: x - w / 2, maxX: x + w / 2, minZ: z - d / 2, maxZ: z + d / 2, solid: w > 6 || d > 6 });
+    // low obstacles of known height can be jumped over; tall ones (and buildings) always block
+    const top = size && size[2] <= LOW_OBSTACLE ? size[2] : undefined;
+    if (shape === 'box') this.boxes.push({ minX: x - w / 2, maxX: x + w / 2, minZ: z - d / 2, maxZ: z + d / 2, solid: w > 6 || d > 6, top });
   }
 
   private propsFree(x: number, z: number, r: number) {
@@ -719,6 +726,8 @@ export class TownMap {
       this.addProp('container', 1, x, z, rot, l === 0 ? 'box' : 'none', 0, size);
       this.props[this.props.length - 1].y = l * size[2];
     }
+    const box = this.boxes[this.boxes.length - 1];
+    box.top = levels > 1 ? undefined : box.top;
   }
 
   /**
@@ -966,6 +975,8 @@ export class TownMap {
         for (const cl of cells) {
           if (!cl) continue;
           for (const o of cl.boxes) {
+            // flying over a low obstacle: no contact
+            if (o.top !== undefined && c.y > o.top) continue;
             const cpx = c.x + fx * off * side, cpz = c.z + fz * off * side;
             let nx: number, nz: number, pen: number;
             if (cpx > o.minX && cpx < o.maxX && cpz > o.minZ && cpz < o.maxZ) {
@@ -987,6 +998,7 @@ export class TownMap {
             hit = true;
           }
           for (const o of cl.circles) {
+            if (c.y > (o.kind === 'cone' ? 0.8 : o.kind === 'bollard' ? 1.1 : Infinity)) continue;
             const cpx = c.x + fx * off * side, cpz = c.z + fz * off * side;
             const dx = cpx - o.x, dz = cpz - o.z;
             const dd = Math.hypot(dx, dz);
@@ -1037,6 +1049,24 @@ export function createTownCar(id: string, spot: Spot) {
   return newCarState(id, spot.x, 0, spot.z, spot.heading);
 }
 
+/** a ramp face higher than this above the car (m) is a wall, lower edges are driven over or landed on */
+const RAMP_STEP = 0.7;
+
+/**
+ * Does the way from (ax, az) to (bx, bz) run into the face of a ramp? A face, not a slope: the height
+ * jumps by more than half a metre within 15 cm (the ramps are at most 60° steep).
+ */
+function crossesFace(map: TownMap, ax: number, az: number, bx: number, bz: number) {
+  const n = Math.max(1, Math.ceil(Math.hypot(bx - ax, bz - az) / 0.15));
+  let h = map.heightAt(ax, az);
+  for (let i = 1; i <= n; i++) {
+    const t = i / n, hn = map.heightAt(ax + (bx - ax) * t, az + (bz - az) * t);
+    if (hn - h > 0.5) return true;
+    h = hn;
+  }
+  return false;
+}
+
 const townGround: DriveGround = { grip: 1, drag: 0, offroad: false, bankGrip: 0, slope: 0 };
 
 /**
@@ -1044,6 +1074,7 @@ const townGround: DriveGround = { grip: 1, drag: 0, offroad: false, bankGrip: 0,
  * The ground is flat except for the skate park ramps, where cars climb, jump and land.
  */
 export function stepCarTown(c: CarState, spec: CarSpec, inp: CarInput, map: TownMap, dt: number) {
+  const px = c.x, pz = c.z;
   const sp = SURFACE_PROPS[map.surfaceAt(c.x, c.z)];
   townGround.grip = sp.grip;
   townGround.drag = sp.drag;
@@ -1051,6 +1082,30 @@ export function stepCarTown(c: CarState, spec: CarSpec, inp: CarInput, map: Town
   townGround.slope = (map.heightAt(c.x + fx * 0.6, c.z + fz * 0.6) - map.heightAt(c.x - fx * 0.6, c.z - fz * 0.6)) / 1.2;
   const vf = driveCar(c, spec, inp, townGround, dt);
   c.impact = map.collide(c, spec);
+  // the side or back face of a ramp is a wall: bounce off instead of being lifted onto the top
+  const g = map.heightAt(c.x, c.z);
+  const moved = Math.hypot(c.x - px, c.z - pz);
+  if (g - c.y > RAMP_STEP && moved > 1e-6 && crossesFace(map, px, pz, c.x, c.z)) {
+    const e = 0.4;
+    let nx = map.heightAt(c.x - e, c.z) - map.heightAt(c.x + e, c.z), nz = map.heightAt(c.x, c.z - e) - map.heightAt(c.x, c.z + e);
+    const n = Math.hypot(nx, nz);
+    if (n > 1e-6) {
+      nx /= n;
+      nz /= n;
+    } else {
+      // no clear face (a corner): straight back
+      nx = (px - c.x) / moved;
+      nz = (pz - c.z) / moved;
+    }
+    c.x = px;
+    c.z = pz;
+    const vn = c.vx * nx + c.vz * nz;
+    if (vn < 0) {
+      c.vx -= nx * vn * 1.3;
+      c.vz -= nz * vn * 1.3;
+      c.impact = Math.max(c.impact, -vn);
+    }
+  }
   // beyond the quay edge there is no ground: the car falls into the water
   updateVertical(c, map.inWater(c.x, c.z) ? -100 : map.heightAt(c.x, c.z), dt, true);
   updateGearbox(c, spec, vf, dt);

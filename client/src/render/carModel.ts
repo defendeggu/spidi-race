@@ -179,6 +179,68 @@ function paintTexture(model: string, body: THREE.Object3D, color: string) {
   return tex;
 }
 
+// ------------------------------------------------------------------ kart driver
+
+const visorMat = new THREE.MeshPhongMaterial({ color: '#0d1422', specular: '#8fb4ff', shininess: 140 });
+const suitMat = new THREE.MeshLambertMaterial({ color: '#2a3140' });
+const gloveMat = new THREE.MeshLambertMaterial({ color: '#f2f2f2' });
+const wheelRimMat = new THREE.MeshLambertMaterial({ color: '#1c1c1c' });
+const stripeMat = new THREE.MeshPhongMaterial({ color: '#ffffff', shininess: 90 });
+const helmetMats = new Map<string, THREE.Material>();
+
+/**
+ * A kart driver: racing suit, arms on the steering wheel and a helmet in the kart's colour with a white
+ * stripe and a dark visor. u = the kart model's unit (1 u ≈ the kart's width), seat = bottom of the seat.
+ */
+function kartDriver(color: string, u: number, seat: THREE.Vector3) {
+  const g = new THREE.Group();
+  g.position.copy(seat);
+  let helmetMat = helmetMats.get(color);
+  if (!helmetMat) helmetMats.set(color, (helmetMat = new THREE.MeshPhongMaterial({ color, specular: '#ffffff', shininess: 90 })));
+
+  const add = (geo: THREE.BufferGeometry, mat: THREE.Material, x: number, y: number, z: number, rx = 0, ry = 0, rz = 0) => {
+    const m = new THREE.Mesh(geo, mat);
+    m.position.set(x * u, y * u, z * u);
+    m.rotation.set(rx, ry, rz);
+    g.add(m);
+    return m;
+  };
+  // body, leaning back a little
+  add(new THREE.CapsuleGeometry(0.15 * u, 0.2 * u, 4, 10), suitMat, 0, 0.3, -0.02, -0.25);
+  // arms from the shoulders to the steering wheel
+  for (const sx of [-1, 1]) {
+    const sh = new THREE.Vector3(sx * 0.17, 0.42, 0.02), hand = new THREE.Vector3(sx * 0.09, 0.3, 0.3);
+    const mid = sh.clone().add(hand).multiplyScalar(0.5), dir = hand.clone().sub(sh);
+    const arm = add(new THREE.CapsuleGeometry(0.05 * u, dir.length() * u * 0.8, 3, 8), suitMat, mid.x, mid.y, mid.z);
+    arm.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize());
+    add(new THREE.SphereGeometry(0.055 * u, 8, 6), gloveMat, hand.x, hand.y, hand.z);
+  }
+  add(new THREE.TorusGeometry(0.1 * u, 0.018 * u, 6, 16), wheelRimMat, 0, 0.3, 0.32, -0.9);
+  // helmet: round shell, white stripe over the top, visor at the front
+  const r = 0.17;
+  const head = new THREE.Group();
+  head.position.set(0, 0.66 * u, 0.02 * u);
+  g.add(head);
+  const shell = new THREE.Mesh(new THREE.SphereGeometry(r * u, 20, 14), helmetMat);
+  shell.scale.set(1, 0.95, 1.08);
+  head.add(shell);
+  // a white stripe from the forehead over the top to the neck
+  for (const ry of [Math.PI / 2, -Math.PI / 2]) {
+    const stripe = new THREE.Mesh(new THREE.SphereGeometry(r * u * 1.01, 20, 10, -0.18, 0.36, 0, Math.PI * (ry > 0 ? 0.34 : 0.6)), stripeMat);
+    stripe.rotation.y = ry;
+    stripe.scale.copy(shell.scale);
+    head.add(stripe);
+  }
+  const visor = new THREE.Mesh(new THREE.SphereGeometry(r * u * 1.03, 20, 10, Math.PI * 0.18, Math.PI * 0.64, Math.PI * 0.36, Math.PI * 0.24), visorMat);
+  visor.scale.copy(shell.scale);
+  head.add(visor);
+  // chin guard in the suit colour
+  const chin = new THREE.Mesh(new THREE.SphereGeometry(r * u * 0.75, 12, 8, 0, Math.PI * 2, Math.PI * 0.55, Math.PI * 0.45), suitMat);
+  chin.position.y = -0.05 * u;
+  head.add(chin);
+  return g;
+}
+
 // ------------------------------------------------------------------ car visual
 
 export class CarVisual {
@@ -229,6 +291,13 @@ export class CarVisual {
     scaled.scale.setScalar(s);
     this.body.add(scaled);
 
+    // karts: the Kenney driver is a huge pale bubble; a smaller driver of our own takes the seat
+    const seat = this.spec.class === 'kart' ? root.getObjectByName('character') : undefined;
+    if (seat) {
+      const sb = new THREE.Box3().setFromObject(seat);
+      seat.removeFromParent();
+      this.body.add(kartDriver(color, s, new THREE.Vector3(0, sb.min.y * s, ((sb.min.z + sb.max.z) / 2) * s)));
+    }
     const bodyParts = root.children.filter((o) => !o.name.startsWith('wheel'));
     const paint = new THREE.Group();
     bodyParts.forEach((o) => paint.add(o));

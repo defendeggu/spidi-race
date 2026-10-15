@@ -443,4 +443,60 @@ describe('town extensions', () => {
     const ch = town.blocks.find((b) => b.kind === 'church')!;
     for (let z = ch.cz - 44; z < ch.cz - 8; z += 1) expect(town.isFree(ch.cx, z, 1.3), `z=${z}`).toBe(true);
   });
+
+  it('cars fly over low obstacles in the skate park, but not over buildings', () => {
+    const town = getTown();
+    const spec = carsForClass('town')[0];
+    const rail = town.props.find((p) => p.model === 'sk-rail-high')!;
+    const at = (y: number) => {
+      const c = createTownCar('t', { x: rail.x, z: rail.z, heading: 0 });
+      c.y = y;
+      town.collide(c, spec);
+      return Math.hypot(c.x - rail.x, c.z - rail.z);
+    };
+    expect(at(0)).toBeGreaterThan(0.1);
+    expect(at(3.5)).toBe(0);
+    const b = town.buildings[0];
+    const c = createTownCar('t', { x: b.x, z: b.z, heading: 0 });
+    c.y = 20;
+    town.collide(c, spec);
+    expect(Math.hypot(c.x - b.x, c.z - b.z)).toBeGreaterThan(0.1);
+  });
+
+  it('the side of a ramp is a wall, the car is not lifted onto it', () => {
+    const town = getTown();
+    const spec = carsForClass('town')[0];
+    // a quarter pipe of the skate park, hit from the side at full speed
+    const r = town.ramps.find((q) => q.curve === 'quarter' && q.height >= 3)!;
+    const fx = Math.sin(r.rot), fz = Math.cos(r.rot);
+    const u = r.up + r.top / 2;
+    const mx = r.x + fx * u, mz = r.z + fz * u;
+    const sx = -fz, sz = fx; // sideways
+    const c = createTownCar('t', { x: mx + sx * (r.width / 2 + 3), z: mz + sz * (r.width / 2 + 3), heading: Math.atan2(-sx, -sz) });
+    c.vx = -sx * 15;
+    c.vz = -sz * 15;
+    let maxY = 0;
+    for (let i = 0; i < 60; i++) {
+      stepCarTown(c, spec, { throttle: 1, brake: 0, steer: 0, handbrake: false }, town, 1 / 60);
+      maxY = Math.max(maxY, c.y);
+    }
+    expect(maxY).toBeLessThan(0.5);
+    expect(Math.hypot(c.x - mx, c.z - mz)).toBeGreaterThan(r.width / 2 - 0.5);
+  });
+
+  it('a boosted kart drives up a quarter pipe and flies out of it', () => {
+    const town = getTown();
+    const spec = { ...getCar('kart-oopi'), topSpeed: 50, accel: 30 };
+    const r = town.ramps.find((q) => q.curve === 'quarter' && q.height >= 3)!;
+    const fx = Math.sin(r.rot), fz = Math.cos(r.rot);
+    const c = createTownCar('t', { x: r.x - fx * 6, z: r.z - fz * 6, heading: r.rot });
+    c.vx = fx * 45;
+    c.vz = fz * 45;
+    let maxY = 0;
+    for (let i = 0; i < 40; i++) {
+      stepCarTown(c, spec, { throttle: 1, brake: 0, steer: 0, handbrake: false }, town, 1 / 60);
+      maxY = Math.max(maxY, c.y);
+    }
+    expect(maxY).toBeGreaterThan(r.height);
+  });
 });

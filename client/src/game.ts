@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {
-  AIDriver, applyNetCar, applyNetItems, collideCars, createCarState, forwardSpeed, getCar, getTrack, gridPosition, idleCar,
+  AIDriver, applyNetCar, collideCars, ItemMirror, createCarState, forwardSpeed, getCar, getTrack, gridPosition, idleCar,
   ItemWorld, KartBrain, lerp, lerpAngle, NO_INPUT, Race, stepCar, stepKart, SURFACE_PROPS, toNetCar, toNetKart,
   type ItemEvent, type ItemKind, type Surface,
   type CarSpec, type CarState, type NetCar, type ResultRow, type ServerMsg, type Slot, type Track,
@@ -91,6 +91,8 @@ export class Game {
   readonly items: ItemWorld | null = null;
   private itemVisuals: ItemVisuals | null = null;
   private itemEvents: ItemEvent[] = [];
+  /** network game: the server's items, own uses shown at once */
+  private mirror: ItemMirror | null = null;
   /** ranks: best-lap leaderboard rank per car id (online races are recorded by the server) */
   onFinish: ((results: ResultRow[], ranks?: Record<string, number>) => void) | null = null;
   onPause: (() => void) | null = null;
@@ -128,6 +130,7 @@ export class Game {
     if (opts.kart) {
       // online the item world is only a mirror of the server's: it is never stepped here
       this.items = new ItemWorld(this.track, opts.slots.map((s) => s.id), Math.floor(Math.random() * 1e9));
+      if (opts.net) this.mirror = new ItemMirror(this.items);
       this.itemVisuals = new ItemVisuals(this.world.dynamic, this.items, new Map(this.cars.map((c) => [c.slot.id, c.visual])), this.particles);
     }
 
@@ -176,10 +179,11 @@ export class Game {
         if (c.buffer.length > 40) c.buffer.shift();
       }
       this.race.applyNet(m.race);
-      if (m.items && this.items) {
+      if (m.items && this.mirror) {
         const own = new Set(this.cars.filter((c) => c.simulated).map((c) => c.slot.id));
-        applyNetItems(this.items, m.items, own, INTERP_DELAY / 1000);
-        this.itemEvents.push(...m.items.ev);
+        const r = this.mirror.apply(m.items, own, INTERP_DELAY / 1000);
+        for (const [local, id] of r.adopt) this.itemVisuals?.adopt(local, id);
+        this.itemEvents.push(...r.events);
       }
       // drop cars of players that left
       for (const c of [...this.cars]) {
@@ -217,8 +221,14 @@ export class Game {
         const fire = input.consume(p.cfg.keymap.item) || input.consumePad(p.cfg.pad, 'item') || (touch && input.consumeTouch('item'));
         const entry = this.race.entry(p.car.slot.id);
         if (fire && this.race.started && !entry?.finished && !this.paused) {
-          if (this.opts.net) this.opts.net.send({ type: 'item', id: p.car.slot.id });
-          else this.items.use(p.car.slot.id);
+          if (this.opts.net && this.mirror) {
+            // shown at once, the server confirms it
+            const ev = this.mirror.use(p.car.slot.id, p.car.state);
+            if (ev.length) {
+              this.itemEvents.push(...ev);
+              this.opts.net.send({ type: 'item', id: p.car.slot.id });
+            }
+          } else this.items.use(p.car.slot.id);
         }
       }
     }
@@ -233,12 +243,7 @@ export class Game {
     }
     this.updateRemote(now);
     // online shots fly on between the server's snapshots
-    if (this.opts.net && this.items) {
-      for (const p of this.items.projectiles) {
-        p.x += p.vx * dt;
-        p.z += p.vz * dt;
-      }
-    }
+    if (this.mirror) this.itemEvents.push(...this.mirror.update(dt));
     this.render(sim ? this.acc / STEP : 1, dt);
 
     if (!this.opts.net && this.race.phase === 'finished') this.finish(this.race.results());

@@ -2,7 +2,21 @@
 
 Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
-## [0.18.0] – 2026-10-16
+## [0.19.0] – 2026-10-16
+
+### Hinzugefügt
+- **Grafik-Einstellung** im Hauptmenü: Auto, Hoch oder Niedrig (ohne Kantenglättung, geringere Auflösung)
+- **Bis zu 3 Items sammeln** in Kart-Rennen und Battle: sie werden nacheinander eingesetzt, die gesammelten stehen klein neben dem Item-Slot
+- Netzwerkspiel: eigene Schüsse, Minen, Schild und Turbo erscheinen sofort beim Drücken, der Server bestätigt sie; ein abgelehnter Einsatz verschwindet wieder
+
+### Geändert
+- Neue Kart-Fahrer: kleiner, mit Helm in der Kartfarbe, weissem Streifen und dunklem Visier, Rennanzug und Händen am Lenkrad – statt der grossen, blassen Kugel
+
+### Behoben
+- Stadt: Über niedrige Hindernisse (Rails, Grind-Boxen, Bänke, Paletten, einzelne Container, Hütchen, Poller) kann man jetzt springen – vorher stiess man in der Luft an ihren unsichtbaren Grundriss
+- Skaterpark: Seiten- und Rückwände der Rampen sind jetzt Wände, an denen man abprallt. Vorher wurde ein Auto, das tief dagegen flog, schlagartig nach oben gerissen oder mit Tempo seitlich hineinfahrend bis zu 30 m hoch katapultiert
+
+ – 2026-10-16
 
 ### Hinzugefügt
 - **Kart-Battle im Netzwerkspiel**: Der Host wählt in der Lobby „Kart-Battle in der Stadt“ und 0–4 Computer-Karts, insgesamt bis zu 8 Karts (zwei neue Startkreuzungen)

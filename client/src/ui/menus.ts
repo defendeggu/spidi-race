@@ -3,6 +3,7 @@ import { Game, type LocalPlayerCfg } from '../game';
 import { KEYMAPS, SOLO_KEYMAP } from '../input';
 import type { App, Mode } from './app';
 import { html } from './html';
+import type { GraphicsLevel } from './prefs';
 import { playerActions, playerPanel, settingsActions, settingsBlock } from './widgets';
 
 export function showMain(app: App, error = '') {
@@ -21,6 +22,10 @@ export function showMain(app: App, error = '') {
       <button class="big" data-a="board">Rangliste</button>
       <button class="big secondary" data-a="controls">Steuerung</button>
       <button class="big secondary" data-a="credits">Credits</button>
+      <div class="toggle graphics" title="Niedrig: ohne Kantenglättung und mit geringerer Auflösung – für ältere Laptops und Handys">
+        <span>Grafik</span>
+        ${GRAPHICS.map((g) => html`<button class="${app.prefs.graphics === g.id ? 'sel' : ''}" data-a="gfx" data-id="${g.id}">${g.label}</button>`)}
+      </div>
     </div>
     <div class="version">v${__APP_VERSION__}</div>`);
   app.bind({
@@ -32,8 +37,22 @@ export function showMain(app: App, error = '') {
     board: () => app.showLeaderboard({ trackId: app.prefs.trackId, sort: 'bestLap' }, () => app.showMain()),
     controls: () => showControls(app),
     credits: () => showCredits(app),
+    gfx: (el) => {
+      const g = GRAPHICS.find((x) => x.id === el.dataset.id)?.id ?? 'auto';
+      if (g === app.prefs.graphics) return;
+      app.prefs.graphics = g;
+      app.savePrefs();
+      // antialiasing can only be set when the renderer is created
+      location.reload();
+    },
   });
 }
+
+const GRAPHICS: { id: GraphicsLevel; label: string }[] = [
+  { id: 'auto', label: 'Auto' },
+  { id: 'high', label: 'Hoch' },
+  { id: 'low', label: 'Niedrig' },
+];
 
 function showCredits(app: App) {
   const link = (href: string, text: string) => html`<a href="${href}" target="_blank" rel="noopener">${text}</a>`;

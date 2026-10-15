@@ -148,6 +148,9 @@ input.name {
 select { font: inherit; padding: 4px 8px; background: #16205a; color: #fff; border: 1px solid var(--line); border-radius: 4px; }
 
 .toggle { display: flex; gap: 8px; flex-wrap: wrap; }
+.toggle.graphics { justify-content: center; align-items: center; margin-top: 6px; }
+.toggle.graphics span { font-size: 13px; opacity: 0.8; margin-right: 2px; }
+.toggle.graphics button { padding: 4px 12px; font-size: 13px; }
 .toggle button.sel { border-color: var(--gold); background: linear-gradient(#4b5fc0, #26348a); }
 
 .lobby { display: grid; grid-template-columns: minmax(220px, 1fr) 2fr; gap: 16px; }
@@ -285,6 +288,8 @@ button.big.practice { border-left-color: #3ad16b; }
   background: rgba(10, 16, 50, 0.55); font-size: 44px; line-height: 66px; font-style: normal; text-shadow: none;
 }
 .hud-item.full .hud-item-icon { border-color: var(--gold); box-shadow: 0 0 14px rgba(255, 204, 0, 0.6); }
+.hud-item-next { position: absolute; left: 100%; top: 14px; margin-left: 4px; white-space: nowrap; font-size: 26px; letter-spacing: 2px; filter: drop-shadow(0 1px 2px rgba(0,0,0,.6)); }
+.hud.compact .hud-item-next { font-size: 20px; top: 10px; }
 .hud-item-label { font-size: 14px; margin-top: 2px; min-height: 18px; }
 .hud-drift { height: 8px; width: 72px; margin: 4px auto 0; border-radius: 4px; background: transparent; transition: background 0.15s; }
 .hud-drift.l1 { background: #7fd4ff; }

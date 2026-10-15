@@ -8,6 +8,9 @@ export const CAR_PREF = { road: 'carId', offroad: 'offroadCarId', micro: 'microC
 
 export type TrafficLevel = 'off' | 'few' | 'many';
 
+/** graphics: 'auto' = low on phones and tablets, high elsewhere */
+export type GraphicsLevel = 'auto' | 'high' | 'low';
+
 export interface Prefs {
   players: PlayerPref[];
   trackId: string;
@@ -27,6 +30,7 @@ export interface Prefs {
   /** kart race on a track or battle in the town, and the number of battle bots */
   kartMode: 'race' | 'battle';
   kartBots: number;
+  graphics: GraphicsLevel;
 }
 
 export const TRAFFIC: { id: TrafficLevel; label: string; cars: number }[] = [
@@ -58,6 +62,7 @@ export function loadPrefs(): Prefs {
     trackId: TRACK_DEFS[0].id, laps: 2, aiCount: 4, aiSkill: 0.93, onlineLocal: 1,
     townPlayers: 1, townTask: 'stars', townTraffic: 'few', townGoals: 10,
     kartPlayers: 1, kartTrackId: 'alpenpass', kartMode: 'race', kartBots: 3,
+    graphics: 'auto',
   };
   try {
     const raw = localStorage.getItem(KEY);
