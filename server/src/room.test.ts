@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { WebSocket } from 'ws';
-import type { CarState, Race, ServerMsg, Slot } from '@spidi/shared';
+import { getCar, type CarState, type ItemWorld, type Race, type ServerMsg, type Slot } from '@spidi/shared';
 import { Leaderboard } from './leaderboard';
 import { Room } from './room';
 
@@ -27,7 +27,7 @@ class FakeSocket extends EventEmitter {
   }
 }
 
-type Internals = { race: Race | null; cars: { slot: Slot; state: CarState }[] };
+type Internals = { race: Race | null; cars: { slot: Slot; state: CarState }[]; items: ItemWorld | null; tick(): void; timer: NodeJS.Timeout | null };
 
 const rooms: Room[] = [];
 const dirs: string[] = [];
@@ -114,5 +114,45 @@ describe('room', () => {
     expect(a.readyState).toBe(1);
     ping();
     expect(a.readyState).toBe(3);
+  });
+
+  it('runs kart races with items on the server', () => {
+    const { inner, join } = setup();
+    const a = join('Anna');
+    a.msg({ type: 'join', players: [{ name: 'Anna', carId: 'kart-oopi' }] });
+    // karts are not allowed on the breakfast table: the host's choice falls back to a road track
+    a.msg({ type: 'settings', settings: { trackId: 'fruehstueck', laps: 1, aiCount: 3, aiSkill: 0.93, kart: true } });
+    a.msg({ type: 'start' });
+    const start = a.sent.find((m) => m.type === 'start') as Extract<ServerMsg, { type: 'start' }>;
+    expect(start.kart).toBe(true);
+    expect(start.slots.every((s) => getCar(s.carId).class === 'kart')).toBe(true);
+    expect(start.slots.find((s) => !s.isAI)!.carId).toBe('kart-oopi');
+    expect(inner.items).not.toBeNull();
+    // drive the server by hand (the timer is stopped): the AI karts collect items and shoot
+    clearInterval(inner.timer!);
+    const me = start.slots.find((s) => !s.isAI)!.id;
+    let used = 0;
+    for (let i = 0; i < 60 * 60 && inner.race; i++) {
+      inner.tick();
+      used += inner.items?.events.length ?? 0;
+    }
+    const snaps = a.sent.filter((m): m is Extract<ServerMsg, { type: 'snap' }> => m.type === 'snap' && !!m.items);
+    expect(snaps.length).toBeGreaterThan(100);
+    const events = snaps.flatMap((m) => m.items!.ev);
+    expect(events.some((e) => e.type === 'box')).toBe(true);
+    expect(events.some((e) => e.type === 'use')).toBe(true);
+    expect(used).toBe(0); // the events go out with the snapshots
+    // a client can only fire its own kart's item, and only when it has one
+    const ks = inner.items!.kart(me);
+    ks.item = 'turbo';
+    a.msg({ type: 'item', id: 'ai0' });
+    a.msg({ type: 'item', id: me });
+    inner.tick();
+    expect(ks.item).toBeNull();
+    // the client's drift and boost are taken over, cleaned
+    a.msg({ type: 'state', cars: [{ id: me, x: inner.cars.find((c) => c.slot.id === me)!.state.x, z: inner.cars.find((c) => c.slot.id === me)!.state.z }], karts: [{ id: me, bo: 99, dr: 5, dt: 1, hp: 'x' }] });
+    expect(ks.boost).toBe(3);
+    expect(ks.drift).toBe(1);
+    expect(ks.hop).toBe(0);
   });
 });

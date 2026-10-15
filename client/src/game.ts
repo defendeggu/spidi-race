@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {
-  AIDriver, applyNetCar, collideCars, createCarState, forwardSpeed, getCar, getTrack, gridPosition, idleCar,
-  ItemWorld, KartBrain, lerp, lerpAngle, NO_INPUT, Race, stepCar, stepKart, SURFACE_PROPS, toNetCar,
+  AIDriver, applyNetCar, applyNetItems, collideCars, createCarState, forwardSpeed, getCar, getTrack, gridPosition, idleCar,
+  ItemWorld, KartBrain, lerp, lerpAngle, NO_INPUT, Race, stepCar, stepKart, SURFACE_PROPS, toNetCar, toNetKart,
   type ItemEvent, type ItemKind, type Surface,
   type CarSpec, type CarState, type NetCar, type ResultRow, type ServerMsg, type Slot, type Track,
 } from '@spidi/shared';
@@ -38,7 +38,7 @@ export interface GameOptions {
   countdown: number;
   aiSkill: number;
   net?: Net;
-  /** kart race with items (local only) */
+  /** kart race with items (online: the server runs the items, this game shows them) */
   kart?: boolean;
 }
 
@@ -122,10 +122,11 @@ export class Game {
         slot, spec, state, visual, simulated, buffer: [], color: carColor(spec, hue), renderHeading: state.heading,
         prev: { x: state.x, y: state.y, z: state.z, heading: state.heading },
         ai: simulated && slot.isAI ? new AIDriver(slot.grid + 1, opts.aiSkill - 0.06 + ((slot.grid * 37) % 7) * 0.012) : undefined,
-        brain: opts.kart && slot.isAI ? new KartBrain(slot.grid + 1) : undefined,
+        brain: opts.kart && simulated && slot.isAI ? new KartBrain(slot.grid + 1) : undefined,
       });
     }
-    if (opts.kart && !opts.net) {
+    if (opts.kart) {
+      // online the item world is only a mirror of the server's: it is never stepped here
       this.items = new ItemWorld(this.track, opts.slots.map((s) => s.id), Math.floor(Math.random() * 1e9));
       this.itemVisuals = new ItemVisuals(this.world.dynamic, this.items, new Map(this.cars.map((c) => [c.slot.id, c.visual])), this.particles);
     }
@@ -175,6 +176,11 @@ export class Game {
         if (c.buffer.length > 40) c.buffer.shift();
       }
       this.race.applyNet(m.race);
+      if (m.items && this.items) {
+        const own = new Set(this.cars.filter((c) => c.simulated).map((c) => c.slot.id));
+        applyNetItems(this.items, m.items, own, INTERP_DELAY / 1000);
+        this.itemEvents.push(...m.items.ev);
+      }
       // drop cars of players that left
       for (const c of [...this.cars]) {
         if (!m.race.entries.some((e) => e.id === c.slot.id)) {
@@ -210,7 +216,10 @@ export class Game {
       if (this.items) {
         const fire = input.consume(p.cfg.keymap.item) || input.consumePad(p.cfg.pad, 'item') || (touch && input.consumeTouch('item'));
         const entry = this.race.entry(p.car.slot.id);
-        if (fire && this.race.started && !entry?.finished && !this.paused) this.items.use(p.car.slot.id);
+        if (fire && this.race.started && !entry?.finished && !this.paused) {
+          if (this.opts.net) this.opts.net.send({ type: 'item', id: p.car.slot.id });
+          else this.items.use(p.car.slot.id);
+        }
       }
     }
 
@@ -223,6 +232,13 @@ export class Game {
       }
     }
     this.updateRemote(now);
+    // online shots fly on between the server's snapshots
+    if (this.opts.net && this.items) {
+      for (const p of this.items.projectiles) {
+        p.x += p.vx * dt;
+        p.z += p.vz * dt;
+      }
+    }
     this.render(sim ? this.acc / STEP : 1, dt);
 
     if (!this.opts.net && this.race.phase === 'finished') this.finish(this.race.results());
@@ -269,7 +285,7 @@ export class Game {
         }
       }
     }
-    if (started && this.items) {
+    if (started && this.items && !this.opts.net) {
       const pos = (id: string) => race.entry(id)?.position ?? 1;
       const ahead = (id: string) => race.entries.find((e) => e.position === pos(id) - 1)?.id ?? null;
       this.items.step(dt, states, pos, ahead);
@@ -279,7 +295,12 @@ export class Game {
     if (!this.opts.net) {
       race.update(dt, (id) => this.cars.find((c) => c.slot.id === id)?.state.s);
     } else if (++this.stepCount % 2 === 0) {
-      this.opts.net.send({ type: 'state', cars: this.cars.filter((c) => c.simulated).map((c) => toNetCar(c.state)) });
+      const mine = this.cars.filter((c) => c.simulated);
+      const items = this.items;
+      this.opts.net.send({
+        type: 'state', cars: mine.map((c) => toNetCar(c.state)),
+        karts: items ? mine.map((c) => toNetKart(items.kart(c.slot.id))) : undefined,
+      });
     }
   }
 
