@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BATTLE_SECONDS, BattleBot, BattleSession, battleSpawn } from './battle';
+import { applyNetBattle, BATTLE_MAX_KARTS, BATTLE_SECONDS, BattleBot, BattleSession, battleSpawn, toNetBattle } from './battle';
 import { carsForClass, getCar } from './cars';
 import { ItemWorld, townArena } from './items';
 import { stepKartWith } from './kart';
@@ -34,11 +34,26 @@ describe('kart battle', () => {
 
   it('start positions are on free streets, away from the item boxes', () => {
     const boxes = townArena(town).boxes;
-    for (let k = 0; k < 6; k++) {
+    const spots = new Set<string>();
+    for (let k = 0; k < BATTLE_MAX_KARTS; k++) {
       const p = battleSpawn(k);
+      spots.add(`${p.x},${p.z}`);
       expect(town.isFree(p.x, p.z, 3)).toBe(true);
       for (const b of boxes) expect(Math.hypot(b.x - p.x, b.z - p.z)).toBeGreaterThan(20);
     }
+    expect(spots.size).toBe(BATTLE_MAX_KARTS);
+  });
+
+  it('a client follows the server battle', () => {
+    const server = new BattleSession(['a', 'b', 'c']);
+    server.step(5);
+    server.hit('a');
+    server.eliminate('c');
+    const client = new BattleSession(['a', 'b', 'c']);
+    applyNetBattle(client, JSON.parse(JSON.stringify(toNetBattle(server))));
+    expect(client.phase).toBe(server.phase);
+    expect(client.ranking()).toEqual(server.ranking());
+    expect(client.winner()).toBe('b');
   });
 
   it('four bots find item boxes, drive through town and hit each other', () => {

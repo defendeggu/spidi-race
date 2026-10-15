@@ -155,7 +155,7 @@ Hauptmenü → **Kart-Rennen mit Items**. Gefahren wird auf allen Strassen- und 
 | Drift-Boost | Handbremse + Lenken ab ca. 30 km/h: der Drift lädt in drei Stufen (blaue, orange, violette Funken), beim Loslassen gibt es einen Turbo. Beim Driftstart hüpft das Kart – so springt man über Minen |
 | Rangliste | eigene Kart-Listen pro Strecke (Umschalter „Autos / Karts“ in der Rangliste) |
 
-**Battle in der Stadt** (im Kart-Menü umschalten): allein oder zu zweit im Splitscreen, dazu 0–4 Computer-Karts, die über das Strassenraster zu den Boxen fahren und Jagd auf die anderen machen. Jedes Kart hat 3 Ballons über dem Fahrer, jeder Treffer kostet einen, wer ins Hafenbecken fällt, verliert alle. Wer zuletzt noch Ballons hat, gewinnt – spätestens nach 3 Minuten (sonst gewinnt, wer mehr Ballons hat). Die ?-Boxen stehen auf jeder zweiten Kreuzung, Projektile prallen an den Gebäuden ab.
+**Battle in der Stadt** (im Kart-Menü umschalten, oder im [Netzwerkspiel](#netzwerkspiel) mit bis zu 8 Karts): allein oder zu zweit im Splitscreen, dazu 0–4 Computer-Karts, die über das Strassenraster zu den Boxen fahren und Jagd auf die anderen machen. Jedes Kart hat 3 Ballons (Anzeige oben rechts), jeder Treffer kostet einen, wer ins Hafenbecken fällt, verliert alle. Wer zuletzt noch Ballons hat, gewinnt – spätestens nach 3 Minuten (sonst gewinnt, wer mehr Ballons hat). Die ?-Boxen stehen auf jeder zweiten Kreuzung, Projektile prallen an den Gebäuden ab.
 
 Die Item-Logik (`shared/src/items.ts`) läuft ohne Browser und deterministisch; im Netzwerkspiel läuft sie auf dem Server.
 
@@ -189,7 +189,7 @@ Hauptmenü → **Übungsfahrt in der Stadt**. Gedacht für Kinder und alle, die 
 1. Den Server starten (Docker oder `npm start`).
 2. Alle Mitspieler öffnen `http://<IP-des-Servers>:8090` und wählen **Netzwerkspiel**.
 3. Pro Gerät kann man 1 oder 2 Spieler anmelden. Bei 2 Spielern fahren beide im Splitscreen.
-4. Wer zuerst in der Lobby ist, ist Host: Er wählt Strecke, Runden und KI-Gegner und startet das Rennen. Gefahren wird immer mit Autos der Streckenklasse (Strasse, Offroad oder Micro); sein Auto dieser Klasse wählt jeder direkt in der Lobby. Mit dem Umschalter **Kart-Rennen mit Items** fahren alle mit Karts und Waffen (Strassen- und Offroad-Strecken).
+4. Wer zuerst in der Lobby ist, ist Host: Er wählt Strecke, Runden und KI-Gegner und startet das Rennen. Gefahren wird immer mit Autos der Streckenklasse (Strasse, Offroad oder Micro); sein Auto dieser Klasse wählt jeder direkt in der Lobby. Mit dem Umschalter **Kart-Rennen mit Items** fahren alle mit Karts und Waffen (Strassen- und Offroad-Strecken), mit **Kart-Battle in der Stadt** treten bis zu 8 Karts (davon höchstens 4 Computer-Karts) in der Übungsstadt gegeneinander an.
 5. Der Host kann ein laufendes Rennen jederzeit für alle abbrechen: im Pause-Menü (`Esc`) oder in der Lobby mit **Rennen für alle abbrechen**, dann ein zweiter Klick zur Bestätigung.
 
 ![Lobby](docs/lobby.jpg)
@@ -198,7 +198,7 @@ So funktioniert es technisch:
 - Jeder Client simuliert seine eigenen Autos und sendet deren Zustand 30-mal pro Sekunde.
 - Der Server simuliert die KI-Gegner, entscheidet über Runden, Platzierungen und Zieleinlauf und verteilt den Spielstand an alle.
 - Fremde Autos werden mit etwa 110 ms Verzögerung interpoliert, damit sie flüssig fahren.
-- Kart-Rennen: Der Server führt die Items aller Karts – Boxen, Würfeln, Projektile, Minen und Treffer – und die KI-Karts samt ihrer Item-Taktik. Die Clients schicken nur „Item benutzen“ und den Drift- und Boost-Zustand ihrer Karts mit; Treffer, Schild und Turbo kommen vom Server zurück.
+- Kart-Rennen: Der Server führt die Items aller Karts – Boxen, Würfeln, Projektile, Minen und Treffer – und die KI-Karts samt ihrer Item-Taktik. Die Clients schicken nur „Item benutzen“ und den Drift- und Boost-Zustand ihrer Karts mit; Treffer, Schild und Turbo kommen vom Server zurück. Beim Battle führt der Server zusätzlich die Ballons und erkennt, wer ins Hafenbecken gefallen ist.
 
 ## Rangliste
 

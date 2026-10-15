@@ -11,6 +11,9 @@ import { GRID, LINE_COUNT, LINES, type Spot, type TownMap } from './town';
 
 export const BATTLE_BALLOONS = 3;
 export const BATTLE_SECONDS = 180;
+/** at most this many karts: one start intersection each */
+export const BATTLE_MAX_KARTS = 8;
+export const BATTLE_BOT_NAMES = ['Zorg', 'Blip', 'Quax', 'Nubi'];
 const COUNTDOWN = 3;
 
 export type BattlePhase = 'countdown' | 'running' | 'finished';
@@ -28,7 +31,7 @@ export interface BattleRow {
  * (the boxes stand on intersections with an even index sum).
  */
 export function battleSpawn(k: number): Spot {
-  const nodes = [[2, 3], [7, 6], [2, 7], [7, 2], [4, 5], [5, 4]];
+  const nodes = [[2, 3], [7, 6], [2, 7], [7, 2], [4, 5], [5, 4], [3, 8], [6, 1]];
   const [a, b] = nodes[k % nodes.length];
   const x = LINES[a], z = LINES[b];
   return { x, z, heading: Math.atan2(-x, -z) };
@@ -115,6 +118,32 @@ export class BattleSession {
     const r = this.ranking();
     return r.length > 1 && r[1].place === 1 ? null : r[0].id;
   }
+}
+
+/** The battle state in a snapshot of the game server. */
+export interface NetBattle {
+  ph: BattlePhase;
+  cd: number;
+  t: number;
+  b: Record<string, number>;
+  out: string[];
+}
+
+export function toNetBattle(s: BattleSession): NetBattle {
+  return {
+    ph: s.phase, cd: Math.round(s.countdown * 100) / 100, t: Math.round(s.time * 100) / 100,
+    b: Object.fromEntries(s.balloons), out: [...s.out],
+  };
+}
+
+/** Client side: follow the server's battle (the client never decides about balloons itself). */
+export function applyNetBattle(s: BattleSession, n: NetBattle) {
+  s.phase = n.ph;
+  s.countdown = n.cd;
+  s.time = n.t;
+  for (const id of s.ids) s.balloons.set(id, n.b[id] ?? 0);
+  s.out.length = 0;
+  s.out.push(...n.out.filter((id) => s.ids.includes(id)));
 }
 
 /**

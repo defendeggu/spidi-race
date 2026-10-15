@@ -1,7 +1,8 @@
 import type { WebSocket } from 'ws';
 import type { Leaderboard } from './leaderboard';
+import { BattleMatch } from './battleMatch';
 import {
-  AIDriver, applyKartDrive, applyNetCar, CARS, carsForClass, collideCars, createCarState, getCar, getTrack, gridPosition,
+  AIDriver, applyKartDrive, BATTLE_BOT_NAMES, BATTLE_MAX_KARTS, applyNetCar, CARS, carsForClass, collideCars, createCarState, getCar, getTrack, gridPosition,
   idleCar, ItemWorld, KART_PREFIX, KartBrain, MAX_CARS, NO_INPUT, Race, sanitizeNetCar, stepCar, stepKart, tickKartTimers,
   toNetCar, toNetItems, TRACK_DEFS,
   type CarState, type ClientMsg, type ItemEvent, type LobbyPlayer, type LobbySettings, type ServerMsg, type Slot, type Track,
@@ -48,6 +49,8 @@ export class Room {
   /** kart races: the items of all karts are judged here, the clients only show them */
   private items: ItemWorld | null = null;
   private itemEvents: ItemEvent[] = [];
+  /** kart battle in the practice town (instead of a race) */
+  private battle: BattleMatch | null = null;
   private timer: NodeJS.Timeout | null = null;
   private ticks = 0;
   private pinger: NodeJS.Timeout | null = null;
@@ -146,10 +149,12 @@ export class Room {
         if (c.id !== this.hostId || this.phase !== 'lobby' || !msg.settings || typeof msg.settings !== 'object') return;
         const s = msg.settings;
         const kart = s.kart === true;
+        const battle = kart && s.battle === true;
         // karts race on road and offroad tracks, not on the breakfast table
         const ok = (id: unknown) => TRACK_DEFS.some((t) => t.id === id && !(kart && t.class === 'micro'));
         this.settings = {
           kart,
+          battle,
           trackId: ok(s.trackId) ? s.trackId : ok(this.settings.trackId) ? this.settings.trackId : TRACK_DEFS[0].id,
           laps: Math.max(1, Math.min(10, Math.round(Number(s.laps) || 2))),
           aiCount: Math.max(0, Math.min(MAX_CARS, Math.round(Number(s.aiCount) || 0))),
@@ -190,23 +195,31 @@ export class Room {
           }
           car.lastUpdate = now;
           applyNetCar(car.state, nc);
-          const p = this.track!.project(car.state.x, car.state.z, car.state.idx);
-          car.state.idx = p.idx;
-          car.state.s = p.s;
+          if (this.track) {
+            const p = this.track.project(car.state.x, car.state.z, car.state.idx);
+            car.state.idx = p.idx;
+            car.state.s = p.s;
+          }
           car.seen = true;
         }
-        if (this.items && Array.isArray(msg.karts)) {
+        const items = this.items ?? this.battle?.items;
+        if (items && Array.isArray(msg.karts)) {
           for (const raw of msg.karts.slice(0, 2)) {
             const id = raw && typeof raw === 'object' ? (raw as { id?: unknown }).id : undefined;
             const car = this.cars.find((k) => k.slot.id === id && k.slot.ownerId === c.id);
-            if (car) applyKartDrive(this.items.kart(car.slot.id), raw);
+            if (car) applyKartDrive(items.kart(car.slot.id), raw);
           }
         }
         break;
       }
       case 'item': {
         const car = this.cars.find((k) => k.slot.id === msg.id && k.slot.ownerId === c.id);
-        if (!car || !this.items || !this.race?.started || this.race.entry(car.slot.id)?.finished) return;
+        if (!car) return;
+        if (this.battle) {
+          if (this.battle.canUse(car.slot.id)) this.battle.items.use(car.slot.id);
+          return;
+        }
+        if (!this.items || !this.race?.started || this.race.entry(car.slot.id)?.finished) return;
         this.items.use(car.slot.id);
         break;
       }
@@ -216,6 +229,10 @@ export class Room {
   private startRace() {
     const joined = this.joined();
     if (joined.length === 0) return;
+    if (this.settings.battle) {
+      this.startBattle();
+      return;
+    }
     const humans = joined.flatMap((c) => c.players.map((p, k) => ({ client: c, p, k })));
     const aiCount = Math.max(0, Math.min(this.settings.aiCount, MAX_CARS - humans.length));
     // only cars of the track's class may start (road, offroad or micro) – or karts in a kart race
@@ -249,19 +266,56 @@ export class Room {
     this.phase = 'race';
     this.broadcast({ type: 'start', trackId: this.settings.trackId, laps: this.settings.laps, slots, countdown, kart });
     this.broadcastLobby();
+    this.runClock(() => this.tick());
+    console.log(`[room] ${kart ? 'kart race' : 'race'} started on ${this.settings.trackId} with ${humans.length} players and ${aiCount} AI`);
+  }
+
+  /** Fixed steps on real time: setInterval(16.67) fires ~62.5×/s in Node, which made races 3 % too fast. */
+  private runClock(tick: () => void) {
     this.ticks = 0;
-    // fixed steps on real time: setInterval(16.67) fires ~62.5×/s in Node, which made races 3 % too fast
     let last = performance.now(), acc = 0;
     this.timer = setInterval(() => {
       const now = performance.now();
       acc += Math.min(0.1, (now - last) / 1000);
       last = now;
-      while (acc >= TICK && this.race) {
-        this.tick();
+      while (acc >= TICK && this.phase === 'race') {
+        tick();
         acc -= TICK;
       }
     }, 8);
-    console.log(`[room] ${kart ? 'kart race' : 'race'} started on ${this.settings.trackId} with ${humans.length} players and ${aiCount} AI`);
+  }
+
+  /** Kart battle in the practice town: up to 8 karts, at most 4 of them bots. */
+  private startBattle() {
+    const humans = this.joined().flatMap((c) => c.players.map((p, k) => ({ client: c, p, k }))).slice(0, BATTLE_MAX_KARTS);
+    const bots = Math.max(0, Math.min(this.settings.aiCount, BATTLE_BOT_NAMES.length, BATTLE_MAX_KARTS - humans.length));
+    const pool = carsForClass('kart');
+    const slots: Slot[] = humans.map((h, k) => ({
+      id: `${h.client.id}-${h.k + 1}`, name: h.p.name, carId: pool.some((c) => c.id === h.p.carId) ? h.p.carId : pool[k % pool.length].id,
+      isAI: false, ownerId: h.client.id, grid: k,
+    }));
+    // bots prefer the karts nobody else drives, so everybody can be told apart
+    const taken = new Set(slots.map((s) => s.carId));
+    const botKarts = [...pool.filter((c) => !taken.has(c.id)), ...pool.filter((c) => taken.has(c.id))];
+    for (let i = 0; i < bots; i++) {
+      slots.push({ id: `ai${i}`, name: BATTLE_BOT_NAMES[i], carId: botKarts[i % botKarts.length].id, isAI: true, ownerId: '', grid: humans.length + i });
+    }
+    const battle = new BattleMatch(slots);
+    this.battle = battle;
+    this.track = null;
+    this.cars = slots.map((slot) => ({ slot, state: battle.createCar(slot), seen: false, lastUpdate: 0 }));
+    this.phase = 'race';
+    this.broadcast({ type: 'start', trackId: this.settings.trackId, laps: 1, slots, countdown: battle.session.countdown, kart: true, battle: true });
+    this.broadcastLobby();
+    this.runClock(() => {
+      const done = battle.tick(this.cars, TICK);
+      if (++this.ticks % 2 === 0) this.broadcast(battle.snapshot(this.cars));
+      if (done) {
+        this.broadcast(battle.result());
+        this.endRace(false);
+      }
+    });
+    console.log(`[room] kart battle started with ${humans.length} players and ${bots} bots`);
   }
 
   private tick() {
@@ -329,6 +383,7 @@ export class Room {
       this.broadcast({ type: 'end', results, ranks: Object.fromEntries(finished.map((r, i) => [r.id, ranks[i]])) });
     }
     this.race = null;
+    this.battle = null;
     this.cars = [];
     this.items = null;
     this.phase = 'lobby';
@@ -339,7 +394,11 @@ export class Room {
   private remove(c: Client) {
     if (!this.clients.delete(c.id)) return;
     console.log(`[room] client ${c.id} left (${this.clients.size} online)`);
-    if (this.race) {
+    if (this.battle) {
+      for (const car of this.cars.filter((k) => k.slot.ownerId === c.id)) this.battle.leave(car.slot.id);
+      this.cars = this.cars.filter((k) => k.slot.ownerId !== c.id);
+      if (!this.cars.some((k) => !k.slot.isAI)) this.endRace(false);
+    } else if (this.race) {
       for (const car of this.cars.filter((k) => k.slot.ownerId === c.id)) this.race.removeEntry(car.slot.id);
       this.cars = this.cars.filter((k) => k.slot.ownerId !== c.id);
       if (!this.cars.some((k) => !k.ai)) this.endRace(false);
