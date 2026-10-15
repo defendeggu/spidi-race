@@ -99,6 +99,8 @@ export interface TownResult {
   fastest: number[];
   /** duel: index of the winner, -1 for a draw */
   winner: number;
+  /** player who drove into the water (the session ended there), -1 if none */
+  fell: number;
 }
 
 /** Street distance in a grid town (Manhattan) – fairer than straight-line distance for picking duel goals. */
@@ -116,6 +118,8 @@ export class TownSession {
   readonly trackers: TaskTracker[];
   readonly scores: number[];
   readonly fastest: number[];
+  /** player who fell into the water, -1 if none */
+  fell = -1;
   private goalStart: number[];
   private rnd: () => number;
 
@@ -210,9 +214,17 @@ export class TownSession {
     return scored;
   }
 
+  /** Player k drove into the water: the session ends; in a duel the other player wins. */
+  knockOut(k: number) {
+    if (this.phase === 'finished') return;
+    this.fell = k;
+    this.phase = 'finished';
+  }
+
   result(): TownResult {
     const [a, b] = this.scores;
-    const winner = this.mode !== 'duel' ? 0 : a === b ? -1 : a > b ? 0 : 1;
-    return { mode: this.mode, task: this.task, time: this.time, scores: [...this.scores], fastest: [...this.fastest], winner };
+    let winner = this.mode !== 'duel' ? 0 : a === b ? -1 : a > b ? 0 : 1;
+    if (this.mode === 'duel' && this.fell >= 0) winner = 1 - this.fell;
+    return { mode: this.mode, task: this.task, time: this.time, scores: [...this.scores], fastest: [...this.fastest], winner, fell: this.fell };
   }
 }

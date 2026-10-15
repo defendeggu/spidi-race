@@ -43,6 +43,17 @@ export class TownLife {
   readonly group = new THREE.Group();
   private trains: Car[][] = [];
   private boats: { obj: THREE.Object3D; path: (t: number) => [number, number, number] }[] = [];
+  private rotors: THREE.Object3D[] = [];
+
+  /** A wind turbine whose 'blades' node turns. */
+  addWindmill(name: string, scale: number, x: number, z: number, rot: number) {
+    const obj = piece(name, scale, [4, 30, 4], '#e8e8e8');
+    obj.position.set(x, 0, z);
+    obj.rotation.y = rot;
+    this.group.add(obj);
+    const blades = obj.getObjectByName('blades');
+    if (blades) this.rotors.push(blades);
+  }
 
   constructor() {
     const s = TRAIN_SCALE;
@@ -81,6 +92,7 @@ export class TownLife {
 
   update(t: number) {
     this.updateTrain(t);
+    for (const r of this.rotors) r.rotation.x = t * 1.4;
     for (const b of this.boats) {
       const [x, z, h] = b.path(t);
       b.obj.position.set(x, HARBOR.waterY - 0.4 + Math.sin(t * 1.3 + x * 0.01) * 0.15, z);

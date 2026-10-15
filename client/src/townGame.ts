@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {
-  collideCars, createTownCar, formatTime, forwardSpeed, getCar, idleCar, lerp, lerpAngle, NO_INPUT, PARKING_BAY, SURFACE_PROPS,
+  collideCars, createTownCar, formatTime, forwardSpeed, getCar, HARBOR, idleCar, lerp, lerpAngle, NO_INPUT, PARKING_BAY, SURFACE_PROPS,
   stepCarTown, TownSession, Traffic,
   type CarInput, type CarSpec, type CarState, type TaskTracker, type TownMap, type TownResult, type TownTask, type TrafficCar,
 } from '@spidi/shared';
@@ -8,6 +8,7 @@ import { audio, EngineVoice } from './audio';
 import { townSpec } from './cheats';
 import { input, padKindAt, type KeyMap } from './input';
 import { ChaseCamera, TOPDOWN_MODE, viewForCar } from './render/cameras';
+import { Particles } from './render/particles';
 import { carColor, CarVisual } from './render/carModel';
 import { getTownWorld, type TownWorld } from './render/townWorld';
 import { renderViewports, type Viewport } from './renderer';
@@ -135,6 +136,9 @@ export class TownGame {
   private time = 0;
   /** real time since the start (also while paused the trains and boats keep moving) */
   private clock = 0;
+  private particles = new Particles();
+  /** players that drove into the water */
+  private sunk = new Set<number>();
   private lastBeep = -1;
   private finishTimer = -1;
   readonly session: TownSession;
@@ -179,6 +183,7 @@ export class TownGame {
         goal, lastInput: NO_INPUT, impactCooldown: 0,
       });
     });
+    this.world.dynamic.add(this.particles.points);
     this.session.begin(this.players.map((p) => p.state));
     this.showGoals();
 
@@ -266,6 +271,16 @@ export class TownGame {
       if (phase === 'countdown') idleCar(s, p.lastInput, dt);
       else stepCarTown(s, p.spec, phase === 'finished' ? { ...NO_INPUT, handbrake: true } : p.lastInput, town, dt);
     }
+    this.players.forEach((p, k) => {
+      if (p.state.y > HARBOR.waterY || this.sunk.has(k)) return;
+      // splash: the run is over for this player
+      this.sunk.add(k);
+      this.splash(p.state.x, p.state.z);
+      p.hud.flash('PLATSCH! Ins Wasser gefallen', 2.5);
+      const wasRunning = this.session.phase !== 'finished';
+      this.session.knockOut(k);
+      if (wasRunning) this.finishTimer = 2.5;
+    });
     for (const t of this.trafficVisuals) {
       t.prev.x = t.car.state.x;
       t.prev.z = t.car.state.z;
@@ -302,6 +317,17 @@ export class TownGame {
     }
   }
 
+  /** Water fountain where a car hits the water. */
+  private splash(x: number, z: number) {
+    for (let i = 0; i < 70; i++) {
+      const a = Math.random() * Math.PI * 2, r = Math.random() * 6;
+      this.particles.emit(x + Math.cos(a) * r * 0.3, HARBOR.waterY + 0.2, z + Math.sin(a) * r * 0.3,
+        Math.cos(a) * r, 6 + Math.random() * 8, Math.sin(a) * r, i % 3 ? '#d8f0ff' : '#ffffff', 1.4, 1.4, 12);
+    }
+    audio.crash(6);
+    audio.sweep(700, 120, 0.6, 0.12);
+  }
+
   /** Counter, clock and big centre text for player k. */
   private status(k: number) {
     const se = this.session;
@@ -320,7 +346,9 @@ export class TownGame {
     else if (se.mode !== 'free' && se.time < 1) center = 'LOS!';
     else if (se.phase === 'finished') {
       const res = se.result();
-      center = se.mode === 'solo' ? 'GESCHAFFT!' : res.winner < 0 ? 'UNENTSCHIEDEN' : res.winner === k ? 'GEWONNEN!' : 'ZEIT UM!';
+      if (res.fell >= 0 && (se.mode !== 'duel' || res.fell === k)) center = 'PLATSCH!';
+      else if (se.mode === 'free') center = '';
+      else center = se.mode === 'solo' ? 'GESCHAFFT!' : res.winner < 0 ? 'UNENTSCHIEDEN' : res.winner === k ? 'GEWONNEN!' : 'ZEIT UM!';
     }
     return { count, time, center };
   }
@@ -328,6 +356,7 @@ export class TownGame {
   private render(alpha: number, dt: number) {
     const town = this.world.town;
     this.world.life.update(this.clock);
+    this.particles.update(dt);
     // countdown beeps like at the start of a race
     const se = this.session;
     if (se.phase === 'countdown') {
@@ -408,6 +437,7 @@ export class TownGame {
       p.voice?.dispose();
       p.goal.removeFromParent();
     }
+    this.particles.dispose();
     for (const t of this.trafficVisuals) t.visual.dispose();
     this.hudLayer.innerHTML = '';
   }

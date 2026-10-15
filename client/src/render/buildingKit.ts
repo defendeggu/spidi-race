@@ -28,9 +28,16 @@ const ROOFS = ['#a8452f', '#4f5866', '#3f7a4a', '#7a5236', '#3d6a9a', '#8a3a3a',
 const TOWER_WALLS = ['#d8dde4', '#c9b8a0', '#a8b8c8', '#e0d0c0', '#b0c4b8', '#c8c8d8', '#e8e2d8', '#9fb0c0'];
 const INDUSTRY_WALLS = ['#c8c0b0', '#b8a890', '#a8b0b8', '#d0c8b8', '#b0b8a0', '#c09078', '#d8d8d8', '#a0a8b0'];
 
+const CONTAINER_COLORS = ['#b8342c', '#2f5f9e', '#3f7f4a', '#d8862a', '#8a8f96', '#e8e4dc', '#c8a020', '#6a3f8a'];
+const CAB_COLORS = ['#e83a2a', '#f2f2f2', '#2a6ad8', '#f0b020', '#3aa04a', '#202428', '#d84a9a', '#e86a20'];
+
 /** Wall and roof colour of a building (linear colours for the shader). */
 export function variantColors(b: Building) {
   const v = b.variant;
+  // shipping containers and lorries: typical container colours, cabs in bright colours
+  if (b.model === 'container' || b.model === 'semi-truck') {
+    return { wall: new THREE.Color(CONTAINER_COLORS[v % CONTAINER_COLORS.length]), roof: new THREE.Color(CAB_COLORS[(v * 3 + 1) % CAB_COLORS.length]) };
+  }
   // the church is light stone with a slate roof
   if (b.model.startsWith('tpl-church')) return { wall: new THREE.Color('#e8e2d4'), roof: new THREE.Color('#4f5866') };
   const kit = kitOf(b.model);
@@ -186,7 +193,7 @@ interface Part {
   /** source material (decides how the part is drawn) */
   material: THREE.Material;
   /** apply the wall tint as instance colour (retro painted walls, procedural walls) */
-  tint?: 'wall' | 'roof';
+  tint?: 'wall' | 'roof' | 'accent';
 }
 
 const plainCache = new Map<THREE.Material, THREE.MeshLambertMaterial>();
@@ -382,6 +389,57 @@ function churchHouse(cx: number, cz: number, floors: number): Part[] {
   return parts;
 }
 
+/** Corrugated steel for containers (the instance colour tints it). */
+let ribTex: THREE.Texture | null = null;
+function containerMaterial() {
+  if (!ribTex) {
+    const c = document.createElement('canvas');
+    c.width = 256;
+    c.height = 16;
+    const g = c.getContext('2d')!;
+    for (let x = 0; x < 256; x += 8) {
+      g.fillStyle = '#f0f0f0';
+      g.fillRect(x, 0, 5, 16);
+      g.fillStyle = '#b8b8b8';
+      g.fillRect(x + 5, 0, 3, 16);
+    }
+    ribTex = new THREE.CanvasTexture(c);
+    ribTex.colorSpace = THREE.SRGBColorSpace;
+  }
+  const m = new THREE.MeshLambertMaterial({ map: ribTex });
+  m.userData.keep = true;
+  return m;
+}
+let containerMat: THREE.Material | null = null;
+
+/** Shipping container of unit size (scaled per instance to 2.44 × 2.59 × 12.19 or 6.06 m). */
+function containerUnit(): Part[] {
+  containerMat ??= containerMaterial();
+  return [
+    { geometry: new THREE.BoxGeometry(1, 0.96, 1).translate(0, 0.5, 0), material: containerMat, tint: 'wall' },
+    // dark corner posts and rails
+    { geometry: new THREE.BoxGeometry(1.01, 0.05, 1.01).translate(0, 0.025, 0), material: mats().metal },
+    { geometry: new THREE.BoxGeometry(1.01, 0.05, 1.01).translate(0, 0.975, 0), material: mats().metal },
+  ];
+}
+
+/** Articulated lorry 2.55 × 4 × 16.5 m with a 40 ft container on the trailer, cab at +z. */
+function semiTruck(): Part[] {
+  containerMat ??= containerMaterial();
+  const m = mats();
+  const wheels: THREE.BufferGeometry[] = [];
+  for (const z of [6.3, 3.6, -4.6, -5.9]) {
+    for (const x of [-1.05, 1.05]) wheels.push(new THREE.CylinderGeometry(0.5, 0.5, 0.4, 12).rotateZ(Math.PI / 2).translate(x, 0.5, z));
+  }
+  return [
+    { geometry: new THREE.BoxGeometry(2.5, 2.6, 2.3).translate(0, 2.05, 6.95), material: m.cab, tint: 'accent' },
+    { geometry: new THREE.BoxGeometry(2.3, 1.1, 0.1).translate(0, 2.6, 8.12), material: m.glass },
+    { geometry: new THREE.BoxGeometry(2.3, 0.35, 15.6).translate(0, 0.95, 0.2), material: m.chassis },
+    { geometry: mergeGeometries(wheels)!, material: m.tyre },
+    { geometry: new THREE.BoxGeometry(2.44, 2.59, 12.19).translate(0, 1.2 + 1.3, -1.6), material: containerMat, tint: 'wall' },
+  ];
+}
+
 /** Tunnel portal: a stone block (unit size, scaled per instance) – the dark opening is drawn by the town. */
 function portalUnit(): Part[] {
   return [{ geometry: new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0), material: mats().stone }];
@@ -532,6 +590,9 @@ function mats() {
     fence: new THREE.MeshLambertMaterial({ color: '#6f767c', transparent: true, opacity: 0.85 }),
     gold: new THREE.MeshLambertMaterial({ color: '#d8b040', emissive: '#3a2a00' }),
     stone: new THREE.MeshLambertMaterial({ color: '#8f8a80', map: wallMap }),
+    cab: new THREE.MeshLambertMaterial({ color: '#ffffff' }),
+    chassis: new THREE.MeshLambertMaterial({ color: '#2a2c30' }),
+    tyre: new THREE.MeshLambertMaterial({ color: '#1a1a1a' }),
   };
   for (const m of Object.values(specialMats)) m.userData.keep = true;
   return specialMats;
@@ -591,6 +652,8 @@ function partsFor(model: string): Part[] {
   else if (model === 'cart-shelter') parts = cartShelter();
   else if (model === 'fence') parts = fenceUnit();
   else if (model === 'tunnel-portal') parts = portalUnit();
+  else if (model === 'container') parts = containerUnit();
+  else if (model === 'semi-truck') parts = semiTruck();
   else parts = mergeParts(modelParts(model));
   templateCache.set(model, parts);
   return parts;
@@ -641,7 +704,7 @@ export function buildingMeshes(model: string, items: BuildingInstance[]): THREE.
     items.forEach((it, i) => {
       im.setMatrixAt(i, it.matrix);
       // flat roofs: dark tar with a hint of the roof colour
-      if (!usesPalette && part.tint) im.setColorAt(i, part.tint === 'wall' ? it.wall : TAR.clone().lerp(it.roof, 0.25));
+      if (!usesPalette && part.tint) im.setColorAt(i, part.tint === 'wall' ? it.wall : part.tint === 'accent' ? it.roof : TAR.clone().lerp(it.roof, 0.25));
     });
     im.computeBoundingSphere();
     out.push(im);

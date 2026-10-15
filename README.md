@@ -1,6 +1,6 @@
 # Spidi Race 🏁
 
-![Version](https://img.shields.io/badge/version-0.13.0-ffcc00)
+![Version](https://img.shields.io/badge/version-0.14.0-ffcc00)
 ![Lizenz Code](https://img.shields.io/badge/code-MIT-blue)
 ![Lizenz Assets](https://img.shields.io/badge/assets-CC0-green)
 ![Docker](https://img.shields.io/badge/docker-ready-2496ED)
@@ -142,7 +142,7 @@ Hauptmenü → **Kart-Rennen mit Items**. Gefahren wird auf allen Strassen- und 
 
 | Was | Details |
 |---|---|
-| Karts | 5 Karts mit Alien-Fahrern (Kenney Car Kit), ca. 95–100 km/h, sehr wendig |
+| Karts | 5 Karts mit Alien-Fahrern (Kenney Car Kit), ca. 120–135 km/h, mit Boost mehr, sehr wendig |
 | ?-Boxen | drei Reihen pro Runde (bei 20 %, 55 % und 85 % der Strecke); wer mit leerem Slot durchfährt, bekommt nach einer kurzen Roulette ein Item. Die Boxen sind nach 2 s wieder da |
 | Vergabe | nach Platzierung: Vorne gibt es eher Minen und Blaster, hinten eher Turbo und Zielsucher |
 | Blaster 🔫 | Schaumstoffpfeil geradeaus, prallt bis zu dreimal an der Leitplanke ab |
@@ -163,8 +163,8 @@ Hauptmenü → **Übungsfahrt in der Stadt**. Gedacht für Kinder und alle, die 
 | Was | Details |
 |---|---|
 | Stadt | gut 1 × 1 km, Strassen alle 100 m mit zwei Spuren (Rechtsverkehr), Parkplätze und ein Übungsplatz mit Pylonen. Gärten und Innenhöfe sind befahrbar, aussen steht eine Mauer |
-| Am Stadtrand | **Hafen** im Süden: Kai mit Pollern, Lagerhallen, Containerstapel und Parkfelder, im Wasser Frachter, Schlepper, Fischer- und Hausboote, Boote fahren durchs Becken · **Bahn** im Osten: eingezäuntes Gleis zwischen zwei Tunnelportalen, Backstein-Bahnhof mit Bahnsteig, Vordach und Parkplatz; S-Bahn und Güterzug halten abwechselnd |
-| Quartiere | bunte Einfamilienhäuser, Geschäftsstrassen, Hochhauszone mit Plaza in der Mitte, **Backstein-Viertel**, **Altstadt** mit Fachwerkhäusern und Marktplatz, **Industriequartier** mit Wasserturm und Windrad, **Kraftwerk**, Parks, **zwei Supermärkte** direkt neben Parkplätzen, eine **Kirche mit Friedhof** und ein befahrbarer **Skaterpark** mit Funbox, Kicker zum Springen, Halfpipe und Quarterpipe. Wände und Dächer haben pro Gebäude eigene Farben |
+| Am Stadtrand | **Hafen** im Süden: Lagerhallen, Containerlager mit Stapeln bis drei hoch, Sattelschlepper und Parkfelder; der Kai hat **kein Geländer** – wer ins Wasser fährt, fällt hinein und die Fahrt ist zu Ende (im Duell gewinnt der andere). Im Wasser Frachter, Schlepper, Fischer- und Hausboote, Boote fahren durchs Becken · **Bahn** im Osten: eingezäuntes Gleis zwischen zwei Tunnelportalen, Backstein-Bahnhof mit Bahnsteig, Vordach und Parkplatz; S-Bahn und Güterzug halten abwechselnd |
+| Quartiere | bunte Einfamilienhäuser, Geschäftsstrassen, Hochhauszone mit Plaza in der Mitte, **Backstein-Viertel**, **Altstadt** mit Fachwerkhäusern und Marktplatz, **Industriequartier** mit Wasserturm, drehendem Windrad und Containern, **Kraftwerk**, Parks, **zwei Supermärkte** direkt neben Parkplätzen, eine **Kirche mit Friedhof** und ein befahrbarer **Skaterpark** mit Funbox, Kicker zum Springen, Halfpipe und Quarterpipe – schnelle Autos springen auch über die Kante der Quarterpipes. Wände und Dächer haben pro Gebäude eigene Farben |
 | Start | auf dem Übungsplatz (gelbe Startfelder) neben Slalom und Pylonenkreis |
 | Autos | Familienauto, Taxi, Polizeiauto, Feuerwehr: gutmütig, viel Grip, Spitze ca. 65 km/h (Feuerwehr etwas langsamer). Kaito ZX: Formelwagen mit ca. 90 km/h für Fortgeschrittene |
 | Allein | Bei Sterne sammeln und Einparken wählt man **5, 10 oder 20 Ziele**. Nach einem Countdown läuft die Zeit, bis alle geschafft sind. Die Zeit kommt in die **Rangliste** („Stadt: Sterne“ bzw. „Stadt: Einparken“, getrennt nach Anzahl) |
@@ -218,7 +218,7 @@ Jedes beendete Rennen eines menschlichen Fahrers landet in der permanenten Rangl
 
 ## Entwicklung
 
-Voraussetzung: **Node.js ≥ 22** (npm ≥ 11 empfohlen; npm 10 kann `npm install` mit Vitest 5 nicht auflösen, `npm ci` geht)
+Voraussetzung: **Node.js ≥ 22** (`.nvmrc` liegt bei, also reicht `nvm use`)
 
 ```bash
 npm install
@@ -286,7 +286,7 @@ scripts/  Asset-Download
 
 ## Versionierung
 
-Das Projekt folgt [Semantic Versioning](https://semver.org/lang/de/). Die aktuelle Version ist **0.13.0**. Änderungen stehen im [CHANGELOG](CHANGELOG.md), Releases sind als Git-Tags `vX.Y.Z` markiert. Die Version steht auch unten rechts im Hauptmenü.
+Das Projekt folgt [Semantic Versioning](https://semver.org/lang/de/). Die aktuelle Version ist **0.14.0**. Änderungen stehen im [CHANGELOG](CHANGELOG.md), Releases sind als Git-Tags `vX.Y.Z` markiert. Die Version steht auch unten rechts im Hauptmenü.
 
 ## Lizenz und Credits
 
