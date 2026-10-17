@@ -14,6 +14,9 @@ const XBOX = 'Microsoft X-Box 360 pad (STANDARD GAMEPAD Vendor: 045e Product: 02
 const XBOX_RAW = '045e-028e-Microsoft X-Box 360 pad';
 const PS3 = 'Sony PLAYSTATION(R)3 Controller (STANDARD GAMEPAD Vendor: 054c Product: 0268)';
 const PS3_RAW = '054c-0268-Sony PLAYSTATION(R)3 Controller';
+const CHILL_LINUX = '046d-cad1-Logitech Logitech Chillstream Controller';
+const CHILL_WIN = 'Logitech Chillstream Controller (Vendor: 046d Product: cad1)';
+const CHILL_STD = 'Logitech Chillstream Controller (STANDARD GAMEPAD Vendor: 046d Product: cad1)';
 
 beforeEach(() => resetTriggers());
 
@@ -104,5 +107,47 @@ describe('PlayStation controller', () => {
 
   it('by default the sticks do not give gas', () => {
     expect(readPad(pad(PS3, 'standard', 17, 4, [], { 1: -1, 3: -1 }))).toMatchObject({ throttle: 0, brake: 0 });
+  });
+});
+
+describe('Logitech Chillstream (PS3-style)', () => {
+  const HAT_REST = 1.2857;
+  it('is treated as a PlayStation controller with the same buttons as the PS3 pad', () => {
+    const at = (press: number[]) => readPad(pad(CHILL_LINUX, '', 12, 6, press));
+    expect(at([]).kind).toBe('playstation');
+    expect(at([])).toMatchObject({ steer: 0, throttle: 0, brake: 0, handbrake: false, camera: false, pause: false });
+    // ✕ (1) gas, ○ (2) brake, □ (0) handbrake, △ (3) camera / item, R1 (5) handbrake, R2 (7) gas, L2 (6) brake
+    expect(at([1])).toMatchObject({ throttle: 1, handbrake: false });
+    expect(at([2]).brake).toBe(1);
+    expect(at([0])).toMatchObject({ handbrake: true, throttle: 0 });
+    expect(at([3])).toMatchObject({ camera: true, item: true });
+    expect(at([5]).handbrake).toBe(true);
+    expect(at([7]).throttle).toBe(1);
+    expect(at([6]).brake).toBe(1);
+    // select: camera in kart races, start: pause
+    expect(at([8]).altCamera).toBe(true);
+    expect(at([9]).pause).toBe(true);
+  });
+
+  it('steers with both sticks and the d-pad (hat axes on Linux, hat axis 9 on Windows)', () => {
+    expect(readPad(pad(CHILL_LINUX, '', 12, 6, [], { 0: -0.8 })).steer).toBeCloseTo(-0.8);
+    expect(readPad(pad(CHILL_LINUX, '', 12, 6, [], { 2: 0.6 })).steer).toBeCloseTo(0.6);
+    expect(readPad(pad(CHILL_LINUX, '', 12, 6, [], { 4: 1 })).steer).toBe(1);
+    expect(readPad(pad(CHILL_LINUX, '', 12, 6, [], { 5: -1 })).altCamera).toBe(true);
+    expect(readPad(pad(CHILL_WIN, '', 12, 10, [], { 9: HAT_REST }))).toMatchObject({ steer: 0, altCamera: false });
+    expect(readPad(pad(CHILL_WIN, '', 12, 10, [], { 9: -1 + (2 / 7) * 2 })).steer).toBe(1);
+    expect(readPad(pad(CHILL_WIN, '', 12, 10, [], { 9: -1 + (2 / 7) * 6 })).steer).toBe(-1);
+    expect(readPad(pad(CHILL_WIN, '', 12, 10, [], { 9: -1 })).altCamera).toBe(true);
+  });
+
+  it('gas on the right stick works like on the PS3 pad', () => {
+    expect(readPad(pad(CHILL_LINUX, '', 12, 6, [], { 3: -1 }), 'right').throttle).toBe(1);
+    expect(readPad(pad(CHILL_LINUX, '', 12, 6, [], { 3: 1 }), 'right').brake).toBe(1);
+    expect(readPad(pad(CHILL_LINUX, '', 12, 6, [], { 2: 0.9, 3: -1 }), 'right').steer).toBe(0);
+  });
+
+  it('with the browser\'s standard mapping it behaves exactly like a PS3 pad', () => {
+    expect(readPad(pad(CHILL_STD, 'standard', 17, 4, [0]))).toMatchObject({ kind: 'playstation', throttle: 1 });
+    expect(readPad(pad(CHILL_STD, 'standard', 17, 4, [2])).handbrake).toBe(true);
   });
 });

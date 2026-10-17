@@ -1,6 +1,6 @@
 # Spidi Race 🏁
 
-![Version](https://img.shields.io/badge/version-1.0.0-ffcc00)
+![Version](https://img.shields.io/badge/version-1.0.1-ffcc00)
 ![Lizenz Code](https://img.shields.io/badge/code-MIT-blue)
 ![Lizenz Assets](https://img.shields.io/badge/assets-CC0-green)
 ![Docker](https://img.shields.io/badge/docker-ready-2496ED)
@@ -125,7 +125,7 @@ Das Image ist zweistufig aufgebaut (Node 22). Beim Build laufen die Tests und de
 - Im Einzelspieler funktionieren WASD und die Pfeiltasten gleichzeitig.
 - Gamepads: Spieler 1 bekommt das erste angeschlossene Gamepad, Spieler 2 das zweite.
 
-  | Aktion | Xbox / Standard-Gamepad | PlayStation (PS3, PS4, PS5) |
+  | Aktion | Xbox / Standard-Gamepad | PlayStation (PS3, PS4, PS5, Logitech Chillstream) |
   |---|---|---|
   | Gas | RT oder A | R2 oder ✕ |
   | Bremse / Rückwärts | LT oder B | L2 oder ○ |
@@ -136,8 +136,9 @@ Das Image ist zweistufig aufgebaut (Node 22). Beim Build laufen die Tests und de
 
   Unter **Steuerung → Gas am Gamepad** lässt sich das Gas auch auf einen Stick legen: *Rechter Stick* (hoch = Gas, runter = Bremse / Rückwärts, gelenkt wird nur mit dem linken Stick) oder *Linker Stick* (Lenken und Gas mit einem Stick). Trigger und Tasten funktionieren in jeder Einstellung weiter.
 
-  Erkannt werden sowohl Gamepads mit Standard-Belegung als auch die rohe Linux-Belegung, die Firefox für manche Controller meldet (Xbox-Controller mit Triggern als Achsen, DualShock 3).
+  Erkannt werden sowohl Gamepads mit Standard-Belegung als auch die rohe Linux-Belegung, die Firefox für manche Controller meldet (Xbox-Controller mit Triggern als Achsen, DualShock 3), ausserdem die Logitech-Belegung des Chillstream.
 - **PS3-Controller:** Unter Linux per USB oder Bluetooth direkt nutzbar (Treiber `hid-sony` ist im Kernel), in Chrome und Firefox. Unter Windows 11 gibt es keinen eingebauten Treiber: [DsHidMini](https://github.com/nefarius/DsHidMini) installieren und den Controller im *XInput*-Modus betreiben, dann erscheint er als Xbox-Controller. Den Browser erkennt das Gamepad erst nach dem ersten Tastendruck.
+- **Logitech Chillstream:** wie ein PS3-Controller gebaut und gleich belegt (✕ Gas, ○ Bremse, □ Handbremse, △ Kamera). Er braucht keinen Treiber (Linux und Windows), wird in Chrome und Firefox erkannt und zeigt in der Steuerungshilfe die PlayStation-Symbole.
 - Viele Tastaturen erkennen nur eine begrenzte Zahl gleichzeitig gedrückter Tasten. Gehen im Splitscreen Eingaben verloren, hilft ein Gamepad für einen der beiden Spieler.
 - **Smartphone und Tablet (Touch):** Im Spiel erscheinen Bildschirm-Knöpfe für Spieler 1 – links ein Lenkfeld (Daumen auflegen und seitlich ziehen), rechts **Gas**, **Bremse** und **Drift**, in den Kart-Modi **Item**, oben Kamera und Pause. Am besten quer halten; das Spiel wechselt beim Start in den Vollbildmodus. Auf Touch-Geräten rechnet die Grafik mit geringerer Auflösung und ohne Kantenglättung, damit es flüssig läuft.
 - **Grafik:** Unten im Hauptmenü lässt sich die Grafik auf **Auto**, **Hoch** oder **Niedrig** stellen. Niedrig rechnet ohne Kantenglättung und mit geringerer Auflösung – hilft auf älteren Laptops. Auto ist auf Handys und Tablets niedrig, sonst hoch. Beim Umschalten lädt die Seite kurz neu. Für Neigungssteuerung bräuchte es HTTPS; sie ist noch nicht eingebaut.
@@ -297,7 +298,7 @@ scripts/  Asset-Download
 
 ## Versionierung
 
-Das Projekt folgt [Semantic Versioning](https://semver.org/lang/de/). Die aktuelle Version ist **1.0.0**. Änderungen stehen im [CHANGELOG](CHANGELOG.md), Releases sind als Git-Tags `vX.Y.Z` markiert. Die Version steht auch unten rechts im Hauptmenü.
+Das Projekt folgt [Semantic Versioning](https://semver.org/lang/de/). Die aktuelle Version ist **1.0.1**. Änderungen stehen im [CHANGELOG](CHANGELOG.md), Releases sind als Git-Tags `vX.Y.Z` markiert. Die Version steht auch unten rechts im Hauptmenü.
 
 ## Lizenz und Credits
 

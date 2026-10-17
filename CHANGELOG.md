@@ -2,6 +2,11 @@
 
 Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.0.1] – 2026-10-17
+
+### Hinzugefügt
+- **Logitech Chillstream** (046d:cad1) wird als PlayStation-Controller erkannt und hat dieselbe Belegung wie der PS3-Controller (✕ Gas, ○ Bremse, □/R1 Handbremse, △ Kamera bzw. Item, Select, Start, beide Sticks, Steuerkreuz), auch ohne Standard-Belegung des Browsers (Logitech-Tastenreihenfolge, Steuerkreuz als Hat-Achse unter Linux und Windows)
+
 ## [1.0.0] – 2026-10-17
 
 Erste stabile Version: Das Spiel ist auf echter Hardware getestet.
@@ -294,6 +299,7 @@ Erste stabile Version: Das Spiel ist auf echter Hardware getestet.
 - HUD mit Minimap, synthetischer Sound, 3 Kameras
 - Docker-Image und docker-compose (Port 8090)
 
+[1.0.1]: https://github.com/defendeggu/spidi-race/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/defendeggu/spidi-race/compare/v0.19.0...v1.0.0
 [0.19.0]: https://github.com/defendeggu/spidi-race/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/defendeggu/spidi-race/compare/v0.17.0...v0.18.0

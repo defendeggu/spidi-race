@@ -3,9 +3,10 @@
  *
  * Browsers report pads in two ways:
  * - mapping 'standard' (Chrome; Firefox for known pads): fixed button/axis order, triggers are buttons 6/7.
- * - no mapping (Firefox on Linux for some pads): the raw evdev order of the driver. Two layouts are
- *   known here: the DualShock 3 (hid-sony) and the Xbox layout (xpad and most generic pads), whose
- *   triggers are axes that rest at -1.
+ * - no mapping (Firefox on Linux for some pads, Chrome for unknown pads): the raw order of the driver.
+ *   Three layouts are known here: the DualShock 3 (hid-sony), the Logitech Chillstream (a PS3-style pad
+ *   with Logitech's DirectInput order) and the Xbox layout (xpad and most generic pads), whose triggers
+ *   are axes that rest at -1.
  */
 
 export interface PadLike {
@@ -40,10 +41,28 @@ export interface PadState {
   altCamera: boolean;
 }
 
-export const isPlayStation = (p: PadLike) => /054c|playstation|sony|dualshock|dualsense|wireless controller/i.test(p.id);
+/** Logitech Chillstream (046d:cad1): shaped like a DualShock 3, so it gets the PlayStation buttons and labels. */
+const isChillstream = (p: PadLike) => /046d.*cad1|chillstream/i.test(p.id);
+
+export const isPlayStation = (p: PadLike) =>
+  /054c|playstation|sony|dualshock|dualsense|wireless controller/i.test(p.id) || isChillstream(p);
 
 /** Raw Linux evdev layout of a DualShock 3 (Firefox reports it without the standard mapping). */
 const isRawPs3 = (p: PadLike) => p.mapping !== 'standard' && /054c.*0268|PLAYSTATION\(R\)3/i.test(p.id);
+
+/**
+ * D-pad of a raw HID pad: either one "hat" axis (Chrome on Windows: axis 9, -1 = up, clockwise in steps
+ * of 2/7, about 1.29 at rest) or two hat axes after the sticks (Linux: axes 4 = x, 5 = y).
+ */
+function rawHat(p: PadLike): { x: number; up: boolean } {
+  const h = p.axes[9];
+  if (h !== undefined && Math.abs(h) <= 1.05) {
+    const k = Math.round((h + 1) / (2 / 7)) & 7; // 0 up, 1 up-right, 2 right, … 7 up-left
+    return { x: k >= 1 && k <= 3 ? 1 : k >= 5 ? -1 : 0, up: k === 7 || k <= 1 };
+  }
+  const x = p.axes[4] ?? 0, y = p.axes[5] ?? 0;
+  return { x: Math.abs(x) > 0.5 ? Math.sign(x) : 0, up: y < -0.5 };
+}
 
 /** Lowest value seen per trigger axis: raw triggers only count once they were seen resting at -1. */
 const triggerRest = new Map<string, number>();
@@ -98,6 +117,17 @@ export function readPad(p: PadLike, throttleMode: PadThrottle = 'buttons'): PadS
     dpad = (b(16) ? 1 : 0) - (b(15) ? 1 : 0);
     select = b(8);
     up = b(13);
+  } else if (isChillstream(p)) {
+    // Logitech DirectInput order: □ ✕ ○ △ L1 R1 L2 R2 select start L3 R3; axes LX LY RX RY (+ hat)
+    [south, east, west, north, bumper, start] = [b(1), b(2), b(0), b(3), b(5), b(9)];
+    rt = trig(7);
+    lt = trig(6);
+    sticks = [p.axes[0] ?? 0, p.axes[2] ?? 0];
+    ys = [p.axes[1] ?? 0, p.axes[3] ?? 0];
+    const hat = rawHat(p);
+    dpad = hat.x;
+    select = b(8);
+    up = hat.up;
   } else {
     // Xbox evdev order: A B X Y LB RB back start guide LS RS; axes LX LY LT RX RY RT hatX hatY
     [south, east, west, north, bumper, start] = [b(0), b(1), b(2), b(3), b(5), b(7)];
