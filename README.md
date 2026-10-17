@@ -1,6 +1,6 @@
 # Spidi Race 🏁
 
-![Version](https://img.shields.io/badge/version-1.0.1-ffcc00)
+![Version](https://img.shields.io/badge/version-1.1.0-ffcc00)
 ![Lizenz Code](https://img.shields.io/badge/code-MIT-blue)
 ![Lizenz Assets](https://img.shields.io/badge/assets-CC0-green)
 ![Docker](https://img.shields.io/badge/docker-ready-2496ED)
@@ -196,9 +196,12 @@ Hauptmenü → **Übungsfahrt in der Stadt**. Gedacht für Kinder und alle, die 
 
 1. Den Server starten (Docker oder `npm start`).
 2. Alle Mitspieler öffnen `http://<IP-des-Servers>:8090` und wählen **Netzwerkspiel**.
-3. Pro Gerät kann man 1 oder 2 Spieler anmelden. Bei 2 Spielern fahren beide im Splitscreen.
-4. Wer zuerst in der Lobby ist, ist Host: Er wählt Strecke, Runden und KI-Gegner und startet das Rennen. Gefahren wird immer mit Autos der Streckenklasse (Strasse, Offroad oder Micro); sein Auto dieser Klasse wählt jeder direkt in der Lobby. Mit dem Umschalter **Kart-Rennen mit Items** fahren alle mit Karts und Waffen (Strassen- und Offroad-Strecken), mit **Kart-Battle in der Stadt** treten bis zu 8 Karts (davon höchstens 4 Computer-Karts) in der Übungsstadt gegeneinander an.
-5. Der Host kann ein laufendes Rennen jederzeit für alle abbrechen: im Pause-Menü (`Esc`) oder in der Lobby mit **Rennen für alle abbrechen**, dann ein zweiter Klick zur Bestätigung.
+3. Pro Gerät meldet man 1 oder 2 Spieler mit Namen an. Bei 2 Spielern fahren beide im Splitscreen. Ein Fahrzeug wählt man hier noch nicht.
+4. Wer zuerst in der Lobby ist, ist **Host**. Er stellt die Rennart ein (**Autorennen**, **Kart-Rennen mit Items** oder **Kart-Battle in der Stadt**), dazu Strecke, Runden und KI-Gegner.
+5. In der Lobby wählt jeder sein Fahrzeug, und zwar immer aus der Klasse, die gerade eingestellt ist (Strasse, Offroad, Micro oder Kart). Wechselt der Host die Rennart, wechselt das Fahrzeug automatisch mit.
+6. Die Gäste melden sich mit **Bereit ✔**. Der Host sieht „Rennen starten (2/3 bereit)“ und startet, wenn alle da sind. Ist er noch allein oder sind nicht alle bereit, fragt der Knopf einmal nach.
+7. Wer während eines Rennens dazukommt, wartet in der Lobby aufs nächste Rennen. Der Host bekommt im Rennen eine Meldung („Cleo wartet in der Lobby“).
+8. Der Host kann ein laufendes Rennen jederzeit für alle abbrechen: im Pause-Menü (`Esc`) oder in der Lobby mit **Rennen für alle abbrechen**, dann ein zweiter Klick zur Bestätigung.
 
 ![Lobby](docs/lobby.jpg)
 
@@ -298,7 +301,7 @@ scripts/  Asset-Download
 
 ## Versionierung
 
-Das Projekt folgt [Semantic Versioning](https://semver.org/lang/de/). Die aktuelle Version ist **1.0.1**. Änderungen stehen im [CHANGELOG](CHANGELOG.md), Releases sind als Git-Tags `vX.Y.Z` markiert. Die Version steht auch unten rechts im Hauptmenü.
+Das Projekt folgt [Semantic Versioning](https://semver.org/lang/de/). Die aktuelle Version ist **1.1.0**. Änderungen stehen im [CHANGELOG](CHANGELOG.md), Releases sind als Git-Tags `vX.Y.Z` markiert. Die Version steht auch unten rechts im Hauptmenü.
 
 ## Lizenz und Credits
 

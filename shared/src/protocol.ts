@@ -41,6 +41,10 @@ export interface LobbySettings {
 export interface LobbyClient {
   id: string;
   players: LobbyPlayer[];
+  /** ready for the next race (the host starts it, so the host does not need this) */
+  ready: boolean;
+  /** drives in the race that is running right now (false: joined later, waits for the next one) */
+  racing: boolean;
 }
 
 export const MAX_CARS = 8;
@@ -50,6 +54,8 @@ export type ClientMsg =
   | { type: 'join'; players: LobbyPlayer[] }
   | { type: 'settings'; settings: LobbySettings }
   | { type: 'start' }
+  /** guests: ready (or not) for the next race */
+  | { type: 'ready'; ready: boolean }
   /** host only: abort the running race for everyone */
   | { type: 'abort' }
   /** karts: the drift and boost of the own karts go along (the server judges hits and mines with them) */

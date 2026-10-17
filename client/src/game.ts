@@ -74,6 +74,11 @@ export class Game {
   private world: World;
   private cars: GameCar[] = [];
   private players: LocalPlayer[] = [];
+
+  /** Show a short message to every local player (e.g. "Anna wartet in der Lobby"). */
+  notify(text: string, seconds = 4) {
+    for (const p of this.players) p.hud.flash(text, seconds);
+  }
   private acc = 0;
   private last = 0;
   private raf = 0;
