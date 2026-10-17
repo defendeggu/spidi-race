@@ -1,6 +1,6 @@
 # Spidi Race 🏁
 
-![Version](https://img.shields.io/badge/version-0.16.0-ffcc00)
+![Version](https://img.shields.io/badge/version-1.0.0-ffcc00)
 ![Lizenz Code](https://img.shields.io/badge/code-MIT-blue)
 ![Lizenz Assets](https://img.shields.io/badge/assets-CC0-green)
 ![Docker](https://img.shields.io/badge/docker-ready-2496ED)
@@ -18,6 +18,8 @@ Ein Arcade-Rennspiel im Browser im Geist von *Need for Speed II: Special Edition
 | ![Canyon Run](docs/canyon.jpg) | ![Waldtrail](docs/waldtrail.jpg) |
 | **Frühstückstisch (Micro)** | **Übungsfahrt in der Stadt** |
 | ![Frühstückstisch](docs/fruehstueck.jpg) | ![Übungsstadt](docs/uebungsstadt.jpg) |
+| **Kart-Rennen mit Items** | **Kart-Battle in der Stadt** |
+| ![Kart-Rennen](docs/kart.jpg) | ![Kart-Battle](docs/battle.jpg) |
 
 ## Inhalt
 
@@ -132,6 +134,8 @@ Das Image ist zweistufig aufgebaut (Node 22). Beim Build laufen die Tests und de
   | Kamera / Pause | Y / Start | △ / Start |
   | Kart-Rennen: Item / Kamera | Y / Back oder Steuerkreuz ↑ | △ / Select oder Steuerkreuz ↑ |
 
+  Unter **Steuerung → Gas am Gamepad** lässt sich das Gas auch auf einen Stick legen: *Rechter Stick* (hoch = Gas, runter = Bremse / Rückwärts, gelenkt wird nur mit dem linken Stick) oder *Linker Stick* (Lenken und Gas mit einem Stick). Trigger und Tasten funktionieren in jeder Einstellung weiter.
+
   Erkannt werden sowohl Gamepads mit Standard-Belegung als auch die rohe Linux-Belegung, die Firefox für manche Controller meldet (Xbox-Controller mit Triggern als Achsen, DualShock 3).
 - **PS3-Controller:** Unter Linux per USB oder Bluetooth direkt nutzbar (Treiber `hid-sony` ist im Kernel), in Chrome und Firefox. Unter Windows 11 gibt es keinen eingebauten Treiber: [DsHidMini](https://github.com/nefarius/DsHidMini) installieren und den Controller im *XInput*-Modus betreiben, dann erscheint er als Xbox-Controller. Den Browser erkennt das Gamepad erst nach dem ersten Tastendruck.
 - Viele Tastaturen erkennen nur eine begrenzte Zahl gleichzeitig gedrückter Tasten. Gehen im Splitscreen Eingaben verloren, hilft ein Gamepad für einen der beiden Spieler.
@@ -168,7 +172,7 @@ Hauptmenü → **Übungsfahrt in der Stadt**. Gedacht für Kinder und alle, die 
 |---|---|
 | Stadt | gut 1 × 1 km, Strassen alle 100 m mit zwei Spuren (Rechtsverkehr), Parkplätze und ein Übungsplatz mit Pylonen. Gärten und Innenhöfe sind befahrbar, aussen steht eine Mauer |
 | Am Stadtrand | **Hafen** im Süden: Lagerhallen, Containerlager mit Stapeln bis drei hoch, Sattelschlepper und Parkfelder; der Kai hat **kein Geländer** – wer ins Wasser fährt, fällt hinein und die Fahrt ist zu Ende (im Duell gewinnt der andere). Im Wasser Frachter, Schlepper, Fischer- und Hausboote, Boote fahren durchs Becken · **Bahn** im Osten: eingezäuntes Gleis zwischen zwei Tunnelportalen, Backstein-Bahnhof mit Bahnsteig, Vordach und Parkplatz; S-Bahn und Güterzug halten abwechselnd |
-| Quartiere | bunte Einfamilienhäuser, Geschäftsstrassen, Hochhauszone mit Plaza in der Mitte, **Backstein-Viertel**, **Altstadt** mit Fachwerkhäusern und Marktplatz, **Industriequartier** mit Wasserturm, drehendem Windrad und Containern, **Kraftwerk**, Parks, **zwei Supermärkte** direkt neben Parkplätzen, eine **Kirche mit Friedhof** und ein befahrbarer **Skaterpark** mit Funbox, Kicker zum Springen, Halfpipe und Quarterpipe – schnelle Autos springen auch über die Kante der Quarterpipes. Wände und Dächer haben pro Gebäude eigene Farben |
+| Quartiere | bunte Einfamilienhäuser, Geschäftsstrassen, Hochhauszone mit Plaza in der Mitte, **Backstein-Viertel**, **Altstadt** mit Fachwerkhäusern und Marktplatz, **Industriequartier** mit Wasserturm, drehendem Windrad und Containern, **Kraftwerk**, Parks, **zwei Supermärkte** direkt neben Parkplätzen, eine **Kirche mit Friedhof** und zwei befahrbare **Skaterparks** (einer davon neben dem Parkplatz des zweiten Supermarkts) mit Funbox, Kicker zum Springen, Halfpipe und Quarterpipe – schnelle Autos springen auch über die Kante der Quarterpipes. Wände und Dächer haben pro Gebäude eigene Farben |
 | Start | auf dem Übungsplatz (gelbe Startfelder) neben Slalom und Pylonenkreis |
 | Autos | Familienauto, Taxi, Polizeiauto, Feuerwehr: gutmütig, viel Grip, Spitze ca. 65 km/h (Feuerwehr etwas langsamer). Kaito ZX: Formelwagen mit ca. 90 km/h für Fortgeschrittene |
 | Allein | Bei Sterne sammeln und Einparken wählt man **5, 10 oder 20 Ziele**. Nach einem Countdown läuft die Zeit, bis alle geschafft sind. Die Zeit kommt in die **Rangliste** („Stadt: Sterne“ bzw. „Stadt: Einparken“, getrennt nach Anzahl) |
@@ -184,6 +188,8 @@ Hauptmenü → **Übungsfahrt in der Stadt**. Gedacht für Kinder und alle, die 
 | Supermarkt | Altstadt | Industrie |
 |---|---|---|
 | ![Supermarkt](docs/stadt-supermarkt.jpg) | ![Altstadt](docs/stadt-altstadt.jpg) | ![Industrie](docs/stadt-industrie.jpg) |
+| **Skaterpark** | **Hafen** | |
+| ![Skaterpark](docs/stadt-skaterpark.jpg) | ![Hafen](docs/stadt-hafen.jpg) | |
 
 ## Netzwerkspiel
 
@@ -291,7 +297,7 @@ scripts/  Asset-Download
 
 ## Versionierung
 
-Das Projekt folgt [Semantic Versioning](https://semver.org/lang/de/). Die aktuelle Version ist **0.16.0**. Änderungen stehen im [CHANGELOG](CHANGELOG.md), Releases sind als Git-Tags `vX.Y.Z` markiert. Die Version steht auch unten rechts im Hauptmenü.
+Das Projekt folgt [Semantic Versioning](https://semver.org/lang/de/). Die aktuelle Version ist **1.0.0**. Änderungen stehen im [CHANGELOG](CHANGELOG.md), Releases sind als Git-Tags `vX.Y.Z` markiert. Die Version steht auch unten rechts im Hauptmenü.
 
 ## Lizenz und Credits
 

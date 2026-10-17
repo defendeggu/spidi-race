@@ -73,4 +73,36 @@ describe('PlayStation controller', () => {
     expect(readPad(pad(PS3_RAW, '', 17, 4, [2])).camera).toBe(true);
     expect(readPad(pad(PS3_RAW, '', 17, 4, [16])).steer).toBe(1);
   });
+
+  it('gas on the right stick: up accelerates, down brakes, only the left stick steers', () => {
+    const std = (axes: Record<number, number>, press: number[] = []) => readPad(pad(PS3, 'standard', 17, 4, press, axes), 'right');
+    expect(std({})).toMatchObject({ throttle: 0, brake: 0, steer: 0 });
+    expect(std({ 3: -1 })).toMatchObject({ throttle: 1, brake: 0 });
+    expect(std({ 3: -0.55 }).throttle).toBeCloseTo(0.5);
+    expect(std({ 3: 1 })).toMatchObject({ throttle: 0, brake: 1 });
+    // a small deflection does not creep
+    expect(std({ 3: -0.18 }).throttle).toBe(0);
+    // the right stick no longer steers, the left one does
+    expect(std({ 2: 0.9, 3: -1 }).steer).toBe(0);
+    expect(std({ 0: -0.7, 3: -1 })).toMatchObject({ throttle: 1 });
+    expect(std({ 0: -0.7 }).steer).toBeCloseTo(-0.7);
+    // R2 and ✕ keep working
+    expect(std({}, [7]).throttle).toBe(1);
+    // raw DualShock 3: the right stick's y is axis 4
+    expect(readPad(pad(PS3_RAW, '', 17, 6, [], { 4: -1 }), 'right').throttle).toBe(1);
+    expect(readPad(pad(PS3_RAW, '', 17, 6, [], { 4: 1 }), 'right').brake).toBe(1);
+  });
+
+  it('gas on the left stick: one stick for steering and gas', () => {
+    const p = readPad(pad(PS3, 'standard', 17, 4, [], { 0: 0.6, 1: -1 }), 'left');
+    expect(p).toMatchObject({ throttle: 1, brake: 0 });
+    expect(p.steer).toBeCloseTo(0.6);
+    expect(readPad(pad(PS3, 'standard', 17, 4, [], { 1: 1 }), 'left').brake).toBe(1);
+    // the right stick's y does nothing in this mode
+    expect(readPad(pad(PS3, 'standard', 17, 4, [], { 3: -1 }), 'left').throttle).toBe(0);
+  });
+
+  it('by default the sticks do not give gas', () => {
+    expect(readPad(pad(PS3, 'standard', 17, 4, [], { 1: -1, 3: -1 }))).toMatchObject({ throttle: 0, brake: 0 });
+  });
 });

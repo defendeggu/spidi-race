@@ -1,6 +1,7 @@
 import { carsForClass, MAX_CARS, TRACK_DEFS, type Slot } from '@spidi/shared';
 import { Game, type LocalPlayerCfg } from '../game';
-import { KEYMAPS, SOLO_KEYMAP } from '../input';
+import { KEYMAPS, setPadThrottle, SOLO_KEYMAP } from '../input';
+import type { PadThrottle } from '../padMapping';
 import type { App, Mode } from './app';
 import { html } from './html';
 import type { GraphicsLevel } from './prefs';
@@ -75,8 +76,16 @@ function showCredits(app: App) {
   app.bind({ back: () => app.showMain() });
 }
 
+const PAD_THROTTLE: { id: PadThrottle; label: string }[] = [
+  { id: 'buttons', label: 'Trigger / Taste' },
+  { id: 'right', label: 'Rechter Stick' },
+  { id: 'left', label: 'Linker Stick' },
+];
+
 function showControls(app: App) {
   const k = (s: string) => html`<kbd>${s}</kbd>`;
+  const pt = app.prefs.padThrottle;
+  const stickGas = pt === 'right' ? 'rechter Stick' : pt === 'left' ? 'linker Stick' : '';
   app.setScreen('controls', html`
     <div class="menu panel wide">
       <h2>Steuerung</h2>
@@ -94,18 +103,31 @@ function showControls(app: App) {
       <p class="hint">Im Einzelspieler funktionieren WASD und die Pfeiltasten. Spieler 1 bekommt das erste angeschlossene Gamepad, Spieler 2 das zweite.</p>
       <table class="keys">
         <tr><th></th><th>Xbox / Standard-Gamepad</th><th>PlayStation (auch PS3)</th></tr>
-        <tr><td>Gas</td><td>RT oder A</td><td>R2 oder ✕</td></tr>
-        <tr><td>Bremse / Rückwärts</td><td>LT oder B</td><td>L2 oder ○</td></tr>
-        <tr><td>Lenken</td><td colspan="2">linker oder rechter Stick, Steuerkreuz</td></tr>
+        <tr><td>Gas</td><td>RT oder A${stickGas ? html`, ${stickGas} hoch` : ''}</td><td>R2 oder ✕${stickGas ? html`, ${stickGas} hoch` : ''}</td></tr>
+        <tr><td>Bremse / Rückwärts</td><td>LT oder B${stickGas ? html`, ${stickGas} runter` : ''}</td><td>L2 oder ○${stickGas ? html`, ${stickGas} runter` : ''}</td></tr>
+        <tr><td>Lenken</td><td colspan="2">${pt === 'right' ? 'linker Stick' : 'linker oder rechter Stick'}, Steuerkreuz</td></tr>
         <tr><td>Handbremse</td><td>X oder RB</td><td>□ oder R1</td></tr>
         <tr><td>Kamera / Pause</td><td>Y / Start</td><td>△ / Start</td></tr>
         <tr><td>Kart-Rennen: Item / Kamera</td><td>Y / Back oder ↑</td><td>△ / Select oder ↑</td></tr>
       </table>
+      <div class="toggle pad-throttle" title="Trigger und Tasten geben in jeder Einstellung weiterhin Gas">
+        <span>Gas am Gamepad</span>
+        ${PAD_THROTTLE.map((m) => html`<button class="${pt === m.id ? 'sel' : ''}" data-a="padgas" data-id="${m.id}">${m.label}</button>`)}
+      </div>
       <p class="hint">Hinweis: Manche Tastaturen erkennen nicht beliebig viele gleichzeitig gedrückte Tasten.
       Falls im Splitscreen Eingaben verloren gehen, hilft ein Gamepad für einen der beiden Spieler.</p>
       <div class="row"><button data-a="back">Zurück</button></div>
     </div>`);
-  app.bind({ back: () => app.showMain() });
+  app.bind({
+    back: () => app.showMain(),
+    padgas: (el) => {
+      const m = PAD_THROTTLE.find((x) => x.id === el.dataset.id)?.id ?? 'buttons';
+      app.prefs.padThrottle = m;
+      app.savePrefs();
+      setPadThrottle(m);
+      showControls(app);
+    },
+  });
 }
 
 export function showSetup(app: App, mode: Mode) {

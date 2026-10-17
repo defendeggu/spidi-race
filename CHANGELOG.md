@@ -2,6 +2,21 @@
 
 Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.0.0] – 2026-10-17
+
+Erste stabile Version: Das Spiel ist auf echter Hardware getestet.
+
+### Hinzugefügt
+- **Zweiter Skaterpark** neben dem Parkplatz des zweiten Supermarkts, gleich aufgebaut wie der erste (Funbox, Kicker mit Landung, Halfpipe, Quarterpipe, Rails, Grind-Boxen, Bänke); die übrige Stadt bleibt unverändert
+- **Gas am Gamepad über einen Stick** (Steuerung → „Gas am Gamepad“): *Trigger / Taste* wie bisher, *Rechter Stick* (hoch = Gas, runter = Bremse / Rückwärts, gelenkt wird mit dem linken Stick) oder *Linker Stick* (Lenken und Gas mit einem Stick). Trigger und Tasten geben in jeder Einstellung weiterhin Gas; die Steuerungshilfe der Übungsfahrt zeigt die gewählte Belegung
+
+### Geändert
+- README: alle Screenshots neu (Version 1.0.0), dazu neue Bilder von Kart-Rennen, Kart-Battle, Skaterpark und Hafen
+- Entwicklerhilfe `?townview=x,z,Blickrichtung,Höhe` kennt `&nofog` (Stadtübersicht ohne Nebel)
+
+### Behoben
+- Stadt: Keine unsichtbaren Wände mehr in der Luft. Geparkte Autos, Strassenlaternen, Bäume, Gebäude, Vordach-Pfosten, Tanks und Containerstapel reichen in der Kollision nur noch so hoch wie ihr Modell – vorher waren sie unendlich hoch, und wer aus der Quarterpipe über den Parkplatz sprang, prallte mitten in der Luft ab
+
 ## [0.19.0] – 2026-10-16
 
 ### Hinzugefügt
@@ -16,7 +31,7 @@ Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog]
 - Stadt: Über niedrige Hindernisse (Rails, Grind-Boxen, Bänke, Paletten, einzelne Container, Hütchen, Poller) kann man jetzt springen – vorher stiess man in der Luft an ihren unsichtbaren Grundriss
 - Skaterpark: Seiten- und Rückwände der Rampen sind jetzt Wände, an denen man abprallt. Vorher wurde ein Auto, das tief dagegen flog, schlagartig nach oben gerissen oder mit Tempo seitlich hineinfahrend bis zu 30 m hoch katapultiert
 
- – 2026-10-16
+## [0.18.0] – 2026-10-16
 
 ### Hinzugefügt
 - **Kart-Battle im Netzwerkspiel**: Der Host wählt in der Lobby „Kart-Battle in der Stadt“ und 0–4 Computer-Karts, insgesamt bis zu 8 Karts (zwei neue Startkreuzungen)
@@ -26,7 +41,7 @@ Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog]
 ### Geändert
 - Kart-Battle: keine Ballons mehr über den Karts – die Ballons stehen nur noch im HUD; ein Treffer zeigt einen kleinen weissen Puff
 
- – 2026-10-16
+## [0.17.0] – 2026-10-16
 
 ### Hinzugefügt
 - **Kart-Rennen im Netzwerkspiel**: Der Host schaltet in der Lobby auf „Kart-Rennen mit Items“; alle wählen ihr Kart direkt in der Lobby
@@ -34,7 +49,7 @@ Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog]
   - Clients senden nur „Item benutzen“ und den Drift-/Boost-Zustand ihrer Karts; Treffer, Schild und Turbo kommen mit den Snapshots zurück
   - Online-Kart-Zeiten trägt der Server in die Kart-Rangliste ein
 
- – 2026-10-16
+## [0.16.0] – 2026-10-16
 
 ### Hinzugefügt
 - **Touch-Steuerung** für Smartphones und Tablets (Spieler 1): Lenkfeld links, Gas, Bremse, Drift und – in den Kart-Modi – Item rechts, Kamera und Pause oben; mehrere Finger gleichzeitig, Hinweis bei Hochformat, Vollbild beim Spielstart, kein Zoomen oder Scrollen
@@ -279,7 +294,10 @@ Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog]
 - HUD mit Minimap, synthetischer Sound, 3 Kameras
 - Docker-Image und docker-compose (Port 8090)
 
-[0.6.0]: https://github.com/defendeggu/spidi-race/compare/v0.5.0...v0.6.0
+[1.0.0]: https://github.com/defendeggu/spidi-race/compare/v0.19.0...v1.0.0
+[0.19.0]: https://github.com/defendeggu/spidi-race/compare/v0.18.0...v0.19.0
+[0.18.0]: https://github.com/defendeggu/spidi-race/compare/v0.17.0...v0.18.0
+[0.17.0]: https://github.com/defendeggu/spidi-race/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/defendeggu/spidi-race/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/defendeggu/spidi-race/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/defendeggu/spidi-race/compare/v0.13.0...v0.14.0

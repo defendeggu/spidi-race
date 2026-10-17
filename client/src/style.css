@@ -151,6 +151,9 @@ select { font: inherit; padding: 4px 8px; background: #16205a; color: #fff; bord
 .toggle.graphics { justify-content: center; align-items: center; margin-top: 6px; }
 .toggle.graphics span { font-size: 13px; opacity: 0.8; margin-right: 2px; }
 .toggle.graphics button { padding: 4px 12px; font-size: 13px; }
+.toggle.pad-throttle { align-items: center; margin: 4px 0 10px; }
+.toggle.pad-throttle span { font-size: 14px; opacity: 0.85; margin-right: 4px; }
+.toggle.pad-throttle button { padding: 5px 12px; font-size: 14px; }
 .toggle button.sel { border-color: var(--gold); background: linear-gradient(#4b5fc0, #26348a); }
 
 .lobby { display: grid; grid-template-columns: minmax(220px, 1fr) 2fr; gap: 16px; }

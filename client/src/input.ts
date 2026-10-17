@@ -1,6 +1,7 @@
 import type { CarInput } from '@spidi/shared';
-import { isPlayStation, readPad, type PadKind, type PadState } from './padMapping';
+import { isPlayStation, readPad, type PadKind, type PadState, type PadThrottle } from './padMapping';
 import type { TouchAction, TouchControls } from './touch';
+import { loadPrefs } from './ui/prefs';
 
 export interface KeyMap {
   up: string[];
@@ -123,9 +124,20 @@ function gamepads(): Gamepad[] {
   return list.filter((p): p is Gamepad => !!p && p.connected && p.buttons.length >= 8 && !/motion sensors/i.test(p.id));
 }
 
+/** gas on the trigger / face button or on a stick (setting on the controls screen) */
+let padThrottle: PadThrottle = loadPrefs().padThrottle;
+
+export function setPadThrottle(mode: PadThrottle) {
+  padThrottle = mode;
+}
+
+export function getPadThrottle() {
+  return padThrottle;
+}
+
 function padState(slot: number): PadState | null {
   const p = gamepads()[slot];
-  return p ? readPad(p) : null;
+  return p ? readPad(p, padThrottle) : null;
 }
 
 export const input = new InputManager();
