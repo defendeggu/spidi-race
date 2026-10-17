@@ -67,6 +67,29 @@ describe('room', () => {
       expect(() => a.msg(g)).not.toThrow();
   });
 
+  it('guests mark themselves ready; latecomers wait for the next race; ready resets after a race', () => {
+    const { inner, join } = setup();
+    const a = join('Anna');
+    const b = join('Ben');
+    const lastLobby = (ws: { sent: ServerMsg[] }) => [...ws.sent].reverse().find((m) => m.type === 'lobby') as Extract<ServerMsg, { type: 'lobby' }>;
+    expect(lastLobby(a).clients.map((c) => c.ready)).toEqual([false, false]);
+    b.msg({ type: 'ready', ready: true });
+    expect(lastLobby(a).clients.map((c) => c.ready)).toEqual([false, true]);
+    a.msg({ type: 'start' });
+    expect(inner.phase).toBe('race');
+    // Cleo comes in while the race runs: she is in the lobby but not in the race
+    const c = join('Cleo');
+    const during = lastLobby(a);
+    expect(during.phase).toBe('race');
+    expect(during.clients.map((k) => k.racing)).toEqual([true, true, false]);
+    // the host aborts: back to the lobby, everybody has to confirm again
+    a.msg({ type: 'abort' });
+    const after = lastLobby(c);
+    expect(after.phase).toBe('lobby');
+    expect(after.clients.map((k) => k.ready)).toEqual([false, false, false]);
+    expect(after.clients.map((k) => k.racing)).toEqual([false, false, false]);
+  });
+
   it('only the host starts the race', () => {
     const { inner, join } = setup();
     join('Anna');

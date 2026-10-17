@@ -2,6 +2,16 @@
 
 Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.1.0] – 2026-10-17
+
+### Hinzugefügt
+- Netzwerk-Lobby: Gäste melden sich mit **Bereit**; der Host sieht „Rennen starten (2/3 bereit)“, und der Start fragt einmal nach, solange er allein ist oder nicht alle bereit sind. Nach jedem Rennen bestätigen alle wieder
+- Die Lobby zeigt pro Fahrer den Status (Host, bereit, noch nicht bereit, fährt, wartet aufs nächste Rennen), die Rennart und die Adresse für Mitspieler
+- Kommt jemand während eines Rennens in die Lobby, bekommt der Host im Rennen eine Meldung
+
+### Geändert
+- Netzwerkspiel: Beim Beitreten gibt man nur noch Namen und Spielerzahl an. Das Fahrzeug wählt man in der Lobby mit der grossen Fahrzeugkarte, immer passend zur eingestellten Rennart (Strasse, Offroad, Micro oder Kart) – vorher wählte man zuerst ein Strassenauto, das bei Offroad- oder Kart-Rennen wieder ersetzt wurde
+
 ## [1.0.1] – 2026-10-17
 
 ### Hinzugefügt
@@ -299,6 +309,7 @@ Erste stabile Version: Das Spiel ist auf echter Hardware getestet.
 - HUD mit Minimap, synthetischer Sound, 3 Kameras
 - Docker-Image und docker-compose (Port 8090)
 
+[1.1.0]: https://github.com/defendeggu/spidi-race/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/defendeggu/spidi-race/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/defendeggu/spidi-race/compare/v0.19.0...v1.0.0
 [0.19.0]: https://github.com/defendeggu/spidi-race/compare/v0.18.0...v0.19.0

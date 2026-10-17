@@ -21,6 +21,7 @@ interface Client {
   players: LobbyPlayer[];
   joinedAt: number;
   missedPongs: number;
+  ready: boolean;
 }
 
 interface ServerCar {
@@ -57,7 +58,7 @@ export class Room {
 
   add(ws: WebSocket) {
     const id = `c${this.nextId++}`;
-    const client: Client = { id, ws, players: [], joinedAt: Date.now(), missedPongs: 0 };
+    const client: Client = { id, ws, players: [], joinedAt: Date.now(), missedPongs: 0, ready: false };
     this.clients.set(id, client);
     this.send(client, { type: 'welcome', clientId: id });
     ws.on('message', (data) => {
@@ -128,7 +129,10 @@ export class Room {
     if (!this.clients.has(this.hostId) || !this.clients.get(this.hostId)!.players.length) this.hostId = joined[0]?.id ?? '';
     this.broadcast({
       type: 'lobby', hostId: this.hostId, phase: this.phase, settings: this.settings,
-      clients: joined.map((c) => ({ id: c.id, players: c.players })),
+      clients: joined.map((c) => ({
+        id: c.id, players: c.players, ready: c.ready,
+        racing: this.phase === 'race' && this.cars.some((k) => k.slot.ownerId === c.id),
+      })),
     });
   }
 
@@ -165,6 +169,11 @@ export class Room {
       }
       case 'start':
         if (c.id === this.hostId && this.phase === 'lobby') this.startRace();
+        break;
+      case 'ready':
+        if (!c.players.length) return;
+        c.ready = msg.ready === true;
+        this.broadcastLobby();
         break;
       case 'abort':
         if (c.id === this.hostId && this.phase === 'race') {
@@ -387,6 +396,8 @@ export class Room {
     this.cars = [];
     this.items = null;
     this.phase = 'lobby';
+    // everybody confirms again before the next race
+    for (const cl of this.clients.values()) cl.ready = false;
     this.broadcastLobby();
     console.log('[room] race finished');
   }

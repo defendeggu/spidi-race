@@ -335,3 +335,14 @@ button.big.kart { border-left-color: #ff5a3c; }
 .touch-on .hud-map { transform: scale(0.72); transform-origin: top right; }
 /* the standings sit above the steering pad */
 .touch-on .hud-standings { bottom: 96px; }
+
+/* ------------------------------------------------------------ lobby: names, ready state */
+.names { display: grid; gap: 10px; }
+.name-field { display: grid; grid-template-columns: 90px 1fr; align-items: center; gap: 10px; }
+.name-field .name { margin: 0; }
+.lobby-list em.st { font-style: normal; font-size: 11px; padding: 1px 6px; border-radius: 3px; margin-left: 6px; }
+.lobby-list em.st.ready { background: #2f9a4a; color: #fff; }
+.lobby-list em.st.wait { background: rgba(255, 255, 255, 0.15); color: #ddd; }
+.lobby-list em.st.racing { background: #1f6fb8; color: #fff; }
+.panel h2 small.kind { font-size: 14px; color: #fff; font-style: normal; margin-left: 8px; letter-spacing: 0; text-transform: none; }
+.hint.waiting { animation: blink 1.6s infinite; }

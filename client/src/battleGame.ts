@@ -78,6 +78,11 @@ export class BattleGame {
   private world: TownWorld;
   private karts: Kart[] = [];
   private players: Player[] = [];
+
+  /** Show a short message to every local player (e.g. "Anna wartet in der Lobby"). */
+  notify(text: string, seconds = 4) {
+    for (const p of this.players) p.hud.flash(text, seconds);
+  }
   readonly items: ItemWorld;
   readonly session: BattleSession;
   private visuals: ItemVisuals;
