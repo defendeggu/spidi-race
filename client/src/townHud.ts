@@ -1,7 +1,7 @@
 import { HARBOR, LINES, RAIL, TOWN_BOUNDS, type CarInput, type KartState, type TownMap, type TownTask } from '@spidi/shared';
 import { ItemSlot } from './itemSlot';
 import { CAMERA_MODES } from './render/cameras';
-import type { KeyMap } from './input';
+import { getPadThrottle, type KeyMap } from './input';
 import type { PadKind } from './padMapping';
 import { html, setHtml } from './ui/html';
 
@@ -197,10 +197,11 @@ export class TownHud {
       this.padMode = pad;
       const k = this.keymap;
       const ps = pad === 'playstation';
+      const stick = { buttons: '', right: ' · R-Stick', left: ' · L-Stick' }[getPadThrottle()];
       setHtml(this.el.help, pad
         ? html`<div class="th-title">${ps ? 'PlayStation-Controller' : 'Gamepad'}</div>
-           <div class="th-row"><b data-h="throttle">${ps ? 'R2 · ✕' : 'RT · A'}</b><span>Gas</span></div>
-           <div class="th-row"><b data-h="brake">${ps ? 'L2 · ○' : 'LT · B'}</b><span>Bremse / Rückwärts</span></div>
+           <div class="th-row"><b data-h="throttle">${ps ? 'R2 · ✕' : 'RT · A'}${stick ? `${stick} ▲` : ''}</b><span>Gas</span></div>
+           <div class="th-row"><b data-h="brake">${ps ? 'L2 · ○' : 'LT · B'}${stick ? `${stick} ▼` : ''}</b><span>Bremse / Rückwärts</span></div>
            <div class="th-row"><b data-h="left">◀ Stick</b><b data-h="right">Stick ▶</b><span>Lenken</span></div>
            <div class="th-row"><b data-h="hand">${ps ? '□ · R1' : 'X · RB'}</b><span>Handbremse</span></div>
            <div class="th-foot">H = Hilfe aus</div>`

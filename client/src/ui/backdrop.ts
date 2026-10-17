@@ -68,7 +68,7 @@ export class Backdrop {
    */
   private debugS = -1;
   private debugView(dt: number) {
-    // `?townview=x,z,yawDeg[,height]`: a fixed camera in the practice town
+    // `?townview=x,z,yawDeg[,height]`: a fixed camera in the practice town (`&nofog`: without fog, for overviews)
     const tv = /[?&]townview=(-?[\d.]+),(-?[\d.]+),(-?[\d.]+)(?:,([\d.]+))?/.exec(location.search);
     if (tv) {
       document.getElementById('ui')!.style.display = 'none';
@@ -78,7 +78,9 @@ export class Backdrop {
       // high cameras look down at the ground in front of them, low ones straight ahead
       const ahead = h > 40 ? h * 1.1 : 50;
       this.camera.lookAt(x + Math.sin(yaw) * ahead, h > 40 ? 0 : h * 0.6, z + Math.cos(yaw) * ahead);
-      renderViewports(getTownWorld().scene, [{ camera: this.camera, rect: [0, 0, 1, 1] }]);
+      const scene = getTownWorld().scene;
+      if (/[?&]nofog\b/.test(location.search)) scene.fog = null;
+      renderViewports(scene, [{ camera: this.camera, rect: [0, 0, 1, 1] }]);
       return true;
     }
     const m = /[?&]view=([a-z]+)@(\d+)/.exec(location.search);

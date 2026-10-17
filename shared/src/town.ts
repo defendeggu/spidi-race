@@ -107,7 +107,7 @@ export interface BoxObstacle {
   maxZ: number;
   /** large boxes (buildings, wall) turn the car along their face, like a guard rail */
   solid: boolean;
-  /** height of a low obstacle (rail, bench, container): a car flying higher passes over it */
+  /** height of the obstacle (rail, bench, parked car, building): a car flying higher passes over it */
   top?: number;
 }
 
@@ -117,6 +117,8 @@ export interface CircleObstacle {
   r: number;
   /** 'prop': collision of a modelled prop (fountain, chimney …), drawn via TownMap.props */
   kind: 'tree' | 'cone' | 'lamp' | 'prop' | 'bollard';
+  /** height, if it differs from the usual one of its kind (posts of a canopy) */
+  top?: number;
 }
 
 /** A marked parking bay. heading points into the bay (the way a car facing the back wall would look). */
@@ -134,10 +136,12 @@ export interface Spot {
   heading: number;
 }
 
-/** ISO shipping containers in metres: [width, length, height] (40 ft and 20 ft). */
-/** obstacles up to this height (m) can be jumped over */
-const LOW_OBSTACLE = 3;
+/** a car flying higher than this passes over a parked car */
+const PARKED_CAR_TOP = 2;
+/** height of the round obstacles: a car jumping higher flies over them (modelled props always block) */
+const CIRCLE_TOP: Record<CircleObstacle['kind'], number> = { cone: 0.8, bollard: 1.1, lamp: 7.2, tree: 8, prop: Infinity };
 
+/** ISO shipping containers in metres: [width, length, height] (40 ft and 20 ft). */
 export const CONTAINER_40: [number, number, number] = [2.44, 12.19, 2.59];
 export const CONTAINER_20: [number, number, number] = [2.44, 6.06, 2.59];
 /** articulated lorry with a 40 ft container: [width, length, height] */
@@ -236,7 +240,7 @@ const BLOCK_PLAN = [
   'AsssssPsh',
   'AAsTTTshh',
   'AFsTZTsph',
-  'CPsTTTshh',
+  'CPsTTTsRh',
   'hsssssMPh',
   'hhphPIsII',
   'hhhhIIIIK',
@@ -244,14 +248,15 @@ const BLOCK_PLAN = [
 const PLAN_KIND: Record<string, BlockKind> = {
   h: 'house', s: 'shop', T: 'tower', p: 'park', P: 'parking', X: 'practice',
   B: 'brick', A: 'oldtown', I: 'industry', K: 'power', M: 'supermarket', F: 'plaza', Z: 'towerplaza',
-  S: 'skate', C: 'church',
+  S: 'skate', R: 'skate', C: 'church',
 };
 /**
- * Blocks that replaced older ones (skate park instead of a park, church instead of houses). They first
- * run the old generator and throw its result away, so the random numbers of all other blocks – and
- * with them the familiar town – stay exactly the same.
+ * Blocks that replaced older ones (plan letter → the old kind): the skate park instead of a park, a
+ * second skate park beside the parking lot of the second supermarket and the church instead of houses.
+ * They first run the old generator and throw its result away, so the random numbers of all other
+ * blocks – and with them the familiar town – stay exactly the same.
  */
-const REPLACED: Partial<Record<BlockKind, BlockKind>> = { skate: 'park', church: 'house' };
+const REPLACED: Record<string, BlockKind> = { S: 'park', R: 'house', C: 'house' };
 
 export class TownMap {
   readonly blocks: Block[] = [];
@@ -276,10 +281,11 @@ export class TownMap {
     const later: Block[] = [];
     for (let j = 0; j < LINE_COUNT - 1; j++) {
       for (let i = 0; i < LINE_COUNT - 1; i++) {
-        const kind = PLAN_KIND[BLOCK_PLAN[j][i]];
+        const letter = BLOCK_PLAN[j][i];
+        const kind = PLAN_KIND[letter];
         const b: Block = { i, j, cx: LINES[i] + GRID / 2, cz: LINES[j] + GRID / 2, kind };
         this.blocks.push(b);
-        const was = REPLACED[kind];
+        const was = REPLACED[letter];
         if (was) {
           this.discard(() => this.buildBlock({ ...b, kind: was }, rnd));
           later.push(b);
@@ -380,7 +386,7 @@ export class TownMap {
             const parked = rnd() < 0.35 ? Math.floor(rnd() * 7) : -1;
             this.bays.push({ x, z, heading, parked });
             const hx = turned ? 2.3 : 1.2, hz = turned ? 1.2 : 2.3;
-            if (parked >= 0) this.boxes.push({ minX: x - hx, maxX: x + hx, minZ: z - hz, maxZ: z + hz, solid: false });
+            if (parked >= 0) this.boxes.push({ minX: x - hx, maxX: x + hx, minZ: z - hz, maxZ: z + hz, solid: false, top: PARKED_CAR_TOP });
           }
         });
         this.starSpots.push({ x: cx, z: cz, heading: Math.PI / 2 });
@@ -468,13 +474,13 @@ export class TownMap {
 
   private addBuilding(m: ModelSize, scale: number, x: number, z: number, rot: number) {
     const turned = Math.abs(Math.sin(rot)) > 0.5;
-    const w = (turned ? m[2] : m[1]) * scale, d = (turned ? m[1] : m[2]) * scale;
-    this.buildings.push({ model: m[0], scale, x, z, rot, w, d, h: m[3] * scale, variant: Math.floor(this.vrnd() * BUILDING_VARIANTS) });
+    const w = (turned ? m[2] : m[1]) * scale, d = (turned ? m[1] : m[2]) * scale, top = m[3] * scale;
+    this.buildings.push({ model: m[0], scale, x, z, rot, w, d, h: top, variant: Math.floor(this.vrnd() * BUILDING_VARIANTS) });
     const fp = TOWN_FOOTPRINTS[m[0]];
     if (!fp) {
       // the collision box is a little smaller than the model (roofs and balconies stick out)
       const ix = Math.max(0.5, w / 2 - 0.3), iz = Math.max(0.5, d / 2 - 0.3);
-      this.boxes.push({ minX: x - ix, maxX: x + ix, minZ: z - iz, maxZ: z + iz, solid: true });
+      this.boxes.push({ minX: x - ix, maxX: x + ix, minZ: z - iz, maxZ: z + iz, solid: true, top });
       return;
     }
     // measured walls only: cars can drive under canopies and eaves; their posts are small obstacles
@@ -484,10 +490,10 @@ export class TownMap {
     const corners = [toWorld(x0, z0), toWorld(x1, z0), toWorld(x0, z1), toWorld(x1, z1)];
     const xs = corners.map((c) => c[0]), zs = corners.map((c) => c[1]);
     const inset = 0.1;
-    this.boxes.push({ minX: Math.min(...xs) + inset, maxX: Math.max(...xs) - inset, minZ: Math.min(...zs) + inset, maxZ: Math.max(...zs) - inset, solid: true });
+    this.boxes.push({ minX: Math.min(...xs) + inset, maxX: Math.max(...xs) - inset, minZ: Math.min(...zs) + inset, maxZ: Math.max(...zs) - inset, solid: true, top });
     for (const [px, pz, r] of fp.posts ?? []) {
       const [wx, wz] = toWorld(px, pz);
-      if (!this.circles.some((c) => Math.hypot(c.x - wx, c.z - wz) < 0.3)) this.circles.push({ x: wx, z: wz, r: Math.max(0.25, r * scale), kind: 'prop' });
+      if (!this.circles.some((c) => Math.hypot(c.x - wx, c.z - wz) < 0.3)) this.circles.push({ x: wx, z: wz, r: Math.max(0.25, r * scale), kind: 'prop', top });
     }
   }
 
@@ -500,8 +506,8 @@ export class TownMap {
     const w = size ? (turned ? size[1] : size[0]) : r * 2, d = size ? (turned ? size[0] : size[1]) : r * 2;
     this.props.push({ model, scale, x, z, rot, w, d, h: size?.[2] ?? r * 2, variant: Math.floor(this.vrnd() * BUILDING_VARIANTS) });
     if (shape === 'circle') this.circles.push({ x, z, r, kind: 'prop' });
-    // low obstacles of known height can be jumped over; tall ones (and buildings) always block
-    const top = size && size[2] <= LOW_OBSTACLE ? size[2] : undefined;
+    // obstacles of known height can be jumped over
+    const top = size?.[2];
     if (shape === 'box') this.boxes.push({ minX: x - w / 2, maxX: x + w / 2, minZ: z - d / 2, maxZ: z + d / 2, solid: w > 6 || d > 6, top });
   }
 
@@ -713,21 +719,13 @@ export class TownMap {
     this.starSpots.push({ x: cx, z: cz - 14, heading: 0 }, { x: cx + 14, z: cz + 38, heading: Math.PI / 2 });
   }
 
-  /**
-   * Harbour along the south edge: a wide quay apron with warehouses, container stacks and parking,
-   * bollards along the quay edge and ships moored in the water.
-   */
-  /**
-   * A stack of shipping containers (size [w, l, h]); only the bottom one collides – the upper ones
-   * are out of reach anyway.
-   */
+  /** A stack of shipping containers (size [w, l, h]); one box for the whole stack collides. */
   private containerStack(x: number, z: number, rot: number, levels: number, size: [number, number, number]) {
     for (let l = 0; l < levels; l++) {
       this.addProp('container', 1, x, z, rot, l === 0 ? 'box' : 'none', 0, size);
       this.props[this.props.length - 1].y = l * size[2];
     }
-    const box = this.boxes[this.boxes.length - 1];
-    box.top = levels > 1 ? undefined : box.top;
+    this.boxes[this.boxes.length - 1].top = levels * size[2];
   }
 
   /**
@@ -793,7 +791,7 @@ export class TownMap {
       const x = -330 + k * PARKING_BAY.width, z = -480;
       const parked = rnd() < 0.3 ? Math.floor(rnd() * 7) : -1;
       this.bays.push({ x, z, heading: Math.PI, parked });
-      if (parked >= 0) this.boxes.push({ minX: x - 1.2, maxX: x + 1.2, minZ: z - 2.3, maxZ: z + 2.3, solid: false });
+      if (parked >= 0) this.boxes.push({ minX: x - 1.2, maxX: x + 1.2, minZ: z - 2.3, maxZ: z + 2.3, solid: false, top: PARKED_CAR_TOP });
     }
     this.starSpots.push(
       { x: -250, z: -510, heading: Math.PI / 2 }, { x: 120, z: -462, heading: Math.PI / 2 },
@@ -824,7 +822,7 @@ export class TownMap {
       if (Math.abs(z) < 9) continue;
       const parked = rnd() < 0.3 ? Math.floor(rnd() * 7) : -1;
       this.bays.push({ x: -476, z, heading: -Math.PI / 2, parked });
-      if (parked >= 0) this.boxes.push({ minX: -478.3, maxX: -473.7, minZ: z - 1.2, maxZ: z + 1.2, solid: false });
+      if (parked >= 0) this.boxes.push({ minX: -478.3, maxX: -473.7, minZ: z - 1.2, maxZ: z + 1.2, solid: false, top: PARKED_CAR_TOP });
     }
     this.starSpots.push({ x: -485, z: 0, heading: 0 }, { x: -470, z: 250, heading: 0 }, { x: -470, z: -250, heading: 0 });
     // trees behind the track and on the grass between the town and the fence
@@ -998,7 +996,7 @@ export class TownMap {
             hit = true;
           }
           for (const o of cl.circles) {
-            if (c.y > (o.kind === 'cone' ? 0.8 : o.kind === 'bollard' ? 1.1 : Infinity)) continue;
+            if (c.y > (o.top ?? CIRCLE_TOP[o.kind])) continue;
             const cpx = c.x + fx * off * side, cpz = c.z + fz * off * side;
             const dx = cpx - o.x, dz = cpz - o.z;
             const dd = Math.hypot(dx, dz);

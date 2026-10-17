@@ -1,4 +1,5 @@
 import { TRACK_DEFS, type CarClass, type LobbyPlayer, type TownTask } from '@spidi/shared';
+import type { PadThrottle } from '../padMapping';
 
 /** a player's preferences: carId is the road car, offroadCarId / microCarId / townCarId the cars of the other classes */
 export type PlayerPref = LobbyPlayer & { offroadCarId?: string; microCarId?: string; townCarId?: string; kartCarId?: string };
@@ -31,6 +32,8 @@ export interface Prefs {
   kartMode: 'race' | 'battle';
   kartBots: number;
   graphics: GraphicsLevel;
+  /** gamepad gas: trigger / face button (default) or a stick */
+  padThrottle: PadThrottle;
 }
 
 export const TRAFFIC: { id: TrafficLevel; label: string; cars: number }[] = [
@@ -62,7 +65,7 @@ export function loadPrefs(): Prefs {
     trackId: TRACK_DEFS[0].id, laps: 2, aiCount: 4, aiSkill: 0.93, onlineLocal: 1,
     townPlayers: 1, townTask: 'stars', townTraffic: 'few', townGoals: 10,
     kartPlayers: 1, kartTrackId: 'alpenpass', kartMode: 'race', kartBots: 3,
-    graphics: 'auto',
+    graphics: 'auto', padThrottle: 'buttons',
   };
   try {
     const raw = localStorage.getItem(KEY);

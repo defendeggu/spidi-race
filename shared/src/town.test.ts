@@ -384,8 +384,8 @@ describe('town extensions', () => {
   };
 
   it('keeps the familiar old town (replaced blocks do not reshuffle the others)', () => {
-    // a park and a house block were replaced; every other block still has its buildings
-    expect(town.blocks.filter((b) => b.kind === 'skate')).toHaveLength(1);
+    // a park and two house blocks were replaced; every other block still has its buildings
+    expect(town.blocks.filter((b) => b.kind === 'skate')).toHaveLength(2);
     expect(town.blocks.filter((b) => b.kind === 'church')).toHaveLength(1);
     expect(town.buildings.some((b) => b.model.startsWith('tpl-church'))).toBe(true);
     expect(town.buildings.filter((b) => b.model.startsWith('building-type')).length).toBeGreaterThan(150);
@@ -458,9 +458,62 @@ describe('town extensions', () => {
     expect(at(3.5)).toBe(0);
     const b = town.buildings[0];
     const c = createTownCar('t', { x: b.x, z: b.z, heading: 0 });
-    c.y = 20;
+    c.y = b.h - 1;
     town.collide(c, spec);
     expect(Math.hypot(c.x - b.x, c.z - b.z)).toBeGreaterThan(0.1);
+  });
+
+  it('a second skate park lies beside the parking lot of the second supermarket, laid out like the first', () => {
+    const parks = town.blocks.filter((b) => b.kind === 'skate');
+    const market = town.blocks.filter((b) => b.kind === 'supermarket')[1];
+    const lot = town.blocks.find((b) => b.kind === 'parking' && Math.abs(b.i - market.i) + Math.abs(b.j - market.j) === 1)!;
+    expect(parks.some((p) => Math.abs(p.i - lot.i) + Math.abs(p.j - lot.j) === 1)).toBe(true);
+    expect(town.ramps).toHaveLength(12);
+    const [a, b] = parks;
+    for (let k = 0; k < 6; k++) {
+      expect(town.ramps[k + 6].x - b.cx).toBeCloseTo(town.ramps[k].x - a.cx);
+      expect(town.ramps[k + 6].z - b.cz).toBeCloseTo(town.ramps[k].z - a.cz);
+    }
+    expect(town.heightAt(b.cx - 10, b.cz)).toBeCloseTo(1.6);
+  });
+
+  it('no invisible walls in the air: parked cars, lamps, trees and buildings end at their height', () => {
+    const spec = carsForClass('town')[0];
+    // the car collides with a circle at its front and back: try it at several places along z
+    const hitAt = (x: number, z: number, y: number) => [-2, -1, 0, 1, 2].some((dz) => {
+      const c = createTownCar('t', { x, z: z + dz, heading: 0 });
+      c.y = y;
+      town.collide(c, spec);
+      return Math.hypot(c.x - x, c.z - z - dz) > 0.01;
+    });
+    const bay = town.bays.find((q) => q.parked >= 0)!;
+    expect(hitAt(bay.x, bay.z, 0)).toBe(true);
+    expect(hitAt(bay.x, bay.z, 2.5)).toBe(false);
+    const lamp = town.circles.find((o) => o.kind === 'lamp')!;
+    expect(hitAt(lamp.x + 0.5, lamp.z, 3)).toBe(true);
+    expect(hitAt(lamp.x + 0.5, lamp.z, 8)).toBe(false);
+    const tree = town.circles.find((o) => o.kind === 'tree')!;
+    expect(hitAt(tree.x + 0.5, tree.z, 9)).toBe(false);
+    const b = town.buildings[0];
+    expect(hitAt(b.x, b.z, b.h + 0.5)).toBe(false);
+  });
+
+  it('a car jumping out of the quarter pipe towards the parking lot flies over the parked cars', () => {
+    const spec = getCar('kaito-stadt');
+    for (const park of town.blocks.filter((b) => b.kind === 'skate')) {
+      // the quarter pipe that faces the neighbouring parking lot (+z)
+      const r = town.ramps.find((q) => q.curve === 'quarter' && q.rot === 0 && Math.abs(q.x - park.cx - 28) < 1e-6 && Math.abs(q.z - park.cz - 6) < 1e-6)!;
+      const c = createTownCar('t', { x: r.x, z: r.z - 8, heading: 0 });
+      c.vz = 45;
+      let bounced = false;
+      for (let i = 0; i < 400 && !bounced; i++) {
+        const vz = c.vz;
+        stepCarTown(c, spec, { throttle: 1, brake: 0, steer: 0, handbrake: false }, town, 1 / 60);
+        // in the air (beyond the ramp) a collision would reverse or stop the forward motion
+        if (c.airborne && c.z > r.z + r.up + r.top + 1 && c.vz < vz - 3) bounced = true;
+      }
+      expect(bounced).toBe(false);
+    }
   });
 
   it('the side of a ramp is a wall, the car is not lifted onto it', () => {
