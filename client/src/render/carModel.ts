@@ -4,6 +4,7 @@ import { assetsReady, carColormapImage, getModel } from './assets';
 import { blobShadowTexture } from './textures';
 import { buildCamper } from './camper';
 import { buildPickup } from './pickup';
+import { buildAventador } from './aventador';
 
 interface Section {
   z: number;
@@ -266,8 +267,8 @@ export class CarVisual {
     this.height = spec.shape.roof;
     const color = carColor(spec, variant);
     const model = assetsReady() ? getModel(spec.model) : undefined;
-    if (spec.model === 'toyota-hilux') {
-      const pickup = buildPickup(color, this.tailMat);
+    if (spec.model === 'toyota-hilux' || spec.model === 'lamborghini-aventador') {
+      const pickup = spec.model === 'toyota-hilux' ? buildPickup(color, this.tailMat) : buildAventador(color, this.tailMat);
       this.body.add(pickup.body);
       this.ownedMaterials.push(...pickup.materials);
       this.height = pickup.height;

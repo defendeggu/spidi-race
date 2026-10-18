@@ -264,7 +264,16 @@ const HILUX: CarSpec = {
   shape: { length: 5.45, width: 2.08, height: 1.35, roof: 2.05, cabinShift: 0.25, spoiler: false },
 };
 
-CARS.push(CALIFORNIA, HILUX);
+const AVENTADOR: CarSpec = {
+  id: 'aventador', class: 'road', name: 'Lamborghini Aventador',
+  description: 'Orange V12 supercar with sharp styling and powerful acceleration',
+  model: 'lamborghini-aventador', color: '#ed730b', accent: '#121619',
+  suspension: 0.05, topSpeed: 94, accel: 10.4, brake: 17.5, grip: 14.0,
+  steer: 0.58, wheelbase: 2.7, gears: 7, mass: 1575,
+  shape: { length: 4.95, width: 2.08, height: 0.80, roof: 1.20, cabinShift: -0.3, spoiler: false },
+};
+
+CARS.push(CALIFORNIA, HILUX, AVENTADOR);
 
 // ---------------------------------------------------------------- practice town: gentle everyday cars
 const TOWN_BASE = {
@@ -358,6 +367,7 @@ export const TOWN_CARS: CarSpec[] = [
 ];
 
 TOWN_CARS.push({ ...HILUX, id: 'hilux-town', class: 'town', topSpeed: 21, accel: 4.7, brake: 10 });
+TOWN_CARS.push({ ...AVENTADOR, id: 'aventador-town', class: 'town', topSpeed: 21, accel: 5.4, brake: 13 });
 CARS.push(...TOWN_CARS);
 
 // ---------------------------------------------------------------- karts (kart races with items)
