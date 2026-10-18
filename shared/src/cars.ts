@@ -39,6 +39,8 @@ export interface CarSpec {
   model: string;
   /** keep the model's original livery (taxi, police, fire engine) instead of repainting it */
   keepPaint?: boolean;
+  /** Short cold-gas hop, followed by a ballistic landing. */
+  rocket?: boolean;
   shape: CarShape;
 }
 
@@ -46,8 +48,9 @@ const CALIFORNIA: CarSpec = {
   id: 'california',
   class: 'road',
   name: 'VW T6 California',
-  description: 'Anthracite camper with a pop-top roof',
+  description: 'Anthracite camper with a pop-top roof and rocket hop (F)',
   model: 'vw-t6-california',
+  rocket: true,
   color: '#383e42',
   accent: '#161b20',
   suspension: 0.12,

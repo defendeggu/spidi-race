@@ -12,15 +12,17 @@ export interface KeyMap {
   camera: string[];
   /** use the held item (kart races) */
   item: string[];
+  rocket?: string[];
 }
 
 export const KEYMAPS: KeyMap[] = [
-  { up: ['KeyW'], down: ['KeyS'], left: ['KeyA'], right: ['KeyD'], handbrake: ['Space'], camera: ['KeyC'], item: ['KeyE'] },
+  { up: ['KeyW'], down: ['KeyS'], left: ['KeyA'], right: ['KeyD'], handbrake: ['Space'], camera: ['KeyC'], item: ['KeyE'], rocket: ['KeyF'] },
   {
     up: ['ArrowUp'], down: ['ArrowDown'], left: ['ArrowLeft'], right: ['ArrowRight'],
     handbrake: ['ControlRight', 'ShiftRight', 'Numpad0'], camera: ['Enter', 'NumpadEnter', 'Period'],
     // End, Num 1 and the '-' key of German keyboards (code Slash)
     item: ['End', 'Numpad1', 'Slash'],
+    rocket: ['Numpad2', 'Delete'],
   },
 ];
 
@@ -33,6 +35,7 @@ export const SOLO_KEYMAP: KeyMap = {
   handbrake: [...KEYMAPS[0].handbrake, ...KEYMAPS[1].handbrake],
   camera: [...KEYMAPS[0].camera, ...KEYMAPS[1].camera],
   item: [...KEYMAPS[0].item, ...KEYMAPS[1].item],
+  rocket: ['KeyF'],
 };
 
 const BLOCKED = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'Slash', 'End']);
@@ -77,11 +80,13 @@ class InputManager {
   }
 
   carInput(map: KeyMap, padSlot: number): CarInput {
+    const rocketPressed = this.consume(map.rocket ?? []);
     const inp: CarInput = {
       throttle: this.isDown(map.up) ? 1 : 0,
       brake: this.isDown(map.down) ? 1 : 0,
       steer: (this.isDown(map.right) ? 1 : 0) - (this.isDown(map.left) ? 1 : 0),
       handbrake: this.isDown(map.handbrake),
+      rocket: rocketPressed || this.isDown(map.rocket ?? []),
     };
     const pad = padState(padSlot);
     if (pad) {
@@ -93,10 +98,12 @@ class InputManager {
     // the touch controls belong to player 1
     const t = padSlot === 0 ? this.touch?.state : undefined;
     if (t) {
+      const rocketTapped = this.consumeTouch('rocket');
       if (t.steer !== 0) inp.steer = t.steer;
       if (t.throttle > 0) inp.throttle = t.throttle;
       if (t.brake > 0) inp.brake = t.brake;
       if (t.handbrake) inp.handbrake = true;
+      if (t.rocket || rocketTapped) inp.rocket = true;
     }
     return inp;
   }

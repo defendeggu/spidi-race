@@ -5,6 +5,7 @@ import { blobShadowTexture } from './textures';
 import { buildCamper } from './camper';
 import { buildPickup } from './pickup';
 import { buildAventador } from './aventador';
+import { rocketRollAngle } from './rocketRoll';
 
 interface Section {
   z: number;
@@ -260,6 +261,8 @@ export class CarVisual {
   private tmpUp = { x: 0, y: 1, z: 0 };
   private label?: THREE.Sprite;
   private ownedMaterials: THREE.Material[] = [];
+  private rocketPlumes = new THREE.Group();
+  private rollPivot = new THREE.Group();
 
   constructor(readonly spec: CarSpec, name?: string, variant = 0) {
     this.tailMat = new THREE.MeshLambertMaterial({ color: '#7a0d0d', emissive: '#300000' });
@@ -280,6 +283,16 @@ export class CarVisual {
     else if (model) this.buildFromModel(model, color);
     else this.buildProcedural(color);
     this.group.add(this.body);
+    if (spec.rocket) this.buildRocketJets();
+    if (spec.rocket) {
+      // Rotate body and wheels around the cabin centre; keep the shadow, label and camera upright.
+      const rollingParts = new THREE.Group();
+      rollingParts.position.y = -this.height * 0.5;
+      rollingParts.add(this.body, ...this.wheels);
+      this.rollPivot.position.y = this.height * 0.5;
+      this.rollPivot.add(rollingParts);
+      this.group.add(this.rollPivot);
+    }
 
     const sh = spec.shape;
     const shadow = new THREE.Mesh(
@@ -460,6 +473,22 @@ export class CarVisual {
     }
   }
 
+  private buildRocketJets() {
+    const nozzle = new THREE.MeshPhongMaterial({ color: '#454e54', shininess: 100 });
+    const gas = new THREE.MeshBasicMaterial({ color: '#d5f4ff', transparent: true, opacity: 0.42, depthWrite: false });
+    this.ownedMaterials.push(nozzle, gas);
+    for (const x of [-0.79, 0.79]) for (const z of [-1.95, 1.95]) {
+      const jet = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.13, 0.14, 16, 1, true), nozzle);
+      jet.position.set(x, 0.40, z);
+      this.body.add(jet);
+      const plume = new THREE.Mesh(new THREE.ConeGeometry(0.19, 0.95, 16), gas);
+      plume.position.set(x, -0.12, z);
+      this.rocketPlumes.add(plume);
+    }
+    this.rocketPlumes.visible = false;
+    this.body.add(this.rocketPlumes);
+  }
+
   setLabel(name: string) {
     const c = document.createElement('canvas');
     c.width = 256;
@@ -499,7 +528,14 @@ export class CarVisual {
   update(x: number, y: number, z: number, heading: number, c: CarState, dt: number, up: { x: number; y: number; z: number }, rough: number) {
     this.group.position.set(x, y, z);
     let k = 1 - Math.exp(-dt * 10);
-    if (c.airborne) {
+    this.rocketPlumes.visible = (c.rocketBurn ?? 0) > 0;
+    this.rollPivot.rotation.z = this.spec.rocket ? rocketRollAngle(c) : 0;
+    if (c.airborne && this.spec.rocket && (c.rocketCooldown ?? 0) > 0) {
+      // Attitude jets keep a stationary launch upright instead of pitching along vertical velocity.
+      this.tmpUp.x = 0;
+      this.tmpUp.y = 1;
+      this.tmpUp.z = 0;
+    } else if (c.airborne) {
       // in the air the car follows its flight path
       const sp = Math.hypot(c.vx, c.vy, c.vz) || 1;
       const dx = c.vx / sp, dy = c.vy / sp, dz = c.vz / sp;

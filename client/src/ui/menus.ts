@@ -94,6 +94,7 @@ function showControls(app: App) {
         <tr><td>Gas / Bremse / Rückwärts</td><td>${k('W')} / ${k('S')}</td><td>${k('↑')} / ${k('↓')}</td></tr>
         <tr><td>Lenken</td><td>${k('A')} ${k('D')}</td><td>${k('←')} ${k('→')}</td></tr>
         <tr><td>Handbremse</td><td>${k('Leertaste')}</td><td>${k('Strg rechts')} / ${k('Shift rechts')} / ${k('Num 0')}</td></tr>
+        <tr><td>Camper rocket hop (5 s cooldown)</td><td>${k('F')}</td><td>${k('Num 2')} / ${k('Delete')}</td></tr>
         <tr><td>Kamera wechseln</td><td>${k('C')}</td><td>${k('Enter')} / ${k('.')}</td></tr>
         <tr><td>Pause</td><td colspan="2">${k('Esc')}</td></tr>
         <tr><td>Ton an/aus</td><td colspan="2">${k('M')}</td></tr>

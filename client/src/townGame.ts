@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { updateRocketHud } from './rocketHud';
 import {
   collideCars, createTownCar, formatTime, forwardSpeed, getCar, HARBOR, idleCar, lerp, lerpAngle, NO_INPUT, PARKING_BAY, SURFACE_PROPS,
   stepCarTown, TownSession, Traffic,
@@ -417,6 +418,7 @@ export class TownGame {
       }
       if (this.session.phase === 'finished') arrow = null;
       p.hud.update(v, s.gear, this.status(k), arrow, dist, p.tasks.parkProgress, p.lastInput, padKindAt(p.cfg.pad), myDots, dt);
+      updateRocketHud(p.hud.root, p.spec, s, p.cfg.keymap, k === 0);
 
       p.voice?.update(s.rpm, s.throttle, s.skid * Math.min(1, Math.abs(v) / 8), 0);
       p.impactCooldown -= dt;
