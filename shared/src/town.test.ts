@@ -22,7 +22,7 @@ const FULL: CarInput = { throttle: 1, brake: 0, steer: 0, handbrake: false };
 
 describe('practice town', () => {
   it('has the town cars and no race track uses them', () => {
-    expect(carsForClass('town').map((c) => c.id)).toEqual(['familie', 'taxi', 'polizei', 'feuerwehr', 'kaito-stadt']);
+    expect(carsForClass('town').map((c) => c.id)).toEqual(['california-town', 'familie', 'taxi', 'polizei', 'feuerwehr', 'kaito-stadt']);
     expect(TRACK_DEFS.some((d) => d.class === 'town')).toBe(false);
   });
 

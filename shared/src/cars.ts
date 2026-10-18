@@ -35,12 +35,32 @@ export interface CarSpec {
   mass: number;
   color: string;
   accent: string;
-  /** Kenney Car Kit model used by the client (visual only) */
+  /** Client model identifier, including built-in procedural vehicles (visual only). */
   model: string;
   /** keep the model's original livery (taxi, police, fire engine) instead of repainting it */
   keepPaint?: boolean;
   shape: CarShape;
 }
+
+const CALIFORNIA: CarSpec = {
+  id: 'california',
+  class: 'road',
+  name: 'VW T6 California',
+  description: 'Anthracite camper with a pop-top roof',
+  model: 'vw-t6-california',
+  color: '#383e42',
+  accent: '#161b20',
+  suspension: 0.12,
+  topSpeed: 58,
+  accel: 6.2,
+  brake: 12,
+  grip: 11,
+  steer: 0.6,
+  wheelbase: 3,
+  gears: 7,
+  mass: 2500,
+  shape: { length: 5, width: 1.98, height: 1.28, roof: 2.04, cabinShift: -0.4, spoiler: false },
+};
 
 export const CARS: CarSpec[] = [
   {
@@ -235,6 +255,8 @@ export const CARS: CarSpec[] = [
   },
 ];
 
+CARS.push(CALIFORNIA);
+
 // ---------------------------------------------------------------- practice town: gentle everyday cars
 const TOWN_BASE = {
   class: 'town' as const,
@@ -251,6 +273,14 @@ const TOWN_BASE = {
 };
 
 export const TOWN_CARS: CarSpec[] = [
+  {
+    ...CALIFORNIA,
+    id: 'california-town',
+    class: 'town',
+    topSpeed: 20,
+    accel: 4.2,
+    brake: 10,
+  },
   {
     ...TOWN_BASE,
     id: 'familie',

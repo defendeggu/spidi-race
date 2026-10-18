@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { type CarSpec, type CarState, forwardSpeed } from '@spidi/shared';
 import { assetsReady, carColormapImage, getModel } from './assets';
 import { blobShadowTexture } from './textures';
+import { buildCamper } from './camper';
 
 interface Section {
   z: number;
@@ -264,7 +265,8 @@ export class CarVisual {
     this.height = spec.shape.roof;
     const color = carColor(spec, variant);
     const model = assetsReady() ? getModel(spec.model) : undefined;
-    if (model) this.buildFromModel(model, color);
+    if (spec.model === 'vw-t6-california') this.buildCalifornia(color);
+    else if (model) this.buildFromModel(model, color);
     else this.buildProcedural(color);
     this.group.add(this.body);
 
@@ -400,6 +402,47 @@ export class CarVisual {
       const wheel = new THREE.Group();
       wheel.add(new THREE.Mesh(wheelGeo, wheelMat));
       wheel.add(new THREE.Mesh(rimGeo, rimMat));
+      holder.add(wheel);
+      this.group.add(holder);
+      this.wheels.push(holder);
+    }
+  }
+
+  private buildCalifornia(color: string) {
+    const camper = buildCamper(color, this.tailMat);
+    this.body.add(camper.body);
+    this.ownedMaterials.push(...camper.materials);
+    this.height = camper.height;
+    const wb = this.spec.wheelbase / 2;
+    const tyreMaterial = new THREE.MeshPhongMaterial({ color: '#17191b', shininess: 12 });
+    const alloyMaterial = new THREE.MeshPhongMaterial({ color: '#bac0c5', shininess: 110 });
+    const brakeMaterial = new THREE.MeshPhongMaterial({ color: '#41464a', shininess: 40 });
+    this.ownedMaterials.push(tyreMaterial, alloyMaterial, brakeMaterial);
+    for (const [x, z] of [[0.86, wb], [-0.86, wb], [0.86, -wb], [-0.86, -wb]]) {
+      const holder = new THREE.Group();
+      holder.position.set(x, this.wheelRadius, z);
+      const wheel = new THREE.Group();
+      const tyre = new THREE.Mesh(new THREE.TorusGeometry(0.255, 0.085, 12, 40), tyreMaterial);
+      tyre.rotation.y = Math.PI / 2;
+      tyre.scale.z = 1.45;
+      wheel.add(tyre);
+      const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.205, 0.205, 0.16, 32).rotateZ(Math.PI / 2), brakeMaterial);
+      wheel.add(disc);
+      const outside = Math.sign(x) * 0.125;
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(0.215, 0.016, 8, 40), alloyMaterial);
+      rim.rotation.y = Math.PI / 2;
+      rim.position.x = outside;
+      wheel.add(rim);
+      for (let i = 0; i < 10; i++) {
+        const angle = i * Math.PI / 5;
+        const spoke = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.155, 0.025), alloyMaterial);
+        spoke.rotation.x = angle;
+        spoke.position.set(outside, Math.cos(angle) * 0.12, Math.sin(angle) * 0.12);
+        wheel.add(spoke);
+      }
+      const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.065, 0.035, 24).rotateZ(Math.PI / 2), alloyMaterial);
+      hub.position.x = outside;
+      wheel.add(hub);
       holder.add(wheel);
       this.group.add(holder);
       this.wheels.push(holder);
