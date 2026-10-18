@@ -3,6 +3,7 @@ import { type CarSpec, type CarState, forwardSpeed } from '@spidi/shared';
 import { assetsReady, carColormapImage, getModel } from './assets';
 import { blobShadowTexture } from './textures';
 import { buildCamper } from './camper';
+import { buildPickup } from './pickup';
 
 interface Section {
   z: number;
@@ -265,7 +266,16 @@ export class CarVisual {
     this.height = spec.shape.roof;
     const color = carColor(spec, variant);
     const model = assetsReady() ? getModel(spec.model) : undefined;
-    if (spec.model === 'vw-t6-california') this.buildCalifornia(color);
+    if (spec.model === 'toyota-hilux') {
+      const pickup = buildPickup(color, this.tailMat);
+      this.body.add(pickup.body);
+      this.ownedMaterials.push(...pickup.materials);
+      this.height = pickup.height;
+      this.wheelRadius = pickup.wheelRadius;
+      this.wheels.push(...pickup.wheels);
+      this.group.add(...pickup.wheels);
+    }
+    else if (spec.model === 'vw-t6-california') this.buildCalifornia(color);
     else if (model) this.buildFromModel(model, color);
     else this.buildProcedural(color);
     this.group.add(this.body);

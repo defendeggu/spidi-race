@@ -255,7 +255,16 @@ export const CARS: CarSpec[] = [
   },
 ];
 
-CARS.push(CALIFORNIA);
+const HILUX: CarSpec = {
+  id: 'hilux', class: 'offroad', name: 'Toyota Hilux',
+  description: 'White double-cab pickup with an open bed and all-terrain tyres',
+  model: 'toyota-hilux', color: '#f2f1e9', accent: '#15191c',
+  suspension: 0.20, topSpeed: 63, accel: 7.6, brake: 13, grip: 13.5,
+  steer: 0.60, wheelbase: 3.15, gears: 6, mass: 2150,
+  shape: { length: 5.45, width: 2.08, height: 1.35, roof: 2.05, cabinShift: 0.25, spoiler: false },
+};
+
+CARS.push(CALIFORNIA, HILUX);
 
 // ---------------------------------------------------------------- practice town: gentle everyday cars
 const TOWN_BASE = {
@@ -348,6 +357,7 @@ export const TOWN_CARS: CarSpec[] = [
   },
 ];
 
+TOWN_CARS.push({ ...HILUX, id: 'hilux-town', class: 'town', topSpeed: 21, accel: 4.7, brake: 10 });
 CARS.push(...TOWN_CARS);
 
 // ---------------------------------------------------------------- karts (kart races with items)
