@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { mulberry32, WALL_OFFSET, type Track, type TrackTheme } from '@spidi/shared';
+import { mulberry32, RUNWAY_X, WALL_OFFSET, type Track, type TrackTheme } from '@spidi/shared';
 import { getTexture, type TextureName } from './assets';
 import { bannerTexture, checkerTexture, chevronTexture } from './textures';
 
@@ -67,7 +67,7 @@ interface TrackStyle {
   /** asphalt tint with texture / flat colour without */
   asphalt: [string, string];
   /** centre marking; 'edges' = only the two edge lines */
-  centre: 'dashed-white' | 'dashed-yellow' | 'lanes' | 'edges' | 'none';
+  centre: 'dashed-white' | 'dashed-yellow' | 'lanes' | 'edges' | 'taxiway' | 'none';
   shoulder: [string, string];
   curbs: 'redwhite' | 'kerb' | 'none';
   barrier: 'guardrail' | 'stonewall' | 'jersey' | 'safer' | 'fence' | 'berm' | 'straw';
@@ -78,7 +78,14 @@ interface TrackStyle {
   roadTex?: TextureName;
   shoulderTex?: TextureName;
   galleryTex?: TextureName;
+  /** a second road surface where `where` holds (airport: concrete on the runway) */
+  altRoad?: { tex: TextureName; tint: [string, string]; where: (t: Track, i: number) => boolean };
+  /** galleries are bridges: open on both sides, pillars left and right (airport taxiway bridge) */
+  bridge?: boolean;
 }
+
+/** airport: samples on the main runway */
+const onRunway = (t: Track, i: number) => Math.abs(t.px[i] - RUNWAY_X) < 20;
 
 const STYLES: Record<TrackTheme, TrackStyle> = {
   alpine: { asphalt: ['#9a9a9a', '#46484b'], centre: 'dashed-white', shoulder: ['#b8b0a0', '#6f685a'], curbs: 'redwhite', barrier: 'guardrail', verge: ['#9fb07a', '#5a6a3a'], vergeTex: 'grass', chevrons: true },
@@ -92,6 +99,12 @@ const STYLES: Record<TrackTheme, TrackStyle> = {
   forest: {
     asphalt: ['#e6dccc', '#6b5236'], centre: 'none', shoulder: ['#e0d8c8', '#5e4a32'], curbs: 'none', barrier: 'fence', verge: ['#e0e8d0', '#4a5e32'],
     vergeTex: 'forestfloor', chevrons: true, roadTex: 'dirt', shoulderTex: 'forestfloor',
+  },
+  // airport: asphalt taxiways with a yellow centre line, concrete on the runway, low concrete barriers
+  airport: {
+    asphalt: ['#9c9c9c', '#46484b'], centre: 'taxiway', shoulder: ['#c8c8c4', '#8a8a88'], curbs: 'none', barrier: 'jersey',
+    verge: ['#dce8c0', '#6f9a46'], vergeTex: 'grass', chevrons: true, shoulderTex: 'concrete',
+    altRoad: { tex: 'concrete', tint: ['#e2e0da', '#a8a6a0'], where: onRunway }, bridge: true,
   },
   // micro track: a darker lane on the wooden table, edged with icing lines and drinking straws
   table: {
@@ -117,8 +130,16 @@ export function buildTrackMesh(track: Track): THREE.Group {
   // kickers and landing ramps are packed darker so they stand out when approaching
   const roadShades = Array.from({ length: track.n }, (_, i) =>
     asphalt.clone().multiplyScalar((0.94 + rand() * 0.08) * (track.jumpH[i] > 0.15 ? 0.72 : 1)));
-  const road = strip(track, (i) => [[-hw[i], 0], [0, 0], [hw[i], 0]], (i) => roadShades[i]);
+  const alt = style.altRoad;
+  const road = strip(track, (i) => [[-hw[i], 0], [0, 0], [hw[i], 0]], (i) => roadShades[i], alt ? (i) => !alt.where(track, i) : undefined);
   group.add(new THREE.Mesh(road, surface(style.roadTex ?? 'asphalt', style.roadTex === 'wood' ? 40 : style.roadTex ? 5 : 7)));
+  if (alt) {
+    const tint = pick(alt.tint);
+    group.add(new THREE.Mesh(
+      strip(track, (i) => [[-hw[i], 0], [0, 0], [hw[i], 0]], () => tint.clone().multiplyScalar(0.96 + rand() * 0.06), (i) => alt.where(track, i)),
+      surface(alt.tex, 6),
+    ));
+  }
   addSurfacePatches(track, group);
 
   // markings
@@ -131,9 +152,15 @@ export function buildTrackMesh(track: Track): THREE.Group {
     ));
   if (style.centre === 'dashed-white' || style.centre === 'dashed-yellow') line(() => 0, 0.24, style.centre === 'dashed-white' ? white : yellow, true);
   if (style.centre === 'lanes') for (const f of [-1 / 3, 1 / 3]) line((i) => hw[i] * 2 * f, 0.2, white, true);
+  if (style.centre === 'taxiway') {
+    // solid yellow taxiway centre line, on the runway the dashed white runway centre line
+    const runway = style.altRoad?.where ?? (() => false);
+    group.add(new THREE.Mesh(strip(track, () => [[-0.15, 0.025], [0.15, 0.025]], () => yellow, (i) => !runway(track, i)), vc));
+    group.add(new THREE.Mesh(strip(track, () => [[-0.45, 0.025], [0.45, 0.025]], () => white, (i) => runway(track, i) && Math.floor(i / 6) % 3 !== 2), vc));
+  }
   if (style.centre !== 'none') {
     line((i) => -hw[i] + 0.45, 0.2, white, false);
-    line((i) => hw[i] - 0.45, 0.2, style.centre === 'lanes' ? yellow : white, false);
+    line((i) => hw[i] - 0.45, 0.2, style.centre === 'lanes' || style.centre === 'taxiway' ? yellow : white, false);
   }
 
   // shoulders, curbs in corners (racing) or grey kerbstones (city)
@@ -285,18 +312,23 @@ function addGalleries(track: Track, group: THREE.Group) {
   group.add(new THREE.Mesh(strip(track, (i) => [[R(i), H], [-R(i), H]], () => under, has), mat));
   group.add(new THREE.Mesh(strip(track, (i) => [[-R(i), H], [-R(i), H + 0.7]], () => concrete, has), mat));
   group.add(new THREE.Mesh(strip(track, (i) => [[R(i), H], [R(i), H + 0.7]], () => concrete, has), mat));
-  // mountain-side wall
-  // side of the gallery at sample i; the quad after the last gallery sample reuses its neighbour's side
-  const sideAt = (i: number) => track.gallery[i] || track.gallery[(i - 1 + track.n) % track.n] || track.gallery[(i + 1) % track.n];
-  group.add(new THREE.Mesh(strip(track, (i) => [[sideAt(i) * (R(i) - 0.4), 0], [sideAt(i) * (R(i) - 0.4), H]], () => under, has), mat));
-  // valley-side pillars
+  const bridge = !!STYLES[track.def.theme].bridge;
+  if (!bridge) {
+    // mountain-side wall
+    // side of the gallery at sample i; the quad after the last gallery sample reuses its neighbour's side
+    const sideAt = (i: number) => track.gallery[i] || track.gallery[(i - 1 + track.n) % track.n] || track.gallery[(i + 1) % track.n];
+    group.add(new THREE.Mesh(strip(track, (i) => [[sideAt(i) * (R(i) - 0.4), 0], [sideAt(i) * (R(i) - 0.4), H]], () => under, has), mat));
+  }
+  // valley-side pillars (a bridge stands on pillars on both sides)
   const pillarGeo = new THREE.BoxGeometry(0.9, H, 0.9);
   const pillarMat = new THREE.MeshLambertMaterial({ color: textured ? '#d8d4cc' : '#a29d93', map: getTexture('concrete') ?? null });
   for (let i = 0; i < track.n; i += 4) {
     if (!has(i)) continue;
-    const p = new THREE.Mesh(pillarGeo, pillarMat);
-    placeAt(track, p, i, -track.gallery[i] * (R(i) - 0.4), H / 2);
-    group.add(p);
+    for (const side of bridge ? [-1, 1] : [-track.gallery[i]]) {
+      const p = new THREE.Mesh(pillarGeo, pillarMat);
+      placeAt(track, p, i, side * (R(i) - 0.4), H / 2);
+      group.add(p);
+    }
   }
 }
 

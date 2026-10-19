@@ -1,6 +1,6 @@
 import { CARS } from './cars';
 import { TOWN_GOAL_COUNTS } from './townTasks';
-import { getTrack, TRACK_DEFS } from './tracks';
+import { getTrack, TRACK_DEFS, trackInMode } from './tracks';
 
 export type RaceMode = 'solo' | 'split' | 'online';
 
@@ -43,7 +43,7 @@ export const KART_PREFIX = 'kart:';
 export function kartBoardTrack(id: string | undefined) {
   if (!id?.startsWith(KART_PREFIX)) return undefined;
   const t = TRACK_DEFS.find((d) => d.id === id.slice(KART_PREFIX.length));
-  return t && (t.class ?? 'road') !== 'micro' ? t : undefined;
+  return t && trackInMode(t, 'kart') ? t : undefined;
 }
 
 /** Karts can be faster than their top speed while boosting. */
@@ -62,7 +62,8 @@ export function sanitizeSubmission(s: Partial<LeaderboardSubmission>, trusted = 
   if (!s || typeof s !== 'object') return null;
   if (townBoard(s.trackId)) return sanitizeTown(s);
   const kartTrack = kartBoardTrack(s.trackId);
-  const track = kartTrack ?? TRACK_DEFS.find((t) => t.id === s.trackId);
+  // car boards only for tracks of the car race (not for a kart-only track)
+  const track = kartTrack ?? TRACK_DEFS.find((t) => t.id === s.trackId && trackInMode(t, 'race'));
   const car = CARS.find((c) => c.id === s.carId);
   // the car must belong to the track's class (road, offroad or micro), on kart boards it must be a kart
   if (!track || !car || car.class !== (kartTrack ? 'kart' : track.class ?? 'road')) return null;
