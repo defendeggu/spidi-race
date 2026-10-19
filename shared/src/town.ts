@@ -32,11 +32,11 @@ export const LINES = Array.from({ length: LINE_COUNT }, (_, k) => -((LINE_COUNT 
 export const OUTER = LINES[LINE_COUNT - 1] + ROAD_HW + SIDEWALK;
 
 /**
- * The drivable town: the old town plus the harbour strip in the south (−z, ending at the quay edge)
- * and the railway strip in the east (−x; on the minimap and in the chase view −x is to the right).
- * A wall closes the other sides, the quay edge has a barrier.
+ * The drivable town: the old town plus the harbour strip in the south (−z, ending at the quay edge),
+ * the railway strip in the east (−x; on the minimap and in the chase view −x is to the right) and the
+ * airfield in the west (+x). A wall closes the other sides, the quay edge has no barrier.
  */
-export const TOWN_BOUNDS = { minX: -570, maxX: TOWN_HALF, minZ: -540, maxZ: TOWN_HALF };
+export const TOWN_BOUNDS = { minX: -570, maxX: 760, minZ: -540, maxZ: TOWN_HALF };
 export const HARBOR = { quayZ: TOWN_BOUNDS.minZ, waterY: -1.6 };
 /** railway along the east strip: track, fence towards the town, platform and station forecourt */
 export const RAIL = {
@@ -51,6 +51,48 @@ export const RAIL = {
   /** station building between forecourt and platform */
   station: { x: -499, z: 0, w: 16, d: 40 },
 };
+
+/** A parked (or waiting) aircraft: nose position and heading, livery 0–3. */
+export interface TownPlane {
+  x: number;
+  z: number;
+  heading: number;
+  livery: number;
+}
+
+/**
+ * Airfield along the west edge (+x), built from the parts of the airport tracks: a straight runway
+ * along the wall, a parallel taxiway with three links, the apron with the terminal, a cargo hall with
+ * a few containers and the tower; landside parking towards the town. Everything is drivable.
+ */
+export const TOWN_AIRPORT = {
+  runway: { x: 720, z0: -450, z1: 470, width: 30 },
+  taxiway: { x: 665, z0: -425, z1: 440, width: 16 },
+  /** links between taxiway and runway (z) */
+  links: [-425, 0, 440],
+  apron: { x0: 500, x1: 657, z0: -360, z1: 300 },
+  landside: { x0: OUTER, x1: 500, z0: -360, z1: 300 },
+  terminal: { x: 515, z: 20, w: 30, d: 160 },
+  cargo: { x: 520, z: -300, w: 40, d: 80 },
+  tower: { x: 515, z: 190, r: 7 },
+  windsock: { x: 748, z: 0 },
+  planes: [
+    // at the terminal gates, noses towards the building
+    { x: 541, z: -35, heading: -Math.PI / 2, livery: 0 },
+    { x: 541, z: 20, heading: -Math.PI / 2, livery: 1 },
+    { x: 541, z: 75, heading: -Math.PI / 2, livery: 2 },
+    // remote stands on the apron, at the cargo hall, on the taxiway and lined up for take-off
+    { x: 585, z: 175, heading: -Math.PI / 2, livery: 3 },
+    { x: 585, z: 240, heading: -Math.PI / 2, livery: 0 },
+    { x: 548, z: -300, heading: -Math.PI / 2, livery: 2 },
+    { x: 665, z: 200, heading: Math.PI, livery: 1 },
+    { x: 720, z: -410, heading: 0, livery: 3 },
+  ] as TownPlane[],
+};
+
+/** Plane collision parts in the plane's frame (x = left, z = forward from the nose): boxes [x0, x1, z0, z1, top] and circles [x, z, r]. */
+const PLANE_BOXES: [number, number, number, number, number][] = [[-2.1, 2.1, -37, 0, 6.5]];
+const PLANE_CIRCLES: [number, number, number][] = [[-6.5, -12.5, 1.3], [6.5, -12.5, 1.3]];
 
 /**
  * A drivable ramp (skate park). The profile runs along +u = (sin rot, cos rot) from (x, z):
@@ -319,8 +361,8 @@ export class TownMap {
       const side = k % 4;
       const x = side === 0 ? along : side === 1 ? along : side === 2 ? inset : -inset;
       const z = side === 0 ? inset : side === 1 ? -inset : along;
-      // the south (harbour) and east (railway) strips are laid out separately
-      if (side === 1 || side === 3) continue;
+      // the south (harbour), east (railway) and west (airfield) strips are laid out separately
+      if (side !== 0) continue;
       if (this.circles.some((c) => c.kind === 'tree' && Math.hypot(c.x - x, c.z - z) < 7)) continue;
       this.circles.push({ x, z, r: 0.6, kind: 'tree' });
     }
@@ -333,6 +375,7 @@ export class TownMap {
     }
     this.harbour(xr);
     this.railway(xr);
+    this.airfield(mulberry32(seed + 99));
 
     for (const o of this.boxes) this.insert(o.minX, o.maxX, o.minZ, o.maxZ, (c) => c.boxes.push(o));
     for (const o of this.circles) this.insert(o.x - o.r, o.x + o.r, o.z - o.r, o.z + o.r, (c) => c.circles.push(o));
@@ -836,6 +879,66 @@ export class TownMap {
     }
   }
 
+  /** Airfield in the west strip (see TOWN_AIRPORT): buildings, aircraft, containers, parking and stars. */
+  private airfield(rnd: () => number) {
+    const A = TOWN_AIRPORT;
+    const t = A.terminal, c = A.cargo;
+    this.addBuilding(['airport-terminal', t.w, t.d, 16], 1, t.x, t.z, 0);
+    this.addBuilding(['airport-cargo', c.w, c.d, 14], 1, c.x, c.z, 0);
+    this.addProp('airport-tower', 1, A.tower.x, A.tower.z, 0, 'circle', A.tower.r, [2 * A.tower.r, 2 * A.tower.r, 44]);
+    this.addProp('windsock', 1, A.windsock.x, A.windsock.z, 0, 'circle', 0.3, [0.6, 0.6, 6]);
+    for (const p of A.planes) {
+      const fx = Math.sin(p.heading), fz = Math.cos(p.heading);
+      // plane frame → world: left = (fz, -fx)
+      const world = (lx: number, lz: number): [number, number] => [p.x + fz * lx + fx * lz, p.z - fx * lx + fz * lz];
+      for (const [x0, x1, z0, z1, top] of PLANE_BOXES) {
+        const [ax, az] = world(x0, z0), [bx, bz] = world(x1, z1);
+        this.boxes.push({ minX: Math.min(ax, bx), maxX: Math.max(ax, bx), minZ: Math.min(az, bz), maxZ: Math.max(az, bz), solid: true, top });
+      }
+      for (const [lx, lz, r] of PLANE_CIRCLES) {
+        const [x, z] = world(lx, lz);
+        this.circles.push({ x, z, r, kind: 'prop', top: 3 });
+      }
+      // the renderer draws it from this prop (w, d = the footprint without wings)
+      const turned = Math.abs(fx) > 0.5;
+      this.props.push({ model: 'plane', scale: 1, x: p.x - fx * 18.5, z: p.z - fz * 18.5, rot: p.heading, w: turned ? 37 : 4.2, d: turned ? 4.2 : 37, h: 6.5, variant: p.livery });
+    }
+    // a few containers beside the cargo hall
+    for (const [x, z, levels] of [[562, -350, 2], [562, -347, 1], [576, -350, 1], [562, -253, 1], [576, -253, 2]]) {
+      this.containerStack(x, z, Math.PI / 2, levels, CONTAINER_40);
+    }
+    // landside parking towards the town, facing the terminal
+    for (let z = A.landside.z0 + 8; z <= A.landside.z1 - 8; z += PARKING_BAY.width) {
+      // access lanes to the apron stay free
+      if (Math.abs(z - 120) < 10 || Math.abs(z + 130) < 10) continue;
+      const parked = rnd() < 0.3 ? Math.floor(rnd() * 7) : -1;
+      this.bays.push({ x: 476, z, heading: Math.PI / 2, parked });
+      if (parked >= 0) this.boxes.push({ minX: 473.7, maxX: 478.3, minZ: z - 1.2, maxZ: z + 1.2, solid: false, top: PARKED_CAR_TOP });
+    }
+    this.starSpots.push(
+      { x: A.runway.x, z: -150, heading: 0 }, { x: A.runway.x, z: 300, heading: 0 }, { x: A.taxiway.x, z: -200, heading: 0 },
+      { x: 610, z: -100, heading: 0 }, { x: 600, z: -300, heading: 0 }, { x: 490, z: 120, heading: Math.PI / 2 },
+    );
+    // trees on the grass between taxiway and runway and along the north wall
+    for (let k = 0; k < 40; k++) {
+      const x = A.taxiway.x + 14 + rnd() * (A.runway.x - A.runway.width / 2 - A.taxiway.x - 24);
+      const z = A.taxiway.z0 + rnd() * (A.taxiway.z1 - A.taxiway.z0);
+      if (A.links.some((l) => Math.abs(z - l) < 18)) continue;
+      if (this.circles.some((o) => o.kind === 'tree' && Math.hypot(o.x - x, o.z - z) < 9)) continue;
+      this.circles.push({ x, z, r: 0.6, kind: 'tree' });
+    }
+  }
+
+  /** True on the paved parts of the airfield (runway, taxiway, links, apron, landside). */
+  onAirfieldPaving(x: number, z: number) {
+    const A = TOWN_AIRPORT, r = A.runway, t = A.taxiway;
+    const inRect = (o: { x0: number; x1: number; z0: number; z1: number }) => x >= o.x0 && x <= o.x1 && z >= o.z0 && z <= o.z1;
+    if (Math.abs(x - r.x) <= r.width / 2 && z >= r.z0 && z <= r.z1) return true;
+    if (Math.abs(x - t.x) <= t.width / 2 && z >= t.z0 - t.width / 2 && z <= t.z1 + t.width / 2) return true;
+    if (x >= t.x && x <= r.x && A.links.some((l) => Math.abs(z - l) <= t.width / 2)) return true;
+    return inRect(A.apron) || inRect(A.landside);
+  }
+
   private buildingsFree(x: number, z: number, r: number) {
     return this.buildings.every((b) => Math.abs(x - b.x) > b.w / 2 + r || Math.abs(z - b.z) > b.d / 2 + r);
   }
@@ -899,6 +1002,7 @@ export class TownMap {
     if (z < -OUTER) return 'asphalt';
     const f = RAIL.forecourt;
     if (x < -OUTER) return x >= f.x0 && z >= f.z0 && z <= f.z1 ? 'asphalt' : 'dirt';
+    if (x > OUTER && z <= OUTER) return this.onAirfieldPaving(x, z) ? 'asphalt' : 'dirt';
     if (Math.abs(x) > OUTER || Math.abs(z) > OUTER) return 'dirt';
     const b = this.blockAt(x, z);
     if (b?.kind === 'church') return Math.abs(x - b.cx) < 4 || z > b.cz + 33 ? 'asphalt' : 'dirt';

@@ -21,14 +21,15 @@ const CHILL_STD = 'Logitech Chillstream Controller (STANDARD GAMEPAD Vendor: 046
 beforeEach(() => resetTriggers());
 
 describe('Xbox / standard gamepad', () => {
-  it('A or RT accelerates, B or LT brakes, X or RB is the handbrake, Y camera, Start pause', () => {
+  it('A or RT accelerates, B or LT brakes, X or RB is the handbrake, Y item and rocket, Back camera, Start pause', () => {
     expect(readPad(pad(XBOX, 'standard', 17, 4, [0])).throttle).toBe(1);
     expect(readPad(pad(XBOX, 'standard', 17, 4, [7])).throttle).toBe(1);
     expect(readPad(pad(XBOX, 'standard', 17, 4, [1])).brake).toBe(1);
     expect(readPad(pad(XBOX, 'standard', 17, 4, [6])).brake).toBe(1);
     expect(readPad(pad(XBOX, 'standard', 17, 4, [2])).handbrake).toBe(true);
     expect(readPad(pad(XBOX, 'standard', 17, 4, [5])).handbrake).toBe(true);
-    expect(readPad(pad(XBOX, 'standard', 17, 4, [3])).camera).toBe(true);
+    expect(readPad(pad(XBOX, 'standard', 17, 4, [3]))).toMatchObject({ camera: false, item: true, rocket: true });
+    expect(readPad(pad(XBOX, 'standard', 17, 4, [8])).camera).toBe(true);
     expect(readPad(pad(XBOX, 'standard', 17, 4, [9])).pause).toBe(true);
     expect(readPad(pad(XBOX, 'standard', 17, 4)).kind).toBe('xbox');
   });
@@ -70,10 +71,11 @@ describe('PlayStation controller', () => {
     expect(readPad(pad(PS3, 'standard', 17, 4, [1])).brake).toBe(1);
   });
 
-  it('raw DualShock 3 layout: ✕ (0) accelerates, □ (3) is the handbrake, △ (2) camera', () => {
+  it('raw DualShock 3 layout: ✕ (0) accelerates, □ (3) is the handbrake, △ (2) rocket, select camera', () => {
     expect(readPad(pad(PS3_RAW, '', 17, 4, [0]))).toMatchObject({ handbrake: false, throttle: 1 });
     expect(readPad(pad(PS3_RAW, '', 17, 4, [3]))).toMatchObject({ handbrake: true, throttle: 0 });
-    expect(readPad(pad(PS3_RAW, '', 17, 4, [2])).camera).toBe(true);
+    expect(readPad(pad(PS3_RAW, '', 17, 4, [2]))).toMatchObject({ camera: false, rocket: true });
+    expect(readPad(pad(PS3_RAW, '', 17, 4, [8])).camera).toBe(true);
     expect(readPad(pad(PS3_RAW, '', 17, 4, [16])).steer).toBe(1);
   });
 
@@ -116,16 +118,16 @@ describe('Logitech Chillstream (PS3-style)', () => {
     const at = (press: number[]) => readPad(pad(CHILL_LINUX, '', 12, 6, press));
     expect(at([]).kind).toBe('playstation');
     expect(at([])).toMatchObject({ steer: 0, throttle: 0, brake: 0, handbrake: false, camera: false, pause: false });
-    // ✕ (1) gas, ○ (2) brake, □ (0) handbrake, △ (3) camera / item, R1 (5) handbrake, R2 (7) gas, L2 (6) brake
+    // ✕ (1) gas, ○ (2) brake, □ (0) handbrake, △ (3) item / rocket, R1 (5) handbrake, R2 (7) gas, L2 (6) brake
     expect(at([1])).toMatchObject({ throttle: 1, handbrake: false });
     expect(at([2]).brake).toBe(1);
     expect(at([0])).toMatchObject({ handbrake: true, throttle: 0 });
-    expect(at([3])).toMatchObject({ camera: true, item: true });
+    expect(at([3])).toMatchObject({ camera: false, item: true, rocket: true });
     expect(at([5]).handbrake).toBe(true);
     expect(at([7]).throttle).toBe(1);
     expect(at([6]).brake).toBe(1);
-    // select: camera in kart races, start: pause
-    expect(at([8]).altCamera).toBe(true);
+    // select: camera in every mode, start: pause
+    expect(at([8]).camera).toBe(true);
     expect(at([9]).pause).toBe(true);
   });
 
@@ -133,11 +135,11 @@ describe('Logitech Chillstream (PS3-style)', () => {
     expect(readPad(pad(CHILL_LINUX, '', 12, 6, [], { 0: -0.8 })).steer).toBeCloseTo(-0.8);
     expect(readPad(pad(CHILL_LINUX, '', 12, 6, [], { 2: 0.6 })).steer).toBeCloseTo(0.6);
     expect(readPad(pad(CHILL_LINUX, '', 12, 6, [], { 4: 1 })).steer).toBe(1);
-    expect(readPad(pad(CHILL_LINUX, '', 12, 6, [], { 5: -1 })).altCamera).toBe(true);
-    expect(readPad(pad(CHILL_WIN, '', 12, 10, [], { 9: HAT_REST }))).toMatchObject({ steer: 0, altCamera: false });
+    expect(readPad(pad(CHILL_LINUX, '', 12, 6, [], { 5: -1 })).camera).toBe(true);
+    expect(readPad(pad(CHILL_WIN, '', 12, 10, [], { 9: HAT_REST }))).toMatchObject({ steer: 0, camera: false });
     expect(readPad(pad(CHILL_WIN, '', 12, 10, [], { 9: -1 + (2 / 7) * 2 })).steer).toBe(1);
     expect(readPad(pad(CHILL_WIN, '', 12, 10, [], { 9: -1 + (2 / 7) * 6 })).steer).toBe(-1);
-    expect(readPad(pad(CHILL_WIN, '', 12, 10, [], { 9: -1 })).altCamera).toBe(true);
+    expect(readPad(pad(CHILL_WIN, '', 12, 10, [], { 9: -1 })).camera).toBe(true);
   });
 
   it('gas on the right stick works like on the PS3 pad', () => {

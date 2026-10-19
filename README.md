@@ -1,6 +1,6 @@
 # Spidi Race 🏁
 
-![Version](https://img.shields.io/badge/version-1.3.0-ffcc00)
+![Version](https://img.shields.io/badge/version-1.4.0-ffcc00)
 ![Lizenz Code](https://img.shields.io/badge/code-MIT-blue)
 ![Lizenz Assets](https://img.shields.io/badge/assets-CC0-green)
 ![Docker](https://img.shields.io/badge/docker-ready-2496ED)
@@ -44,14 +44,14 @@ Ein Arcade-Rennspiel im Browser im Geist von *Need for Speed II: Special Edition
 
   | Strecke | Klasse | Modus | Länge | Charakter |
   |---|---|---|---|---|
-  | Alpenpass | Strasse | Auto + Kart | 2,5 km | Serpentinen, Lawinengalerie, Schneeberge |
-  | Küstenstrasse | Strasse | Auto + Kart | 2,9 km | Fischerdorf, Klippen, Palmen, Leuchtturm |
-  | Downtown | Strasse | Auto + Kart | 2,0 km | Stadtkurs: 90°-Ecken, Schikane, Unterführung, Hochhäuser |
-  | Speedway | Strasse | Auto + Kart | 5,5 km | Superspeedway-Oval mit Steilkurven: fast permanent Vollgas, über 280 km/h Schnitt |
+  | Alpenpass | Strasse | Auto + Kart | 2,5 km | Serpentinen, Lawinengalerie, Schneeberge, bunte Chalets und Fachwerkdorf |
+  | Küstenstrasse | Strasse | Auto + Kart | 2,9 km | Buntes Fischerdorf, Klippen, Palmen, Leuchtturm, Boote |
+  | Downtown | Strasse | Auto + Kart | 2,0 km | Stadtkurs: 90°-Ecken, Schikane, Unterführung, bunte Geschäfts-, Backstein- und Hochhäuser |
+  | Speedway | Strasse | Auto + Kart | 5,5 km | Superspeedway-Oval mit Steilkurven und Fahrerlager: fast permanent Vollgas, über 280 km/h Schnitt |
   | Canyon Run | Offroad | Auto + Kart | 2,6 km | Schotter und Sand in einer roten Schlucht, 3 Sprünge, einer über ein Flussbett |
   | Waldtrail | Offroad | Auto + Kart | 2,8 km | Waldweg, Kuppen, Schlammlöcher, Furt, Sprung über den Bach |
   | Frühstückstisch | Micro | Auto | 0,9 km | Spielzeugautos auf dem Küchentisch: Müslischale, Kaffeetasse, Croissant, Strohhalme als Banden |
-  | Flughafen | Strasse | nur Auto | 5,7 km | 2,4 km Vollgas auf der Piste, zurück über Rollwege mit 90°-Abzweigen, unter der Rollwegbrücke durch |
+  | Flughafen | Strasse | nur Auto | 5,1 km | Über alle drei gekreuzten Pisten: lange Gerade, Haarnadel auf die Schräg-Piste, Rollwege und eine Schleife übers Vorfeld; startende Flugzeuge |
   | Flughafen Kart | Strasse | nur Kart | 3,4 km | Kurze Pistengerade, dann Rollwege und Vorfeld: schneller Bogen, Schikane, S-Kurven an den Docks, Haarnadel am Tower, Hangars |
 
 - **23 Fahrzeuge** mit eigenen Fahrwerten, je nach Streckenklasse bzw. Modus:
@@ -63,7 +63,7 @@ Ein Arcade-Rennspiel im Browser im Geist von *Need for Speed II: Special Edition
   | Kaito ZX | Strasse | Formelwagen | Kurven |
   | Brutale V10 | Strasse | Hot Hatch | Beschleunigung |
   | Toro Fulmine | Strasse | V12-Supersportwagen | Höchstgeschwindigkeit, Beschleunigung |
-  | Weltenbummler | Strasse | Camper mit Aufstelldach | gemütlich, Raketensprung mit Fassrolle (`F`) |
+  | Weltenbummler | Strasse | Camper mit Aufstelldach | gemütlich, Raketensprung mit Fassrolle (`F`, Gamepad △ / Y) |
   | Bergziege 4x4 | Offroad | Geländewagen | wendig, viel Grip |
   | Baron V8 | Offroad | Luxus-SUV | schnell, schwer |
   | Sahara Raider | Offroad | Pickup | Beschleunigung |
@@ -139,14 +139,16 @@ Das Image ist zweistufig aufgebaut (Node 22). Beim Build laufen die Tests und de
   | Bremse / Rückwärts | LT oder B | L2 oder ○ |
   | Lenken | linker oder rechter Stick, Steuerkreuz | linker oder rechter Stick, Steuerkreuz |
   | Handbremse | X oder RB | □ oder R1 |
-  | Kamera / Pause | Y / Start | △ / Start |
-  | Kart-Rennen: Item / Kamera | Y / Back oder Steuerkreuz ↑ | △ / Select oder Steuerkreuz ↑ |
+  | Kamera wechseln | Back oder Steuerkreuz ↑ | Select oder Steuerkreuz ↑ |
+  | Pause | Start | Start |
+  | Raketensprung (Weltenbummler) | Y | △ |
+  | Item benutzen (Kart-Rennen) | Y | △ |
 
   Unter **Steuerung → Gas am Gamepad** lässt sich das Gas auch auf einen Stick legen: *Rechter Stick* (hoch = Gas, runter = Bremse / Rückwärts, gelenkt wird nur mit dem linken Stick) oder *Linker Stick* (Lenken und Gas mit einem Stick). Trigger und Tasten funktionieren in jeder Einstellung weiter.
 
   Erkannt werden sowohl Gamepads mit Standard-Belegung als auch die rohe Linux-Belegung, die Firefox für manche Controller meldet (Xbox-Controller mit Triggern als Achsen, DualShock 3), ausserdem die Logitech-Belegung des Chillstream.
 - **PS3-Controller:** Unter Linux per USB oder Bluetooth direkt nutzbar (Treiber `hid-sony` ist im Kernel), in Chrome und Firefox. Unter Windows 11 gibt es keinen eingebauten Treiber: [DsHidMini](https://github.com/nefarius/DsHidMini) installieren und den Controller im *XInput*-Modus betreiben, dann erscheint er als Xbox-Controller. Den Browser erkennt das Gamepad erst nach dem ersten Tastendruck.
-- **Logitech Chillstream:** wie ein PS3-Controller gebaut und gleich belegt (✕ Gas, ○ Bremse, □ Handbremse, △ Kamera). Er braucht keinen Treiber (Linux und Windows), wird in Chrome und Firefox erkannt und zeigt in der Steuerungshilfe die PlayStation-Symbole.
+- **Logitech Chillstream:** wie ein PS3-Controller gebaut und gleich belegt (✕ Gas, ○ Bremse, □ Handbremse, Select Kamera, △ Raketensprung bzw. Item). Er braucht keinen Treiber (Linux und Windows), wird in Chrome und Firefox erkannt und zeigt in der Steuerungshilfe die PlayStation-Symbole.
 - Viele Tastaturen erkennen nur eine begrenzte Zahl gleichzeitig gedrückter Tasten. Gehen im Splitscreen Eingaben verloren, hilft ein Gamepad für einen der beiden Spieler.
 - **Smartphone und Tablet (Touch):** Im Spiel erscheinen Bildschirm-Knöpfe für Spieler 1 – links ein Lenkfeld (Daumen auflegen und seitlich ziehen), rechts **Gas**, **Bremse** und **Drift**, in den Kart-Modi **Item**, oben Kamera und Pause. Am besten quer halten; das Spiel wechselt beim Start in den Vollbildmodus. Auf Touch-Geräten rechnet die Grafik mit geringerer Auflösung und ohne Kantenglättung, damit es flüssig läuft.
 - **Grafik:** Unten im Hauptmenü lässt sich die Grafik auf **Auto**, **Hoch** oder **Niedrig** stellen. Niedrig rechnet ohne Kantenglättung und mit geringerer Auflösung – hilft auf älteren Laptops. Auto ist auf Handys und Tablets niedrig, sonst hoch. Beim Umschalten lädt die Seite kurz neu. Für Neigungssteuerung bräuchte es HTTPS; sie ist noch nicht eingebaut.
@@ -180,7 +182,7 @@ Hauptmenü → **Übungsfahrt in der Stadt**. Gedacht für Kinder und alle, die 
 | Was | Details |
 |---|---|
 | Stadt | gut 1 × 1 km, Strassen alle 100 m mit zwei Spuren (Rechtsverkehr), Parkplätze und ein Übungsplatz mit Pylonen. Gärten und Innenhöfe sind befahrbar, aussen steht eine Mauer |
-| Am Stadtrand | **Hafen** im Süden: Lagerhallen, Containerlager mit Stapeln bis drei hoch, Sattelschlepper und Parkfelder; der Kai hat **kein Geländer** – wer ins Wasser fährt, fällt hinein und die Fahrt ist zu Ende (im Duell gewinnt der andere). Im Wasser Frachter, Schlepper, Fischer- und Hausboote, Boote fahren durchs Becken · **Bahn** im Osten: eingezäuntes Gleis zwischen zwei Tunnelportalen, Backstein-Bahnhof mit Bahnsteig, Vordach und Parkplatz; S-Bahn und Güterzug halten abwechselnd |
+| Am Stadtrand | **Hafen** im Süden: Lagerhallen, Containerlager mit Stapeln bis drei hoch, Sattelschlepper und Parkfelder; der Kai hat **kein Geländer** – wer ins Wasser fährt, fällt hinein und die Fahrt ist zu Ende (im Duell gewinnt der andere). Im Wasser Frachter, Schlepper, Fischer- und Hausboote, Boote fahren durchs Becken · **Bahn** im Osten: eingezäuntes Gleis zwischen zwei Tunnelportalen, Backstein-Bahnhof mit Bahnsteig, Vordach und Parkplatz; S-Bahn und Güterzug halten abwechselnd · **Flugplatz** im Westen: gerade Piste entlang dem Rand, Rollweg, Vorfeld mit Terminal, Fluggastbrücken, Frachthalle mit Containern und Tower, geparkte Flugzeuge und eines startbereit am Pistenende – Piste, Rollweg und Vorfeld sind befahrbar |
 | Quartiere | bunte Einfamilienhäuser, Geschäftsstrassen, Hochhauszone mit Plaza in der Mitte, **Backstein-Viertel**, **Altstadt** mit Fachwerkhäusern und Marktplatz, **Industriequartier** mit Wasserturm, drehendem Windrad und Containern, **Kraftwerk**, Parks, **zwei Supermärkte** direkt neben Parkplätzen, eine **Kirche mit Friedhof** und zwei befahrbare **Skaterparks** (einer davon neben dem Parkplatz des zweiten Supermarkts) mit Funbox, Kicker zum Springen, Halfpipe und Quarterpipe – schnelle Autos springen auch über die Kante der Quarterpipes. Wände und Dächer haben pro Gebäude eigene Farben |
 | Start | auf dem Übungsplatz (gelbe Startfelder) neben Slalom und Pylonenkreis |
 | Autos | Familienauto, Taxi, Polizeiauto, Feuerwehr: gutmütig, viel Grip, Spitze ca. 65 km/h (Feuerwehr etwas langsamer). Kaito ZX: Formelwagen mit ca. 90 km/h für Fortgeschrittene |
@@ -298,7 +300,8 @@ client/   Vite + Three.js
   src/game.ts   Spielschleife (feste 60 Hz), Splitscreen, Interpolation, Netz-Sync
   src/townGame.ts, townHud.ts, render/townWorld.ts   Übungsfahrt in der Stadt
   src/render/buildingKit.ts   Gebäude der Übungsstadt: Farbvarianten per Shader, Häuser aus Bauteilen, Supermarkt
-  src/render/airportScenery.ts   Flughafen-Kulisse (Pisten, Docks, Tower, Hangars, Rollwegbrücke, prozedurale Jets)
+  src/render/airportScenery.ts   Flughafen-Kulisse (drei gekreuzte Pisten, Docks, Tower, Hangars, Fracht, Rollwegbrücke, prozedurale Jets, startende Flugzeuge)
+  src/render/townAirport.ts      Flugplatz der Übungsstadt (Piste, Rollweg, Vorfeld, Terminal, Fracht, Tower, Flugzeuge)
 scripts/footprints.mjs      misst die Grundflächen der Stadtgebäude (Kollision ohne Vordächer) → shared/src/townFootprints.ts
 server/   Node + ws: app.ts (HTTP, Statik, API, WebSocket-Upgrade), room.ts (Lobby, Rennstatus, KI), leaderboard.ts
 .github/  CI: Typecheck, Tests und Build bei jedem Push
@@ -311,7 +314,7 @@ scripts/  Asset-Download
 
 ## Versionierung
 
-Das Projekt folgt [Semantic Versioning](https://semver.org/lang/de/). Die aktuelle Version ist **1.3.0**. Änderungen stehen im [CHANGELOG](CHANGELOG.md), Releases sind als Git-Tags `vX.Y.Z` markiert. Die Version steht auch unten rechts im Hauptmenü.
+Das Projekt folgt [Semantic Versioning](https://semver.org/lang/de/). Die aktuelle Version ist **1.4.0**. Änderungen stehen im [CHANGELOG](CHANGELOG.md), Releases sind als Git-Tags `vX.Y.Z` markiert. Die Version steht auch unten rechts im Hauptmenü.
 
 ## Lizenz und Credits
 

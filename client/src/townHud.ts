@@ -1,4 +1,4 @@
-import { HARBOR, LINES, RAIL, TOWN_BOUNDS, type CarInput, type KartState, type TownMap, type TownTask } from '@spidi/shared';
+import { HARBOR, LINES, RAIL, TOWN_AIRPORT, TOWN_BOUNDS, type CarInput, type KartState, type TownMap, type TownTask } from '@spidi/shared';
 import { ItemSlot } from './itemSlot';
 import { CAMERA_MODES } from './render/cameras';
 import { getPadThrottle, type KeyMap } from './input';
@@ -92,6 +92,12 @@ export class TownHud {
     rect(RAIL.trackX - 2, RAIL.south, RAIL.trackX + 2, RAIL.north, 'rgba(80,70,60,0.9)');
     const f = RAIL.forecourt;
     rect(f.x0, f.z0, f.x1, f.z1, 'rgba(150,150,150,0.6)');
+    // airfield: landside and apron, taxiway with its links, runway
+    const A = TOWN_AIRPORT, ap = A.apron, ls = A.landside, r = A.runway, t = A.taxiway;
+    rect(ls.x0, ls.z0, ap.x1, ap.z1, 'rgba(160,160,160,0.6)');
+    rect(t.x - t.width / 2, t.z0, t.x + t.width / 2, t.z1, 'rgba(110,110,110,0.8)');
+    for (const l of A.links) rect(t.x, l - t.width / 2, r.x, l + t.width / 2, 'rgba(110,110,110,0.8)');
+    rect(r.x - r.width / 2, r.z0, r.x + r.width / 2, r.z1, 'rgba(225,225,220,0.9)');
     const colors: Record<string, string> = {
       house: 'rgba(200,190,170,0.55)', shop: 'rgba(170,170,180,0.6)', tower: 'rgba(120,130,150,0.7)',
       park: 'rgba(80,160,70,0.75)', parking: 'rgba(90,140,220,0.75)', practice: 'rgba(240,200,40,0.75)',

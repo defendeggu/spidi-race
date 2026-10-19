@@ -94,6 +94,7 @@ class InputManager {
       if (pad.throttle > 0) inp.throttle = pad.throttle;
       if (pad.brake > 0) inp.brake = pad.brake;
       if (pad.handbrake) inp.handbrake = true;
+      if (pad.rocket) inp.rocket = true;
     }
     // the touch controls belong to player 1
     const t = padSlot === 0 ? this.touch?.state : undefined;
@@ -109,7 +110,7 @@ class InputManager {
   }
 
   /** True once per gamepad button press (camera / pause). */
-  consumePad(padSlot: number, action: 'camera' | 'pause' | 'item' | 'altCamera') {
+  consumePad(padSlot: number, action: 'camera' | 'pause' | 'item') {
     const pad = padState(padSlot);
     const key = `${pad?.index}:${action}`;
     const now = !!pad?.[action];
