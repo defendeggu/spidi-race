@@ -194,7 +194,7 @@ Hauptmenü → **Übungsfahrt in der Stadt**. Gedacht für Kinder und alle, die 
 | Hilfe | Unten links leuchten die gedrückten Tasten (bzw. Gamepad-Knöpfe) auf, `H` blendet die Hilfe aus. Rechts oben zeigt die Stadtkarte Ziel, Spieler und Verkehr |
 | Pause | `Esc` / Start: Weiter, **Auto zum Start**, Neustart, Hauptmenü |
 
-![Übungsstadt von oben](docs/stadt-uebersicht.jpg)
+![Übungsstadt von oben](docs/stadt-uebersicht-2026.jpg)
 
 | Supermarkt | Altstadt | Industrie |
 |---|---|---|
