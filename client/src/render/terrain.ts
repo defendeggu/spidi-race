@@ -52,7 +52,7 @@ function naturalHeight(track: Track, x: number, z: number, d: number, hRef: numb
 }
 
 /** the airport is flat: the grass lies just below the paved areas (they are drawn at height 0) */
-export const AIRPORT_GROUND = -0.06;
+export const AIRPORT_GROUND = -0.3;
 
 /** Area the terrain has to cover: the track, and for the airport the whole airfield. */
 function terrainBounds(track: Track) {

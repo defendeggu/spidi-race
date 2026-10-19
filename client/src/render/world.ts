@@ -21,7 +21,7 @@ export const THEMES: Record<TrackTheme, { skyTop: string; horizon: string; fog: 
   desert: { skyTop: '#3d7cc9', horizon: '#f3d6a8', fog: '#e8c9a0', sun: '#fff1d6', ground: '#b0603a', fogFar: 1400 },
   forest: { skyTop: '#4f7fb5', horizon: '#c9d9c0', fog: '#b4c6ac', sun: '#fff4dc', ground: '#3f5a2e', fogFar: 850 },
   table: { skyTop: '#e9dcc8', horizon: '#f5ead8', fog: '#efe3cf', sun: '#fff1d8', ground: '#a87a4f', fogFar: 1100 },
-  airport: { skyTop: '#3f7fc8', horizon: '#dde8f0', fog: '#d6e2ea', sun: '#fff6e4', ground: '#6a8a46', fogFar: 2600 },
+  airport: { skyTop: '#3f7fc8', horizon: '#dde8f0', fog: '#d6e2ea', sun: '#fff6e4', ground: '#a4a49a', fogFar: 2600 },
 };
 
 export function sky(top: string, horizon: string) {

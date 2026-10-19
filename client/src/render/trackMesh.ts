@@ -242,6 +242,9 @@ export function buildTrackMesh(track: Track): THREE.Group {
     const drop = (i: number) => 2.2 + Math.abs(track.bank[i]) * 14 + Math.max(0, track.jumpH[i]) * 1.5;
     if (style.barrier === 'straw') {
       // the lane lies flat on the table: no embankment
+    } else if (track.def.theme === 'airport') {
+      // flat airfield: only a short concrete edge down to the paved scenery below the road level
+      group.add(new THREE.Mesh(strip(track, (i) => [[L(i), 0], [L(i) + side * 1.2, -0.25]], () => shoulder), surface('concrete', 3, true)));
     } else if (style.barrier === 'jersey') {
       // city: raised sidewalk behind the barrier, then down to the ground
       group.add(new THREE.Mesh(strip(track, (i) => [[L(i), 0.15], [L(i) + side * 5, 0.15]], () => verge), surface('concrete', 3, true)));
@@ -304,7 +307,10 @@ function addGalleries(track: Track, group: THREE.Group) {
   const hw = track.hw;
   const tex = STYLES[track.def.theme].galleryTex ?? 'concrete';
   const textured = !!getTexture(tex);
-  const concrete = new THREE.Color(textured ? '#e8e4dc' : '#aaa59b'), under = new THREE.Color(textured ? '#9a968e' : '#6e6a63');
+  // a bridge is open at the sides: its underside gets more light than a gallery's
+  const open = !!STYLES[track.def.theme].bridge;
+  const concrete = new THREE.Color(textured ? '#e8e4dc' : '#aaa59b');
+  const under = new THREE.Color(open ? (textured ? '#f4f0e8' : '#b4b0a8') : textured ? '#9a968e' : '#6e6a63');
   const mat = surface(tex, 4, true);
   const R = (i: number) => hw[i] + WALL_OFFSET + 1.4;
   const H = 6.4;
