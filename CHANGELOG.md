@@ -2,6 +2,11 @@
 
 Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.4.1] – 2026-10-19
+
+### Geändert
+- README: neues Übersichtsbild der Übungsstadt von oben, mit Flugplatz, Bahnhof und Hafen
+
 ## [1.4.0] – 2026-10-19
 
 ### Hinzugefügt
@@ -348,6 +353,7 @@ Erste stabile Version: Das Spiel ist auf echter Hardware getestet.
 - HUD mit Minimap, synthetischer Sound, 3 Kameras
 - Docker-Image und docker-compose (Port 8090)
 
+[1.4.1]: https://github.com/defendeggu/spidi-race/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/defendeggu/spidi-race/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/defendeggu/spidi-race/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/defendeggu/spidi-race/compare/v1.1.0...v1.2.0
