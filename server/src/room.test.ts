@@ -90,6 +90,21 @@ describe('room', () => {
     expect(after.clients.map((k) => k.racing)).toEqual([false, false, false]);
   });
 
+  it('the host can only pick tracks of the chosen mode (kart-only and car-only airport)', () => {
+    const { join } = setup();
+    const a = join('Anna');
+    const lastLobby = () => [...a.sent].reverse().find((m) => m.type === 'lobby') as Extract<ServerMsg, { type: 'lobby' }>;
+    const base = { laps: 2, aiCount: 2, aiSkill: 0.93 };
+    a.msg({ type: 'settings', settings: { ...base, trackId: 'flughafen', kart: false } });
+    expect(lastLobby().settings.trackId).toBe('flughafen');
+    a.msg({ type: 'settings', settings: { ...base, trackId: 'flughafen', kart: true } });
+    expect(lastLobby().settings.trackId).not.toBe('flughafen');
+    a.msg({ type: 'settings', settings: { ...base, trackId: 'flughafen-kart', kart: true } });
+    expect(lastLobby().settings.trackId).toBe('flughafen-kart');
+    a.msg({ type: 'settings', settings: { ...base, trackId: 'flughafen-kart', kart: false } });
+    expect(lastLobby().settings.trackId).not.toBe('flughafen-kart');
+  });
+
   it('only the host starts the race', () => {
     const { inner, join } = setup();
     join('Anna');

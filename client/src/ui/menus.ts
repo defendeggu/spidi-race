@@ -1,4 +1,4 @@
-import { carsForClass, MAX_CARS, TRACK_DEFS, type Slot } from '@spidi/shared';
+import { carsForClass, KART_TRACKS, MAX_CARS, RACE_TRACKS, TRACK_DEFS, type Slot } from '@spidi/shared';
 import { Game, type LocalPlayerCfg } from '../game';
 import { KEYMAPS, setPadThrottle, SOLO_KEYMAP } from '../input';
 import type { PadThrottle } from '../padMapping';
@@ -134,13 +134,15 @@ export function showSetup(app: App, mode: Mode) {
   const humans = mode === 'split' ? 2 : 1;
   const maxAi = MAX_CARS - humans;
   const refresh = () => app.showSetup(mode);
+  // a kart-only track is not offered in the car race
+  if (!RACE_TRACKS.some((t) => t.id === app.prefs.trackId)) app.prefs.trackId = RACE_TRACKS[0].id;
   const cls = app.classOf(app.prefs.trackId);
   app.backdrop.show(app.prefs.trackId, Array.from({ length: humans }, (_, k) => app.carOf(k, cls)));
   app.setScreen('setup', html`
     <div class="menu panel wide">
       <h2>${mode === 'split' ? 'Splitscreen' : 'Einzelrennen'}</h2>
       <div class="players">${playerPanel(app, 0, cls)}${humans > 1 ? playerPanel(app, 1, cls) : ''}</div>
-      ${settingsBlock(app.prefs, true, maxAi)}
+      ${settingsBlock(app.prefs, true, maxAi, RACE_TRACKS)}
       <div class="row"><button data-a="back">Zurück</button><button class="go" data-a="start">Rennen starten ▶</button></div>
     </div>`);
   app.bind({
@@ -152,9 +154,6 @@ export function showSetup(app: App, mode: Mode) {
 }
 
 const AI_NAMES = ['Rossi', 'Lindqvist', 'Tanaka', 'Moreau', 'Becker', 'Okafor', 'Silva', 'Novak'];
-
-/** road and offroad tracks: karts race on all but the breakfast table */
-const KART_TRACKS = TRACK_DEFS.filter((t) => (t.class ?? 'road') !== 'micro');
 
 export function showKartSetup(app: App) {
   const pr = app.prefs;

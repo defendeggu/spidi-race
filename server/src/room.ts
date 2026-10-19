@@ -4,7 +4,7 @@ import { BattleMatch } from './battleMatch';
 import {
   AIDriver, applyKartDrive, BATTLE_BOT_NAMES, BATTLE_MAX_KARTS, applyNetCar, CARS, carsForClass, collideCars, createCarState, getCar, getTrack, gridPosition,
   idleCar, ItemWorld, KART_PREFIX, KartBrain, MAX_CARS, NO_INPUT, Race, sanitizeNetCar, stepCar, stepKart, tickKartTimers,
-  toNetCar, toNetItems, TRACK_DEFS,
+  toNetCar, toNetItems, TRACK_DEFS, trackInMode, KART_TRACKS, RACE_TRACKS,
   type CarState, type ClientMsg, type ItemEvent, type LobbyPlayer, type LobbySettings, type ServerMsg, type Slot, type Track,
 } from '@spidi/shared';
 
@@ -154,12 +154,13 @@ export class Room {
         const s = msg.settings;
         const kart = s.kart === true;
         const battle = kart && s.battle === true;
-        // karts race on road and offroad tracks, not on the breakfast table
-        const ok = (id: unknown) => TRACK_DEFS.some((t) => t.id === id && !(kart && t.class === 'micro'));
+        // each mode offers its own tracks (karts not on the breakfast table, the kart airport only for karts)
+        const ok = (id: unknown) => TRACK_DEFS.some((t) => t.id === id && trackInMode(t, kart ? 'kart' : 'race'));
+        const fallback = (kart ? KART_TRACKS : RACE_TRACKS)[0].id;
         this.settings = {
           kart,
           battle,
-          trackId: ok(s.trackId) ? s.trackId : ok(this.settings.trackId) ? this.settings.trackId : TRACK_DEFS[0].id,
+          trackId: ok(s.trackId) ? s.trackId : ok(this.settings.trackId) ? this.settings.trackId : fallback,
           laps: Math.max(1, Math.min(10, Math.round(Number(s.laps) || 2))),
           aiCount: Math.max(0, Math.min(MAX_CARS, Math.round(Number(s.aiCount) || 0))),
           aiSkill: Math.max(0.8, Math.min(1, Number(s.aiSkill) || 0.93)),
