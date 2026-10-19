@@ -1,6 +1,8 @@
 import { clamp, lerp } from './math';
 
-export type TrackTheme = 'alpine' | 'coast' | 'city' | 'speedway' | 'desert' | 'forest' | 'table';
+export type TrackTheme = 'alpine' | 'coast' | 'city' | 'speedway' | 'desert' | 'forest' | 'table' | 'airport';
+/** 'race' = car race (single, splitscreen, network), 'kart' = kart race with items */
+export type TrackMode = 'race' | 'kart';
 /**
  * 'town' cars drive only in the open practice town, 'kart's in kart races on road and offroad tracks
  * (no race track has these classes)
@@ -54,6 +56,11 @@ export interface TrackDef {
   jumps?: JumpDef[];
   /** initial camera: behind the car (default) or bird's-eye view */
   camera?: 'chase' | 'topdown';
+  /**
+   * In which modes the track is offered. Default: every track in the car race, every track except the
+   * micro ones in the kart race.
+   */
+  modes?: TrackMode[];
 }
 
 export interface Projection {

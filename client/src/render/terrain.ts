@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { fbm, lerp, mulberry32, smoothstep, WALL_OFFSET, type Track, type TrackTheme } from '@spidi/shared';
+import { AIRPORT, fbm, lerp, mulberry32, smoothstep, WALL_OFFSET, type Track, type TrackTheme } from '@spidi/shared';
 import { getTexture, type TextureName } from './assets';
 
 export interface Terrain {
@@ -46,11 +46,24 @@ function naturalHeight(track: Track, x: number, z: number, d: number, hRef: numb
       return hRef - 4 + fbm(x * 0.006, z * 0.006, seed, 4) * (10 + Math.min(d, 500) * 0.12);
     case 'table':
       return 0;
+    case 'airport':
+      return AIRPORT_GROUND;
   }
 }
 
-export function buildTerrain(track: Track): Terrain {
+/** the airport is flat: the grass lies just below the paved areas (they are drawn at height 0) */
+export const AIRPORT_GROUND = -0.06;
+
+/** Area the terrain has to cover: the track, and for the airport the whole airfield. */
+function terrainBounds(track: Track) {
   const b = track.bounds;
+  if (track.def.theme !== 'airport') return b;
+  const a = AIRPORT.bounds;
+  return { ...b, minX: Math.min(b.minX, a.minX), maxX: Math.max(b.maxX, a.maxX), minZ: Math.min(b.minZ, a.minZ), maxZ: Math.max(b.maxZ, a.maxZ) };
+}
+
+export function buildTerrain(track: Track): Terrain {
+  const b = terrainBounds(track);
   const MARGIN = margin(track);
   const minX = b.minX - MARGIN, minZ = b.minZ - MARGIN;
   const size = Math.max(b.maxX - b.minX, b.maxZ - b.minZ) + MARGIN * 2;
@@ -92,7 +105,7 @@ export function buildTerrain(track: Track): Terrain {
       const t = smoothstep(near, near + 45, d);
       const below = hRef - 1.3 - Math.abs(track.bank[bestIdx]) * near;
       // the table top is perfectly flat, the road lies directly on it
-      const h = track.def.theme === 'table' ? 0 : lerp(below, naturalHeight(track, x, z, d, hRef), t);
+      const h = track.def.theme === 'table' ? 0 : track.def.theme === 'airport' ? AIRPORT_GROUND : lerp(below, naturalHeight(track, x, z, d, hRef), t);
       heights[iz * N + ix] = h;
       dists[iz * N + ix] = d;
     }
@@ -158,6 +171,11 @@ export function buildTerrain(track: Track): Terrain {
         if (slope > 0.32) mix(pal.l2, 2, smoothstep(0.32, 0.5, slope));
         break;
       }
+      case 'airport':
+        // mown grass between runways and taxiways: wide stripes along the runway
+        c.copy(Math.sin(x * 0.045) > 0 ? pal.base : pal.base2);
+        if (fbm(x * 0.004, z * 0.004, track.def.seed, 2) > 0.62) mix(pal.l1, 1, 0.6);
+        break;
       case 'speedway':
         // mowing stripes on the infield, asphalt apron along the track
         c.copy(Math.sin((x + z) * 0.06) > 0 ? pal.base : pal.base2);
@@ -233,6 +251,12 @@ const THEMES: Record<TrackTheme, { textures: TextureName[]; scale: number[]; tin
     scale: [40, 40, 40, 40],
     tint: P({ base: '#f2d6b0', base2: '#e8c8a0', l1: '#f2d6b0', l2: '#f2d6b0', deep: '#f2d6b0', verge: '#f2d6b0' }),
     flat: P({ base: '#b88a5a', base2: '#a87a4f', l1: '#b88a5a', l2: '#b88a5a', deep: '#b88a5a', verge: '#b88a5a' }),
+  },
+  airport: {
+    textures: ['grass', 'grass', 'gravel', 'grass'],
+    scale: [6, 9, 4, 6],
+    tint: P({ base: '#e4efc8', base2: '#cfe0a8', l1: '#e8e0b0', l2: '#d8d0c0', deep: '#ffffff', verge: '#dce8c0' }),
+    flat: P({ base: '#6f9a46', base2: '#628c3e', l1: '#8a9a52', l2: '#8a8070', deep: '#555555', verge: '#6f9a46' }),
   },
   speedway: {
     textures: ['grass', 'rock', 'sand', 'asphalt'],

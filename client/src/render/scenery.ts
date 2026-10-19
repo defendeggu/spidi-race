@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { mulberry32, WALL_OFFSET, type Track } from '@spidi/shared';
 import { assetsReady, getModel, getTexture } from './assets';
+import { buildAirportScenery } from './airportScenery';
 import { coastline, type Terrain } from './terrain';
 
 // ------------------------------------------------------------------ procedural fallback geometry
@@ -177,6 +178,8 @@ export function buildScenery(track: Track, terrain: Terrain): THREE.Group {
     group.add(cityScenery(track, terrain));
   } else if (track.def.theme === 'speedway') {
     group.add(speedwayScenery(track, terrain));
+  } else if (track.def.theme === 'airport') {
+    group.add(buildAirportScenery(track, terrain));
   } else if (track.def.theme === 'alpine') {
     const pines: Variant[] = [
       { model: 'tree_pineTallA', geo: fallback.pine, scale: 7.5 },

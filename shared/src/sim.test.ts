@@ -4,7 +4,7 @@ import { CARS, carsForClass, getCar } from './cars';
 import { CAR_HALF_WIDTH, collideCars, createCarState, forwardSpeed, stepCar } from './physics';
 import { Race, type Slot } from './race';
 import { gridPosition, WALL_OFFSET } from './track';
-import { getTrack, TRACK_DEFS } from './tracks';
+import { getTrack, RACE_TRACKS, TRACK_DEFS } from './tracks';
 
 const DT = 1 / 60;
 
@@ -149,7 +149,7 @@ describe('offroad', () => {
 });
 
 describe('race with AI drivers', () => {
-  for (const def of TRACK_DEFS) {
+  for (const def of RACE_TRACKS) {
     it(`${def.id}: all AI cars finish 2 laps`, () => {
       const t = getTrack(def.id);
       const pool = carsForClass(t.carClass);

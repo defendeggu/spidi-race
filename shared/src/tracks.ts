@@ -1,4 +1,5 @@
-import { Track, type TrackDef } from './track';
+import { FLUGHAFEN_KART_POINTS, FLUGHAFEN_POINTS, FLUGHAFEN_UNDERPASS } from './airport';
+import { Track, type TrackDef, type TrackMode } from './track';
 
 /**
  * Superspeedway oval built from a curvature profile: straight, clothoid (curvature ramps up),
@@ -207,7 +208,42 @@ export const TRACK_DEFS: TrackDef[] = [
       [-22, 20, 0], [-14, 4, 0],
     ],
   },
+  {
+    id: 'flughafen',
+    name: 'Flughafen',
+    description: 'Vollgas über die lange Piste, zurück über Rollwege mit 90°-Abzweigen und unter der Rollwegbrücke durch.',
+    theme: 'airport',
+    modes: ['race'],
+    width: 13,
+    defaultLaps: 2,
+    seed: 109,
+    points: FLUGHAFEN_POINTS,
+    galleries: [[...FLUGHAFEN_UNDERPASS, 1]],
+    banking: { gain: 0, max: 0 },
+  },
+  {
+    id: 'flughafen-kart',
+    name: 'Flughafen Kart',
+    description: 'Kart: kurze Pistengerade, dann Rollwege und Vorfeld – Schikane, S-Kurven an den Docks, Haarnadel am Tower.',
+    theme: 'airport',
+    modes: ['kart'],
+    width: 12,
+    defaultLaps: 3,
+    seed: 113,
+    points: FLUGHAFEN_KART_POINTS,
+    banking: { gain: 0, max: 0 },
+  },
 ];
+
+/** Whether a track is offered in a mode (see TrackDef.modes for the defaults). */
+export function trackInMode(def: TrackDef, mode: TrackMode) {
+  if (def.modes) return def.modes.includes(mode);
+  return mode === 'race' || (def.class ?? 'road') !== 'micro';
+}
+
+/** tracks of the car race and of the kart race, in menu order */
+export const RACE_TRACKS = TRACK_DEFS.filter((d) => trackInMode(d, 'race'));
+export const KART_TRACKS = TRACK_DEFS.filter((d) => trackInMode(d, 'kart'));
 
 const cache = new Map<string, Track>();
 

@@ -10,7 +10,7 @@ import { applyNetItems, ItemMirror, toNetItems } from './protocol';
 import { collideCars, createCarState, forwardSpeed, type CarInput } from './physics';
 import { Race, type Slot } from './race';
 import { gridPosition } from './track';
-import { getTrack, TRACK_DEFS } from './tracks';
+import { getTrack, KART_TRACKS } from './tracks';
 
 const DT = 1 / 60;
 const FULL: CarInput = { throttle: 1, brake: 0, steer: 0, handbrake: false };
@@ -150,7 +150,7 @@ describe('kart driving', () => {
 });
 
 describe('kart race with AI and items', () => {
-  for (const def of TRACK_DEFS.filter((d) => (d.class ?? 'road') !== 'micro')) {
+  for (const def of KART_TRACKS) {
     it(`${def.id}: 8 AI karts with items all finish 2 laps`, () => {
       const t = getTrack(def.id);
       const pool = carsForClass('kart');
@@ -187,7 +187,7 @@ describe('kart race with AI and items', () => {
         steps++;
       }
       const res = race.results();
-      console.log(`kart ${def.id}: winner ${res[0].time.toFixed(1)} s, items used ${used}, hits ${hits}`);
+      console.log(`kart ${def.id}: length ${t.length.toFixed(0)} m, winner ${res[0].time.toFixed(1)} s, best lap ${Math.min(...res.map((r) => r.bestLap)).toFixed(1)} s, items used ${used}, hits ${hits}`);
       expect(res.every((r) => r.finished)).toBe(true);
       expect(used).toBeGreaterThan(10);
       expect(hits).toBeGreaterThan(0);
