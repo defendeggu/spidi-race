@@ -1,4 +1,4 @@
-import { BATTLE_BOT_NAMES, BATTLE_MAX_KARTS, getCar, MAX_CARS, TRACK_DEFS, type CarClass, type LobbySettings, type ServerMsg } from '@spidi/shared';
+import { BATTLE_BOT_NAMES, BATTLE_MAX_KARTS, getCar, KART_TRACKS, MAX_CARS, RACE_TRACKS, type CarClass, type LobbySettings, type ServerMsg } from '@spidi/shared';
 import { BattleGame } from '../battleGame';
 import { Game, type LocalPlayerCfg } from '../game';
 import { KEYMAPS, SOLO_KEYMAP } from '../input';
@@ -7,8 +7,6 @@ import type { App } from './app';
 import { html } from './html';
 import { playerActions, playerPanel, settingsActions, settingsBlock } from './widgets';
 
-/** karts race on road and offroad tracks */
-const KART_TRACKS = TRACK_DEFS.filter((t) => (t.class ?? 'road') !== 'micro');
 
 /** The car class of the lobby: karts in a kart race, otherwise the track's class. */
 function lobbyClass(app: App, s: LobbySettings): CarClass {
@@ -179,7 +177,7 @@ export function showLobby(app: App) {
               <div class="opts"><label>Computer-Karts <span class="stepper">
                 <button data-a="aiDown" ${!editable ? html`disabled` : ''}>−</button><b>${Math.min(settings.aiCount, maxAi)}</b>
                 <button data-a="aiUp" ${!editable ? html`disabled` : ''}>+</button></span></label></div>`
-            : settingsBlock(settings, editable, maxAi, kart ? KART_TRACKS : TRACK_DEFS)}
+            : settingsBlock(settings, editable, maxAi, kart ? KART_TRACKS : RACE_TRACKS)}
         </div>
       </div>
       ${me && !racing ? html`
@@ -212,7 +210,9 @@ export function showLobby(app: App) {
     kind: (el) => {
       settings.kart = el.dataset.id === 'kart' || el.dataset.id === 'battle';
       settings.battle = el.dataset.id === 'battle';
-      if (settings.kart && !KART_TRACKS.some((t) => t.id === settings.trackId)) settings.trackId = KART_TRACKS[0].id;
+      // each mode has its own tracks (e.g. the kart-only airport)
+      const tracks = settings.kart ? KART_TRACKS : RACE_TRACKS;
+      if (!tracks.some((t) => t.id === settings.trackId)) settings.trackId = tracks[0].id;
       net.send({ type: 'settings', settings });
     },
     leave: () => app.showMain(),

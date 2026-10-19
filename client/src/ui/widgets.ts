@@ -1,4 +1,4 @@
-import { carRatings, getCar, TRACK_DEFS, type CarClass } from '@spidi/shared';
+import { carRatings, getCar, RACE_TRACKS, type CarClass, type TrackDef } from '@spidi/shared';
 import type { App } from './app';
 import { html } from './html';
 import { SKILLS } from './prefs';
@@ -50,7 +50,7 @@ export function playerActions(app: App, refresh: () => void, cls: () => CarClass
 }
 
 /** Track choice, laps, AI count and skill. */
-export function settingsBlock(s: RaceSettings, editable: boolean, maxAi: number, tracks = TRACK_DEFS) {
+export function settingsBlock(s: RaceSettings, editable: boolean, maxAi: number, tracks: TrackDef[] = RACE_TRACKS) {
   const dis = !editable;
   const badge = (cls: CarClass | undefined) =>
     cls === 'offroad' ? html` <em class="badge">OFFROAD</em>` : cls === 'micro' ? html` <em class="badge micro">MICRO</em>` : '';

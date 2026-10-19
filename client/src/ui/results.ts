@@ -1,5 +1,5 @@
 import {
-  formatTime, getCar, KART_PREFIX, kartBoardTrack, rankEntries, TOWN_BOARDS, TOWN_GOAL_COUNTS, townBoard, TRACK_DEFS,
+  formatTime, getCar, KART_PREFIX, KART_TRACKS, kartBoardTrack, RACE_TRACKS, rankEntries, TOWN_BOARDS, TOWN_GOAL_COUNTS, townBoard, TRACK_DEFS,
   type LeaderboardEntry, type LeaderboardSort, type ResultRow,
 } from '@spidi/shared';
 import { Game } from '../game';
@@ -123,7 +123,7 @@ export function showLeaderboard(app: App, view: BoardView, back: () => void, ent
         <button class="${kart ? 'sel' : ''}" data-a="kind" data-id="${KART_PREFIX}">Karts</button>
       </div>`}
       <div class="toggle">
-        ${[...TRACK_DEFS.filter((t) => !kart || (t.class ?? 'road') !== 'micro').map((t) => ({ id: (kart ? KART_PREFIX : '') + t.id, name: t.name })), ...TOWN_BOARDS]
+        ${[...(kart ? KART_TRACKS : RACE_TRACKS).map((t) => ({ id: (kart ? KART_PREFIX : '') + t.id, name: t.name })), ...TOWN_BOARDS]
           .map((t) => html`<button class="${t.id === view.trackId ? 'sel' : ''}" data-a="track" data-id="${t.id}">${t.name}</button>`)}
       </div>
       <div class="opts">
@@ -146,9 +146,9 @@ export function showLeaderboard(app: App, view: BoardView, back: () => void, ent
     track: (el) => showLeaderboard(app, { ...view, trackId: el.dataset.id! }, back),
     kind: (el) => {
       const base = view.trackId.replace(KART_PREFIX, '');
-      const t = TRACK_DEFS.find((d) => d.id === base);
-      // the breakfast table has no kart board
-      const id = el.dataset.id && (t?.class ?? 'road') === 'micro' ? 'alpenpass' : base;
+      // the other mode may not have this track (breakfast table, the two airports): take its first track
+      const tracks = el.dataset.id ? KART_TRACKS : RACE_TRACKS;
+      const id = tracks.some((d) => d.id === base) ? base : tracks[0].id;
       showLeaderboard(app, { ...view, trackId: (el.dataset.id ?? '') + id }, back);
     },
     sort: (el) => again({ ...view, sort: (el as HTMLSelectElement).value as LeaderboardSort }),
