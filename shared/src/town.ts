@@ -1,6 +1,6 @@
 import type { CarSpec } from './cars';
 import { clamp, mulberry32, wrapAngle } from './math';
-import { CIRCLE_R, driveCar, newCarState, updateGearbox, updateVertical, type CarInput, type CarState, type DriveGround } from './physics';
+import { CIRCLE_R, driveCar, newCarState, stepRocket, updateGearbox, updateVertical, type CarInput, type CarState, type DriveGround } from './physics';
 import { SURFACE_PROPS, type Surface } from './track';
 import { TOWN_FOOTPRINTS } from './townFootprints';
 
@@ -1072,6 +1072,7 @@ const townGround: DriveGround = { grip: 1, drag: 0, offroad: false, bankGrip: 0,
  * The ground is flat except for the skate park ramps, where cars climb, jump and land.
  */
 export function stepCarTown(c: CarState, spec: CarSpec, inp: CarInput, map: TownMap, dt: number) {
+  stepRocket(c, spec, inp, dt, !map.inWater(c.x, c.z));
   const px = c.x, pz = c.z;
   const sp = SURFACE_PROPS[map.surfaceAt(c.x, c.z)];
   townGround.grip = sp.grip;

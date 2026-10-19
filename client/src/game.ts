@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { updateRocketHud } from './rocketHud';
 import {
   AIDriver, applyNetCar, collideCars, ItemMirror, createCarState, forwardSpeed, getCar, getTrack, gridPosition, idleCar,
   ItemWorld, KartBrain, lerp, lerpAngle, NO_INPUT, Race, stepCar, stepKart, SURFACE_PROPS, toNetCar, toNetKart,
@@ -399,6 +400,7 @@ export class Game {
       pl.wrongWay = along < -0.2 && this.race.started ? pl.wrongWay + dt : 0;
       const myDots = [...dots.map((d, i) => ({ ...d, self: this.cars[i] === c })), ...shots];
       pl.hud.update(this.race, v, s.gear, s.rpm, myDots, pl.wrongWay > 1.2, dt, this.items?.kart(c.slot.id));
+      updateRocketHud(pl.hud.root, c.spec, s, pl.cfg.keymap, k === 0);
 
       const rough = s.airborne ? 0 : SURFACE_PROPS[this.track.surfaceAt(s.idx)].rough;
       pl.voice?.update(s.rpm, s.throttle, s.skid * Math.min(1, Math.abs(v) / 8), rough * Math.min(1, Math.abs(v) / 25));

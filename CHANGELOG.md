@@ -2,6 +2,18 @@
 
 Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.3.0] – 2026-10-19
+
+### Hinzugefügt
+- Drei neue Fahrzeuge von Markus K. (Pull Request #2), prozedural modelliert, auch als Stadt-Varianten:
+  - **Weltenbummler** (Strasse): anthrazitfarbener Camper mit Aufstelldach und **Raketensprung** mit Fassrolle – Spieler 1 `F`, Spieler 2 `Num 2` / `Entf`, Touch-Knopf „ROCKET“; HUD mit Schub, Landung und Abkühlzeit
+  - **Steinbock DC** (Offroad): weisser Doppelkabinen-Pickup mit offener Ladefläche und Geländereifen
+  - **Toro Fulmine** (Strasse): oranger V12-Supersportwagen
+- Tests für Raketensprung und Fassrolle
+
+### Geändert
+- Fantasienamen und deutsche Beschreibungen statt Markennamen, ohne Markenlogos am Kühlergrill
+
 ## [1.2.0] – 2026-10-19
 
 ### Hinzugefügt
@@ -322,6 +334,7 @@ Erste stabile Version: Das Spiel ist auf echter Hardware getestet.
 - HUD mit Minimap, synthetischer Sound, 3 Kameras
 - Docker-Image und docker-compose (Port 8090)
 
+[1.3.0]: https://github.com/defendeggu/spidi-race/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/defendeggu/spidi-race/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/defendeggu/spidi-race/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/defendeggu/spidi-race/compare/v1.0.0...v1.0.1

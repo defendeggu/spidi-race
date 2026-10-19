@@ -20,6 +20,8 @@ export interface NetCar {
   br: boolean;
   vy: number;
   air: boolean;
+  rb?: number;
+  rc?: number;
 }
 
 export interface LobbyPlayer {
@@ -81,6 +83,7 @@ export function toNetCar(c: CarState): NetCar {
     id: c.id, x: r2(c.x), y: r2(c.y), z: r2(c.z), h: Math.round(c.heading * 1000) / 1000,
     vx: r2(c.vx), vz: r2(c.vz), st: r2(c.steer), rpm: Math.round(c.rpm), g: c.gear, sk: r2(c.skid), br: c.braking,
     vy: r2(c.vy), air: c.airborne,
+    ...((c.rocketCooldown ?? 0) > 0 ? { rb: r2(c.rocketBurn ?? 0), rc: r2(c.rocketCooldown ?? 0) } : {}),
   };
 }
 
@@ -104,6 +107,7 @@ export function sanitizeNetCar(v: unknown, maxGear = 8): NetCar | null {
     x: num(o.x, -W, W), y: num(o.y, -1e3, 1e3), z: num(o.z, -W, W), h: num(o.h, -10, 10),
     vx: num(o.vx, -200, 200), vz: num(o.vz, -200, 200), st: num(o.st, -1, 1), rpm: num(o.rpm, 0, 9000),
     g: Math.round(num(o.g, 0, maxGear, 1)), sk: num(o.sk, 0, 1), br: o.br === true, vy: num(o.vy, -100, 100), air: o.air === true,
+    ...(typeof o.rc === 'number' && o.rc > 0 ? { rb: num(o.rb, 0, 0.4), rc: num(o.rc, 0, 5) } : {}),
   };
 }
 
@@ -121,6 +125,8 @@ export function applyNetCar(c: CarState, n: NetCar) {
   c.braking = n.br;
   c.vy = n.vy ?? 0;
   c.airborne = !!n.air;
+  c.rocketBurn = n.rb ?? 0;
+  c.rocketCooldown = n.rc ?? 0;
 }
 
 /** A line of the battle result. */

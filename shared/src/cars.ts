@@ -35,12 +35,35 @@ export interface CarSpec {
   mass: number;
   color: string;
   accent: string;
-  /** Kenney Car Kit model used by the client (visual only) */
+  /** Client model identifier, including built-in procedural vehicles (visual only). */
   model: string;
   /** keep the model's original livery (taxi, police, fire engine) instead of repainting it */
   keepPaint?: boolean;
+  /** Short cold-gas hop, followed by a ballistic landing. */
+  rocket?: boolean;
   shape: CarShape;
 }
+
+const CALIFORNIA: CarSpec = {
+  id: 'california',
+  class: 'road',
+  name: 'Weltenbummler',
+  description: 'Anthrazitfarbener Camper mit Aufstelldach und Raketensprung (F)',
+  model: 'vw-t6-california',
+  rocket: true,
+  color: '#383e42',
+  accent: '#161b20',
+  suspension: 0.12,
+  topSpeed: 58,
+  accel: 6.2,
+  brake: 12,
+  grip: 11,
+  steer: 0.6,
+  wheelbase: 3,
+  gears: 7,
+  mass: 2500,
+  shape: { length: 5, width: 1.98, height: 1.28, roof: 2.04, cabinShift: -0.4, spoiler: false },
+};
 
 export const CARS: CarSpec[] = [
   {
@@ -235,6 +258,26 @@ export const CARS: CarSpec[] = [
   },
 ];
 
+const HILUX: CarSpec = {
+  id: 'hilux', class: 'offroad', name: 'Steinbock DC',
+  description: 'Weisser Doppelkabinen-Pickup mit offener Ladefläche und Geländereifen',
+  model: 'toyota-hilux', color: '#f2f1e9', accent: '#15191c',
+  suspension: 0.20, topSpeed: 63, accel: 7.6, brake: 13, grip: 13.5,
+  steer: 0.60, wheelbase: 3.15, gears: 6, mass: 2150,
+  shape: { length: 5.45, width: 2.08, height: 1.35, roof: 2.05, cabinShift: 0.25, spoiler: false },
+};
+
+const AVENTADOR: CarSpec = {
+  id: 'aventador', class: 'road', name: 'Toro Fulmine',
+  description: 'Oranger V12-Supersportwagen mit scharfen Kanten und brachialer Beschleunigung',
+  model: 'lamborghini-aventador', color: '#ed730b', accent: '#121619',
+  suspension: 0.05, topSpeed: 94, accel: 10.4, brake: 17.5, grip: 14.0,
+  steer: 0.58, wheelbase: 2.7, gears: 7, mass: 1575,
+  shape: { length: 4.95, width: 2.08, height: 0.80, roof: 1.20, cabinShift: -0.3, spoiler: false },
+};
+
+CARS.push(CALIFORNIA, HILUX, AVENTADOR);
+
 // ---------------------------------------------------------------- practice town: gentle everyday cars
 const TOWN_BASE = {
   class: 'town' as const,
@@ -251,6 +294,14 @@ const TOWN_BASE = {
 };
 
 export const TOWN_CARS: CarSpec[] = [
+  {
+    ...CALIFORNIA,
+    id: 'california-town',
+    class: 'town',
+    topSpeed: 20,
+    accel: 4.2,
+    brake: 10,
+  },
   {
     ...TOWN_BASE,
     id: 'familie',
@@ -318,6 +369,8 @@ export const TOWN_CARS: CarSpec[] = [
   },
 ];
 
+TOWN_CARS.push({ ...HILUX, id: 'hilux-town', class: 'town', topSpeed: 21, accel: 4.7, brake: 10 });
+TOWN_CARS.push({ ...AVENTADOR, id: 'aventador-town', class: 'town', topSpeed: 21, accel: 5.4, brake: 13 });
 CARS.push(...TOWN_CARS);
 
 // ---------------------------------------------------------------- karts (kart races with items)

@@ -8,6 +8,7 @@ export interface CarInput {
   /** -1 = left, +1 = right */
   steer: number;
   handbrake: boolean;
+  rocket?: boolean;
 }
 
 export const NO_INPUT: CarInput = { throttle: 0, brake: 0, steer: 0, handbrake: false };
@@ -42,6 +43,9 @@ export interface CarState {
   airTime: number;
   /** set for one step when the car touches down: impact speed */
   landed: number;
+  rocketBurn?: number;
+  rocketCooldown?: number;
+  rocketHeld?: boolean;
 }
 
 export const CAR_HALF_WIDTH = 0.95;
@@ -65,6 +69,7 @@ export function newCarState(id: string, x: number, y: number, z: number, heading
     id, x, y, z, heading, vx: 0, vz: 0, steer: 0, rpm: IDLE_RPM, gear: 1,
     idx: 0, s: 0, lat: 0, skid: 0, impact: 0, throttle: 0, braking: false, offroad: false, shiftTimer: 0,
     vy: 0, airborne: false, airTime: 0, landed: 0,
+    rocketBurn: 0, rocketCooldown: 0, rocketHeld: false,
   };
 }
 
@@ -86,6 +91,30 @@ export function idleCar(c: CarState, inp: CarInput, dt: number) {
 }
 
 const GRAVITY = 9.81;
+export const ROCKET_BURN_TIME = 0.4;
+export const ROCKET_COOLDOWN = 5;
+
+/** One press launches one hop; holding the key cannot launch again on landing. */
+export function stepRocket(c: CarState, spec: CarSpec, inp: CarInput, dt: number, canLaunch = true) {
+  if (!spec.rocket) return;
+  c.rocketCooldown = Math.max(0, (c.rocketCooldown ?? 0) - dt);
+  const pressed = inp.rocket === true;
+  if (pressed && !c.rocketHeld && !c.airborne && c.rocketCooldown === 0 && canLaunch) {
+    c.airborne = true;
+    c.airTime = 0;
+    c.vy = 7.5;
+    c.rocketBurn = ROCKET_BURN_TIME;
+    c.rocketCooldown = ROCKET_COOLDOWN;
+  }
+  c.rocketHeld = pressed;
+  const burn = Math.min(dt, c.rocketBurn ?? 0);
+  if (burn > 0) {
+    c.vy += 7 * burn;
+    c.vx += Math.sin(c.heading) * 4 * burn;
+    c.vz += Math.cos(c.heading) * 4 * burn;
+    c.rocketBurn = Math.max(0, (c.rocketBurn ?? 0) - dt);
+  }
+}
 /** the ground must fall away this much below the ballistic path before the car takes off */
 const TAKEOFF_TOLERANCE = 0.03;
 
@@ -184,6 +213,7 @@ export function driveCar(c: CarState, spec: CarSpec, inp: CarInput, g: DriveGrou
 const trackGround: DriveGround = { grip: 1, drag: 0, offroad: false, bankGrip: 0, slope: 0 };
 
 export function stepCar(c: CarState, spec: CarSpec, inp: CarInput, track: Track, dt: number) {
+  stepRocket(c, spec, inp, dt);
   const fx = Math.sin(c.heading), fz = Math.cos(c.heading);
   const i = c.idx;
   const surf = surfaceFor(spec, track, i);
@@ -238,6 +268,7 @@ export function updateVertical(c: CarState, ground: number, dt: number, canFly: 
       c.y = ground;
       c.vy = 0;
       c.airborne = false;
+      c.rocketBurn = 0;
       c.landed = Math.max(0.1, hit);
       if (hit > 6) {
         // hard landing costs some speed
