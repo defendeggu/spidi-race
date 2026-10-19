@@ -2,6 +2,19 @@
 
 Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.2.0] – 2026-10-19
+
+### Hinzugefügt
+- **Flughafen** als gemeinsame Welt (angelehnt an einen grossen Schweizer Landesflughafen, nicht massstabsgetreu, ohne Namen und Logos): lange Nord-Süd-Piste mit Parallelrollweg, kreuzende Piste im Norden, Rollwege, Vorfeld, Terminal, Dock A und Dock B mit Fluggastbrücken, Tower, Hangars, Rollwegbrücke über eine Servicestrasse
+- **Flughafen** (nur Autorennen, 5,7 km): 2,4 km Vollgas auf der Piste, zurück über den Parallelrollweg mit 90°-Abzweigen und unter der Rollwegbrücke durch
+- **Flughafen Kart** (nur Kart-Rennen, 3,4 km, Runde ca. 1:50): Start-Ziel-Gerade auf der Piste, dann schneller Bogen, Schikane, S-Kurven, Haarnadel am Tower und 90°-Ecken entlang der Hangars; die ?-Boxen-Reihen liegen nach dem Bogen, auf der Geraden an den Hangars und vor der letzten Kurve
+- Prozedurale Passagierjets im Low-Poly-Stil (4 Farbvarianten, instanziert), Pisten- und Rollwegmarkierungen, Befeuerung, Windsäcke, Vorfeld-Fahrzeuge, Zaun und Baumgruppen
+- Strecken können einem Modus zugeordnet werden (`modes: ['race']` / `['kart']`); Menü, Lobby, Server und Rangliste zeigen je Modus nur die passenden Strecken. Alle bisherigen Strecken bleiben unverändert in ihren Modi
+- Tests für beide Flughafenstrecken, die Modus-Zuordnung, die Lage der ?-Boxen, den Abstand der Kulisse zur Fahrbahn und Items auf der Kartstrecke
+
+### Geändert
+- Die Entwickleransicht `?view=<strecke>@<meter>` kennt Strecken-IDs mit Bindestrich
+
 ## [1.1.0] – 2026-10-17
 
 ### Hinzugefügt
@@ -309,6 +322,7 @@ Erste stabile Version: Das Spiel ist auf echter Hardware getestet.
 - HUD mit Minimap, synthetischer Sound, 3 Kameras
 - Docker-Image und docker-compose (Port 8090)
 
+[1.2.0]: https://github.com/defendeggu/spidi-race/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/defendeggu/spidi-race/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/defendeggu/spidi-race/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/defendeggu/spidi-race/compare/v0.19.0...v1.0.0
