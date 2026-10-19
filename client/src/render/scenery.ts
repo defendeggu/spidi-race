@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { mulberry32, WALL_OFFSET, type Track } from '@spidi/shared';
+import { BUILDING_VARIANTS, mulberry32, WALL_OFFSET, type Building, type Track } from '@spidi/shared';
 import { assetsReady, getModel, getTexture } from './assets';
 import { buildAirportScenery } from './airportScenery';
+import { buildingMeshes, variantColors } from './buildingKit';
 import { coastline, type Terrain } from './terrain';
 
 // ------------------------------------------------------------------ procedural fallback geometry
@@ -50,7 +51,17 @@ export interface Variant {
   geo?: () => THREE.BufferGeometry;
   /** scale applied to the Kenney model (its units are ~1 m) */
   scale: number;
+  /** a building of the town kits: drawn with a wall / roof colour per instance like in the practice town */
+  kit?: boolean;
+  /** footprint radius in metres (for kit houses assembled from parts, which have no single model) */
+  radius?: number;
 }
+
+/** A town-kit building variant (Kenney house or 'tpl-…' house assembled from parts), coloured per instance. */
+export const kitHouse = (model: string, scale: number, wall: string, roof: string, radius?: number): Variant =>
+  ({ model, scale, kit: true, radius, geo: () => fallback.house(wall, roof) });
+
+let kitSeed = 0;
 
 /** Kenney's Nature Kit uses pastel/teal colours; map them to natural tones by material name. */
 const NATURE_COLORS: Record<string, string> = {
@@ -96,6 +107,14 @@ export function instanced(variant: Variant, matrices: THREE.Matrix4[]): THREE.Ob
   const scaleM = new THREE.Matrix4().makeScale(variant.scale, variant.scale, variant.scale);
   const model = variant.model && assetsReady() ? getModel(variant.model) : undefined;
   const out: THREE.Object3D[] = [];
+  if (variant.kit && variant.model && assetsReady()) {
+    // the same colour palettes as in the practice town, a different variant for each instance
+    const items = matrices.map((m) => ({
+      matrix: m.clone().multiply(scaleM),
+      ...variantColors({ model: variant.model, variant: kitSeed++ % BUILDING_VARIANTS } as Building),
+    }));
+    return buildingMeshes(variant.model, items);
+  }
   if (model) {
     model.updateMatrixWorld(true);
     model.traverse((o) => {
@@ -163,6 +182,7 @@ export function buildScenery(track: Track, terrain: Terrain): THREE.Group {
   const group = new THREE.Group();
   colorTheme = track.def.theme === 'desert' ? 'desert' : 'default';
   const seed = track.def.seed;
+  kitSeed = seed;
   const rocks: Variant[] = [
     { model: 'rock_largeA', geo: fallback.rock, scale: 5 },
     { model: 'rock_largeB', geo: fallback.rock, scale: 4.5 },
@@ -195,12 +215,18 @@ export function buildScenery(track: Track, terrain: Terrain): THREE.Group {
     group.add(scatter(track, terrain, [{ model: 'plant_bushLarge', geo: fallback.round, scale: 7 }], 300, seed + 7, {
       minDist: 13, maxDist: 80, scale: [0.7, 1.3], ok: (_x, y) => y < 100,
     }));
-    const chalets: Variant[] = [
-      { model: 'building-type-a', geo: () => fallback.house('#7a5233', '#4a3a30'), scale: 7.5 },
-      { model: 'building-type-k', geo: () => fallback.house('#7a5233', '#4a3a30'), scale: 7.5 },
-      { model: 'building-type-c', geo: () => fallback.house('#7a5233', '#4a3a30'), scale: 7.5 },
-    ];
-    group.add(scatter(track, terrain, chalets, 14, seed + 3, { minDist: 22, maxDist: 70, scale: [0.9, 1.1], ok: (_x, y) => y < 40, square: true }));
+    // leafy trees down in the valley
+    group.add(scatter(track, terrain, [
+      { model: 'tree_default', geo: fallback.round, scale: 7 },
+      { model: 'tree_oak', geo: fallback.round, scale: 7 },
+      { model: 'tree_fat', geo: fallback.round, scale: 7 },
+    ], 260, seed + 8, { minDist: 14, maxDist: 200, scale: [0.8, 1.3], ok: (_x, y) => y < 25 }));
+    // colourful chalets and farmhouses on the lower slopes
+    const chalets: Variant[] = ['a', 'c', 'e', 'g', 'k', 'o', 'r', 'u'].map((t) => kitHouse(`building-type-${t}`, 7.5, '#7a5233', '#4a3a30'));
+    group.add(scatter(track, terrain, chalets, 34, seed + 3, { minDist: 22, maxDist: 90, scale: [0.9, 1.1], ok: (_x, y) => y < 45, square: true, maxSlope: 2.5 }));
+    // a half-timbered village along the start straight
+    const village: Variant[] = ['2x2x2', '3x2x2', '2x2x3', '3x2x3'].map((c) => kitHouse(`tpl-fantasy-${c}`, 4.5, '#e8dcc0', '#8a3a3a', 8));
+    group.add(scatter(track, terrain, village, 18, seed + 9, { minDist: 20, maxDist: 55, scale: [1, 1], ok: (_x, y) => y < 12, square: true, samples: Math.min(track.n, 140), maxSlope: 2 }));
   } else {
     const land = (x: number, y: number, z: number) => y > 2.5 && z < coastline(x) - 15;
     const trees: Variant[] = [
@@ -221,20 +247,20 @@ export function buildScenery(track: Track, terrain: Terrain): THREE.Group {
     group.add(scatter(track, terrain, [{ model: 'plant_bushLarge', geo: fallback.round, scale: 7 }], 250, seed + 8, {
       minDist: 13, maxDist: 80, scale: [0.7, 1.3], ok: land,
     }));
-    // fishing village along the start straight
-    const houses: Variant[] = ['a', 'c', 'f', 'k', 'n', 't'].map((t, i) => ({
-      model: `building-type-${t}`,
-      geo: () => fallback.house(i % 2 ? '#f1ece0' : '#e8d7a8', i % 2 ? '#b5523b' : '#9c4630'),
-      scale: 7.5,
-    }));
-    group.add(scatter(track, terrain, houses, 46, seed + 5, { minDist: 18, maxDist: 70, scale: [0.9, 1.15], ok: land, samples: Math.min(track.n, 320), square: true }));
+    // colourful fishing village along the start straight: all house types and a few old-town houses
+    const houses: Variant[] = 'abcdefghijklmnopqrstu'.split('').map((t, i) =>
+      kitHouse(`building-type-${t}`, 7.5, i % 2 ? '#f1ece0' : '#e8d7a8', i % 2 ? '#b5523b' : '#9c4630'));
+    houses.push(...['2x2x2', '3x2x2', '2x2x3'].map((c) => kitHouse(`tpl-fantasy-${c}`, 4.5, '#f1ece0', '#b5523b', 8)));
+    group.add(scatter(track, terrain, houses, 70, seed + 5, { minDist: 18, maxDist: 80, scale: [0.9, 1.15], ok: land, samples: Math.min(track.n, 320), square: true }));
     group.add(lighthouse(terrain));
+    group.add(boats(track, terrain, seed + 6));
   }
   return group;
 }
 
 /** Footprint radius (m) of a variant at scale 1 of the placement matrix. */
 export function footprint(v: Variant) {
+  if (v.radius) return v.radius;
   const model = v.model && assetsReady() ? getModel(v.model) : undefined;
   const box = new THREE.Box3();
   if (model) {
@@ -293,20 +319,33 @@ function cityScenery(track: Track, terrain: Terrain) {
   const group = new THREE.Group();
   const seed = track.def.seed;
   const placed: { x: number; z: number; r: number }[] = [];
-  const shops: Variant[] = 'abcdefghijk'.split('').map((c, i) => ({
-    model: `building-${c}`, geo: towerGeo(14 + (i % 4) * 5, i % 2 ? '#b9b2a6' : '#9fa8b3'), scale: 14,
-  }));
-  const towers: Variant[] = [
-    ...'abcde'.split('').map((c, i) => ({ model: `building-skyscraper-${c}`, geo: towerGeo(50 + i * 12, '#7f93a8'), scale: 15 })),
-    ...'lmn'.split('').map((c) => ({ model: `building-${c}`, geo: towerGeo(36, '#a39c90'), scale: 14 })),
+  // shops and brick houses in the colours of the practice town
+  const shops: Variant[] = [
+    ...'abcdefghijk'.split('').map((c, i) => ({
+      model: `building-${c}`, geo: towerGeo(14 + (i % 4) * 5, i % 2 ? '#b9b2a6' : '#9fa8b3'), scale: 14, kit: true,
+    })),
+    ...['3x2x3', '4x2x4', '2x2x3', '5x2x4'].map((c) => {
+      const [w, d] = c.split('x').map(Number);
+      return kitHouse(`tpl-retro-${c}`, 4, '#b8654a', '#5e5e5e', (Math.max(w, d) * 4) / 2 + 1);
+    }),
   ];
-  const background: Variant[] = 'acfhl'.split('').map((c, i) => ({ model: `low-detail-building-${c}`, geo: towerGeo(40 + i * 6, '#8d97a3'), scale: 26 }));
+  const towers: Variant[] = [
+    ...'abcde'.split('').map((c, i) => ({ model: `building-skyscraper-${c}`, geo: towerGeo(50 + i * 12, '#7f93a8'), scale: 15, kit: true })),
+    ...'lmn'.split('').map((c) => ({ model: `building-${c}`, geo: towerGeo(36, '#a39c90'), scale: 14, kit: true })),
+  ];
+  const background: Variant[] = 'acfhl'.split('').map((c, i) => ({ model: `low-detail-building-${c}`, geo: towerGeo(40 + i * 6, '#8d97a3'), scale: 26, kit: true }));
   group.add(buildingRows(track, terrain, shops, placed, { gap: 1, spacing: 16, seed: seed + 1, jitter: 2 }));
   group.add(buildingRows(track, terrain, towers, placed, { gap: 26, spacing: 26, seed: seed + 2, jitter: 8 }));
   group.add(buildingRows(track, terrain, background, placed, { gap: 60, spacing: 34, seed: seed + 3, jitter: 40 }));
   group.add(buildingRows(track, terrain, background, placed, { gap: 120, spacing: 40, seed: seed + 4, jitter: 80 }));
   // a few trees on the sidewalks and in parks
-  group.add(scatter(track, terrain, [{ model: 'tree_default', geo: fallback.round, scale: 6 }, { model: 'tree_oak', geo: fallback.round, scale: 6 }], 160, seed + 5, {
+  group.add(scatter(track, terrain, [
+    { model: 'tree_default', geo: fallback.round, scale: 6 },
+    { model: 'tree_oak', geo: fallback.round, scale: 6 },
+    { model: 'tree_fat', geo: fallback.round, scale: 6 },
+    { model: 'tree_thin', geo: fallback.cypress, scale: 6 },
+    { model: 'plant_bushLarge', geo: fallback.round, scale: 5 },
+  ], 220, seed + 5, {
     minDist: 13, maxDist: 60, scale: [0.8, 1.1], ok: (x, _y, z) => !placed.some((p) => Math.hypot(p.x - x, p.z - z) < p.r + 3),
   }));
   group.add(streetLamps(track));
@@ -350,9 +389,15 @@ function speedwayScenery(track: Track, terrain: Terrain) {
   const trees: Variant[] = [
     { model: 'tree_default', geo: fallback.round, scale: 7 },
     { model: 'tree_oak', geo: fallback.round, scale: 7 },
+    { model: 'tree_fat', geo: fallback.round, scale: 7 },
+    { model: 'tree_thin', geo: fallback.cypress, scale: 7 },
     { model: 'tree_pineRoundA', geo: fallback.pine, scale: 7 },
+    { model: 'tree_pineTallA', geo: fallback.pine, scale: 7 },
   ];
-  group.add(scatter(track, terrain, trees, 700, seed + 1, { minDist: 70, maxDist: 450, scale: [0.9, 1.4], ok: () => true }));
+  // the paddock in the infield behind the start/finish straight stays free
+  const paddock = (x: number, z: number) => Math.abs(x) < 360 && z < 0 && z > -230;
+  group.add(scatter(track, terrain, trees, 900, seed + 1, { minDist: 70, maxDist: 450, scale: [0.9, 1.4], ok: (x, _y, z) => !paddock(x, z) }));
+  group.add(speedwayPaddock(terrain, seed + 2));
   // floodlight towers around the outside of the oval
   const outer = -Math.sign(track.curv.reduce((a, b) => a + b, 0)) || 1;
   const towerGeo2 = mergeGeometries([
@@ -375,6 +420,46 @@ function speedwayScenery(track: Track, terrain: Terrain) {
   }
   towers.count = lights.count = k;
   group.add(towers, lights);
+  return group;
+}
+
+/** Infield paddock: team garages, transporters in team colours, containers and the race control tower. */
+function speedwayPaddock(terrain: Terrain, seed: number) {
+  const rand = mulberry32(seed);
+  const group = new THREE.Group();
+  const o = new THREE.Object3D();
+  const place = (x: number, z: number, rot: number, s = 1) => {
+    o.position.set(x, terrain.heightAt(x, z) - 0.1, z);
+    o.rotation.set(0, rot, 0);
+    o.scale.setScalar(s);
+    o.updateMatrix();
+    return o.matrix.clone();
+  };
+  // garages facing the pit lane (+z)
+  const garages: Variant[] = ['ind-building-p', 'ind-building-k', 'ind-building-s'].map((m) => ({ model: m, geo: towerGeo(8, '#c9c4ba'), scale: 12, kit: true }));
+  const gb = garages.map(() => [] as THREE.Matrix4[]);
+  for (let k = 0; k < 10; k++) gb[k % garages.length].push(place(-300 + k * 64, -60, 0));
+  garages.forEach((v, i) => instanced(v, gb[i]).forEach((m) => group.add(m)));
+  // transporters in two rows behind the garages, containers in between
+  const trucks: THREE.Matrix4[] = [], boxes: THREE.Matrix4[] = [];
+  for (let k = 0; k < 14; k++) trucks.push(place(-290 + k * 44, -115 - (k % 2) * 30, Math.PI / 2));
+  for (let k = 0; k < 10; k++) if (rand() < 0.8) boxes.push(new THREE.Matrix4().compose(new THREE.Vector3(-270 + k * 60, terrain.heightAt(-270 + k * 60, -180) - 0.1, -180), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 2), new THREE.Vector3(2.44, 2.59, 12.19)));
+  if (assetsReady()) {
+    const colour = (k: number) => variantColors({ model: 'semi-truck', variant: k } as Building);
+    buildingMeshes('semi-truck', trucks.map((matrix, k) => ({ matrix, ...colour(k) }))).forEach((m) => group.add(m));
+    buildingMeshes('container', boxes.map((matrix, k) => ({ matrix, ...colour(k * 3 + 1) }))).forEach((m) => group.add(m));
+  } else {
+    instanced({ geo: () => colored(new THREE.BoxGeometry(2.5, 4, 16.5).translate(0, 2, 0), '#c8202a'), scale: 1 }, trucks).forEach((m) => group.add(m));
+  }
+  // race control: a small tower at the start/finish line
+  const ctrl = mergeGeometries([
+    colored(new THREE.BoxGeometry(10, 12, 10).translate(0, 6, 0), '#e8e4dc'),
+    colored(new THREE.BoxGeometry(12, 4, 12).translate(0, 14, 0), '#35546e'),
+    colored(new THREE.BoxGeometry(13, 0.6, 13).translate(0, 16.3, 0), '#c8202a'),
+  ])!;
+  const tower = new THREE.Mesh(ctrl, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
+  tower.position.set(-450, terrain.heightAt(-450, -40) - 0.1, -40);
+  group.add(tower);
   return group;
 }
 
@@ -452,6 +537,37 @@ function forestScenery(track: Track, terrain: Terrain) {
     { model: 'tent_detailedOpen', geo: () => fallback.house('#c84a3a', '#c84a3a'), scale: 7 },
     { model: 'campfire_logs', geo: fallback.rock, scale: 6 },
   ], 6, seed + 4, { minDist: 16, maxDist: 30, scale: [0.9, 1.1], ok: () => true }));
+  return group;
+}
+
+/** Fishing boats, sailing boats and buoys on the sea off the coast. */
+function boats(track: Track, terrain: Terrain, seed: number) {
+  const rand = mulberry32(seed);
+  const variants: Variant[] = [
+    { model: 'wc-boat-fishing-small', geo: () => colored(new THREE.BoxGeometry(3, 1.5, 9).translate(0, 0.5, 0), '#c8402a'), scale: 3 },
+    { model: 'wc-boat-sail-a', geo: () => colored(new THREE.BoxGeometry(3, 1.2, 8).translate(0, 0.5, 0), '#f2f2f2'), scale: 3 },
+    { model: 'wc-boat-sail-b', geo: () => colored(new THREE.BoxGeometry(3, 1.2, 8).translate(0, 0.5, 0), '#f2f2f2'), scale: 3 },
+    { model: 'wc-boat-speed-a', geo: () => colored(new THREE.BoxGeometry(2.5, 1, 7).translate(0, 0.5, 0), '#2f6fd0'), scale: 3 },
+    { model: 'wc-boat-row-small', geo: () => colored(new THREE.BoxGeometry(1.6, 0.6, 4).translate(0, 0.3, 0), '#8a5a36'), scale: 3 },
+    { model: 'wc-buoy', geo: () => colored(new THREE.CylinderGeometry(0.8, 0.8, 1.5, 8), '#e8501a'), scale: 3 },
+    { model: 'wc-buoy-flag', geo: () => colored(new THREE.CylinderGeometry(0.8, 0.8, 1.5, 8), '#e8c22a'), scale: 3 },
+  ];
+  const buckets: THREE.Matrix4[][] = variants.map(() => []);
+  const o = new THREE.Object3D();
+  const b = track.bounds;
+  for (let k = 0, tries = 0; k < 36 && tries < 400; tries++) {
+    const x = b.minX - 150 + rand() * (b.maxX - b.minX + 300);
+    const z = coastline(x) + 25 + Math.pow(rand(), 1.5) * 260;
+    // out on the water, off the road near the shore
+    if (terrain.heightAt(x, z) > -1.5 || terrain.distAt(x, z) < 40) continue;
+    o.position.set(x, -0.35, z);
+    o.rotation.set(0, rand() * Math.PI * 2, 0);
+    o.updateMatrix();
+    buckets[Math.floor(rand() * variants.length)].push(o.matrix.clone());
+    k++;
+  }
+  const group = new THREE.Group();
+  variants.forEach((v, i) => instanced(v, buckets[i]).forEach((m) => group.add(m)));
   return group;
 }
 

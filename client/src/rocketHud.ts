@@ -19,5 +19,5 @@ export function updateRocketHud(root: HTMLElement, spec: CarSpec, state: CarStat
   panel.textContent = (state.rocketBurn ?? 0) > 0 ? 'ROCKET · THRUST'
     : state.airborne ? 'ROCKET · 360° ROLL / LANDING'
       : cooldown > 0 ? `ROCKET · ${cooldown.toFixed(1)} s`
-        : `ROCKET · ${key} / TOUCH · READY`;
+        : `ROCKET · ${key} / △ / TOUCH · READY`;
 }

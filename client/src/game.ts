@@ -10,7 +10,7 @@ import { audio, EngineVoice } from './audio';
 import { Hud, type MapDot } from './hud';
 import { input, type KeyMap } from './input';
 import type { Net } from './net';
-import { ChaseCamera, TOPDOWN_MODE, viewForCar } from './render/cameras';
+import { ChaseCamera, TOPDOWN_MODE, viewForSpec } from './render/cameras';
 import { ItemVisuals } from './render/itemVisuals';
 import { Particles } from './render/particles';
 import { carColor, CarVisual } from './render/carModel';
@@ -152,8 +152,8 @@ export class Game {
       const hud = new Hud(holder, this.track, cfg.slotId, split);
       const pitch = car.spec.class === 'micro' ? 1.7 : car.spec.class === 'kart' ? 1.35 : 1;
       const voice = audio.ctx ? new EngineVoice(split ? (k === 0 ? -0.45 : 0.45) : 0, split ? 0.75 : 1, pitch) : null;
-      // karts: the driver's big helmet would block the normal chase view
-      const view = car.spec.class === 'kart' ? viewForCar(car.spec.shape.length, car.visual.height) : {};
+      // karts: the driver's big helmet would block the normal chase view; the camper is tall
+      const view = viewForSpec(car.spec, car.visual.height, car.spec.class === 'kart');
       this.players.push({ car, cfg, cam: new ChaseCamera(this.track.def.camera === 'topdown' ? TOPDOWN_MODE : 0, view), hud, voice, wrongWay: 0, impactCooldown: 0 });
     });
 
@@ -218,8 +218,7 @@ export class Game {
     }
     for (const p of this.players) {
       const touch = p.cfg.pad === 0;
-      // in kart races Y / △ fires, the camera moves to Back / Select or d-pad up
-      if (input.consume(p.cfg.keymap.camera) || input.consumePad(p.cfg.pad, this.items ? 'altCamera' : 'camera') || (touch && input.consumeTouch('camera'))) {
+      if (input.consume(p.cfg.keymap.camera) || input.consumePad(p.cfg.pad, 'camera') || (touch && input.consumeTouch('camera'))) {
         p.cam.cycle();
         p.hud.showCameraMode(p.cam.mode);
       }

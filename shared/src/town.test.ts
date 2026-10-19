@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { carsForClass, getCar } from './cars';
 import { forwardSpeed, NO_INPUT, type CarInput } from './physics';
-import { BLOCK_INNER, HARBOR, OUTER, RAIL, TOWN_BOUNDS, createTownCar, getTown, stepCarTown, TOWN_HALF } from './town';
+import { BLOCK_INNER, HARBOR, OUTER, RAIL, TOWN_AIRPORT, TOWN_BOUNDS, createTownCar, getTown, stepCarTown, TOWN_HALF } from './town';
 import { DUEL_SECONDS, TaskTracker, TownSession } from './townTasks';
 import { sanitizeSubmission } from './leaderboard';
 import { TRACK_DEFS } from './tracks';
@@ -9,13 +9,14 @@ import { Traffic } from './traffic';
 
 const DT = 1 / 60;
 
-/** Inside the harbour (south) or railway (east) strip, within the town bounds. */
+/** Inside the harbour (south), railway (east) or airfield (west) strip, within the town bounds. */
 const inStrips = (b: { x: number; z: number; w: number; d: number }) => {
   const { minX, maxX, maxZ } = TOWN_BOUNDS;
   const x0 = b.x - b.w / 2, x1 = b.x + b.w / 2, z0 = b.z - b.d / 2, z1 = b.z + b.d / 2;
   const harbour = z1 <= -OUTER + 0.01 && z0 >= HARBOR.quayZ - 0.01 && x0 >= minX - 0.01 && x1 <= maxX + 0.01;
   const rail = x1 <= -OUTER + 0.01 && x0 >= minX - 0.01 && z1 <= maxZ + 0.01 && z0 >= HARBOR.quayZ - 0.01;
-  return harbour || rail;
+  const airfield = x0 >= OUTER - 0.01 && x1 <= maxX + 0.01 && z0 >= -OUTER - 0.01 && z1 <= maxZ + 0.01;
+  return harbour || rail || airfield;
 };
 const town = getTown();
 const FULL: CarInput = { throttle: 1, brake: 0, steer: 0, handbrake: false };
@@ -553,3 +554,62 @@ describe('town extensions', () => {
     expect(maxY).toBeGreaterThan(r.height);
   });
 });
+
+describe('airfield in the west', () => {
+  const A = TOWN_AIRPORT;
+  const drive = (x: number, z: number, heading: number, seconds: number) => {
+    const c = createTownCar('t', { x, z, heading });
+    for (let i = 0; i < 60 * seconds; i++) stepCarTown(c, getCar('familie'), FULL, town, DT);
+    return { c };
+  };
+
+  it('runway and taxiway run along the west wall, runway long and straight', () => {
+    expect(A.runway.x + A.runway.width / 2).toBeLessThan(TOWN_BOUNDS.maxX - 10);
+    expect(A.runway.z1 - A.runway.z0).toBeGreaterThan(800);
+    expect(A.taxiway.x).toBeLessThan(A.runway.x);
+  });
+
+  it('runway, taxiway and apron are paved and free to drive', () => {
+    for (let z = A.runway.z0 + 50; z < A.runway.z1; z += 25) {
+      expect(town.surfaceAt(A.runway.x, z)).toBe('asphalt');
+      expect(town.isFree(A.runway.x - 8, z, 2.5), `runway z=${z}`).toBe(true);
+    }
+    for (let z = A.taxiway.z0; z < A.taxiway.z1; z += 25) {
+      expect(town.surfaceAt(A.taxiway.x, z)).toBe('asphalt');
+      // the taxiing plane takes up part of the taxiway
+      if (Math.abs(z - 220) > 30) expect(town.isFree(A.taxiway.x, z, 2.5), `taxiway z=${z}`).toBe(true);
+    }
+    for (const l of A.links) expect(town.isFree((A.taxiway.x + A.runway.x) / 2, l, 2.5)).toBe(true);
+    expect(town.surfaceAt(600, 0)).toBe('asphalt');
+    expect(town.surfaceAt(690, 100)).toBe('dirt');
+  });
+
+  it('terminal, cargo hall, tower, containers and several aircraft; one is lined up on the runway', () => {
+    const models = town.buildings.map((b) => b.model).concat(town.props.map((p) => p.model));
+    expect(models).toContain('airport-terminal');
+    expect(models).toContain('airport-cargo');
+    expect(models).toContain('airport-tower');
+    expect(town.props.filter((p) => p.model === 'plane').length).toBeGreaterThanOrEqual(6);
+    const lined = A.planes.filter((p) => Math.abs(p.x - A.runway.x) < 1 && p.z < A.runway.z0 + 60);
+    expect(lined).toHaveLength(1);
+    const containers = town.props.filter((p) => p.model === 'container' && p.x > OUTER && p.z > -OUTER);
+    expect(containers.length).toBeGreaterThan(2);
+    expect(containers.length).toBeLessThan(12);
+  });
+
+  it('a car drives from the outer street onto the apron and is stopped by a parked plane', () => {
+    // from the outer ring street straight west through the access lane north of the terminal
+    const { c } = drive(450, 120, Math.PI / 2, 10);
+    expect(c.x).toBeGreaterThan(560);
+    for (let x = 455; x < 650; x += 5) expect(town.surfaceAt(x, 120), `x=${x}`).toBe('asphalt');
+    // into the fuselage of the plane at the middle gate: from the north, at its middle
+    const p = A.planes[1];
+    const hit = drive(p.x + 18, p.z + 30, Math.PI, 5).c;
+    expect(hit.z).toBeGreaterThan(p.z + 2);
+  });
+
+  it('the old town stays the same: no buildings moved by the new strip', () => {
+    expect(town.buildings.filter((b) => b.x > OUTER).map((b) => b.model).sort()).toEqual(['airport-cargo', 'airport-terminal']);
+  });
+});
+

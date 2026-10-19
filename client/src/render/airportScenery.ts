@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { AIRPORT, getTrack, mulberry32, WALL_OFFSET, type Area, type Strip, type Track } from '@spidi/shared';
+import { AIRPORT, getTrack, mulberry32, onStrip, WALL_OFFSET, type Area, type Strip, type Track } from '@spidi/shared';
 import { assetsReady, getModel, getTexture, type TextureName } from './assets';
 import { buildingMeshes, type BuildingInstance } from './buildingKit';
 import { colored, fallback, instanced, type Variant } from './scenery';
@@ -79,14 +79,17 @@ function paved(tex: TextureName, metres: number, tint: string, plain: string) {
 const markMat = (color: string) => new THREE.MeshLambertMaterial({ color });
 
 /** A marking line along a strip, cut into 5 m pieces; pieces under a driven roadway are left out. */
-function markLine(d: Decals, s: Strip, t0: number, t1: number, lat: number, w: number) {
+function markLine(d: Decals, s: Strip, t0: number, t1: number, lat: number, w: number, own: Strip | null) {
   for (let t = t0; t < t1; t += 5) {
     const e = Math.min(t1, t + 5);
     const [ax, az] = along(s, t, lat), [bx, bz] = along(s, e, lat);
-    if (!clearOfTracks((ax + bx) / 2, (az + bz) / 2, w / 2)) continue;
+    if (!clearOfTracks((ax + bx) / 2, (az + bz) / 2, w / 2) || onOtherRunway(own, (ax + bx) / 2, (az + bz) / 2)) continue;
     d.strip(ax, az, bx, bz, w, Y_MARK);
   }
 }
+
+/** True if (x, z) is on a runway other than `own` (markings and lights stop where runways cross). */
+const onOtherRunway = (own: Strip | null, x: number, z: number) => AIRPORT.runways.some((r) => r !== own && onStrip(r, x, z, 2));
 
 /** point along a strip: t = metres from its start, lat = metres to the left (+) / right (-) */
 function along(s: Strip, t: number, lat: number): [number, number] {
@@ -95,7 +98,7 @@ function along(s: Strip, t: number, lat: number): [number, number] {
   return [s.x1 + tx * t - tz * lat, s.z1 + tz * t + tx * lat];
 }
 
-function numberTexture(text: string) {
+export function numberTexture(text: string) {
   const c = document.createElement('canvas');
   c.width = 128;
   c.height = 256;
@@ -110,7 +113,7 @@ function numberTexture(text: string) {
   return t;
 }
 
-function signTexture(text: string) {
+export function signTexture(text: string) {
   const c = document.createElement('canvas');
   c.width = 512;
   c.height = 96;
@@ -132,7 +135,8 @@ function signTexture(text: string) {
 function groundAndMarkings(group: THREE.Group) {
   const runway = new Decals(), taxi = new Decals(), apron = new Decals();
   const white = new Decals(), yellow = new Decals();
-  for (const r of AIRPORT.runways) runway.strip(r.x1, r.z1, r.x2, r.z2, r.width, Y_RUNWAY);
+  // crossing runways lie a few millimetres apart, so their surfaces do not flicker
+  AIRPORT.runways.forEach((r, k) => runway.strip(r.x1, r.z1, r.x2, r.z2, r.width, Y_RUNWAY + k * 0.008));
   for (const t of AIRPORT.taxiways) taxi.strip(t.x1, t.z1, t.x2, t.z2, t.width, Y_TAXI);
   for (const a of AIRPORT.aprons) apron.area(a, Y_APRON);
   // apron in front of the terminal between the docks and the taxiway
@@ -143,7 +147,7 @@ function groundAndMarkings(group: THREE.Group) {
   const numbers: THREE.Object3D[] = [];
   for (const r of AIRPORT.runways) {
     const len = Math.hypot(r.x2 - r.x1, r.z2 - r.z1);
-    const mark = (t0: number, t1: number, lat: number, w: number) => markLine(white, r, t0, t1, lat, w);
+    const mark = (t0: number, t1: number, lat: number, w: number) => markLine(white, r, t0, t1, lat, w, r);
     for (const end of [0, 1]) {
       const at = (t: number) => (end === 0 ? t : len - t);
       // threshold "piano keys"
@@ -175,7 +179,7 @@ function groundAndMarkings(group: THREE.Group) {
   }
   for (const t of AIRPORT.taxiways) {
     const len = Math.hypot(t.x2 - t.x1, t.z2 - t.z1);
-    markLine(yellow, t, 0, len, 0, 0.3);
+    markLine(yellow, t, 0, len, 0, 0.3, null);
   }
   group.add(white.mesh(markMat('#f2f2ee')));
   group.add(yellow.mesh(markMat('#e8c22a')));
@@ -187,17 +191,20 @@ function groundAndMarkings(group: THREE.Group) {
 function lights(group: THREE.Group) {
   const o = new THREE.Object3D();
   const sets: Record<string, THREE.Matrix4[]> = { white: [], blue: [], green: [] };
+  let own: Strip | null = null;
   const put = (set: string, x: number, z: number) => {
-    if (!clearOfTracks(x, z, 0.3)) return;
+    if (!clearOfTracks(x, z, 0.3) || onOtherRunway(own, x, z)) return;
     o.position.set(x, 0.18, z);
     o.updateMatrix();
     sets[set].push(o.matrix.clone());
   };
   for (const r of AIRPORT.runways) {
+    own = r;
     const len = Math.hypot(r.x2 - r.x1, r.z2 - r.z1);
     for (let t = 0; t <= len; t += 60) for (const lat of [-(r.width / 2 + 1.5), r.width / 2 + 1.5]) put('white', ...along(r, t, lat));
     for (const t of [0, len]) for (let lat = -r.width / 2; lat <= r.width / 2; lat += 4) put('green', ...along(r, t, lat));
   }
+  own = null;
   for (const tw of AIRPORT.taxiways) {
     const len = Math.hypot(tw.x2 - tw.x1, tw.z2 - tw.z1);
     for (let t = 15; t < len; t += 30) for (const lat of [-(tw.width / 2 + 0.8), tw.width / 2 + 0.8]) put('blue', ...along(tw, t, lat));
@@ -216,7 +223,7 @@ function lights(group: THREE.Group) {
 // ------------------------------------------------------------------ buildings
 
 /** Model size (model units) and the matrix that stretches it to w × h × d metres at (x, z). */
-function stretched(model: string, x: number, z: number, w: number, d: number, h: number, rot: number, y = 0) {
+export function stretched(model: string, x: number, z: number, w: number, d: number, h: number, rot: number, y = 0) {
   const src = getModel(model)!;
   const box = new THREE.Box3().setFromObject(src);
   const size = box.getSize(new THREE.Vector3());
@@ -240,7 +247,9 @@ function kitBuildings(group: THREE.Group) {
   const boxes: { m: THREE.Matrix4; color: string }[] = [];
   const hangarModels = ['ind-building-q', 'ind-building-c'];
   AIRPORT.hangars.forEach((h, k) => {
-    if (assetsReady()) add(hangarModels[k % 2], stretched(hangarModels[k % 2], h.x, h.z, h.w, h.d, 22, h.facing), k);
+    // w and d are world x and z: a hall turned sideways gets them swapped in model space
+    const side = Math.abs(Math.sin(h.facing)) > 0.5;
+    if (assetsReady()) add(hangarModels[k % 2], stretched(hangarModels[k % 2], h.x, h.z, side ? h.d : h.w, side ? h.w : h.d, 22, h.facing), k);
     else boxes.push({ m: new THREE.Matrix4().compose(new THREE.Vector3(h.x, 0, h.z), new THREE.Quaternion(), new THREE.Vector3(h.w, 22, h.d)), color: '#b8bcc2' });
   });
   // landside offices and car park buildings west of the terminal
@@ -252,6 +261,23 @@ function kitBuildings(group: THREE.Group) {
     if (assetsReady()) add(model, stretched(model, t.x - t.w / 2 - 70, z, 50, 40, 18 + (k % 3) * 8, -Math.PI / 2), k);
     else boxes.push({ m: new THREE.Matrix4().compose(new THREE.Vector3(t.x - t.w / 2 - 70, 0, z), new THREE.Quaternion(), new THREE.Vector3(50, 20, 40)), color: '#c9c4ba' });
   }
+  // containers on the cargo apron, in stacks of one or two
+  const cargo = AIRPORT.aprons[AIRPORT.aprons.length - 1];
+  const rand = mulberry32(99);
+  const containers: BuildingInstance[] = [];
+  for (let row = 0; row < 3; row++) {
+    for (let k = 0; k < 6; k++) {
+      if (rand() < 0.25) continue;
+      const x = cargo.x + cargo.w / 2 - 22 - row * 5, z = cargo.z - cargo.d / 2 + 20 + k * 14;
+      for (let lv = 0; lv < 1 + Math.floor(rand() * 2); lv++) {
+        const m = new THREE.Matrix4().compose(new THREE.Vector3(x, lv * 2.6, z), new THREE.Quaternion(), new THREE.Vector3(2.44, 2.59, 12.19));
+        const c = new THREE.Color(['#b8342c', '#2f5f9e', '#3f7f4a', '#d8862a', '#8a8f96', '#c8a020'][Math.floor(rand() * 6)]);
+        containers.push({ matrix: m, wall: c, roof: c });
+      }
+    }
+  }
+  if (assetsReady()) byModel.set('container', containers);
+  else containers.forEach((c) => boxes.push({ m: c.matrix, color: `#${c.wall.getHexString()}` }));
   for (const [model, items] of byModel) buildingMeshes(model, items).forEach((m) => group.add(m));
   if (boxes.length) {
     const im = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0), new THREE.MeshLambertMaterial(), boxes.length);
@@ -261,6 +287,17 @@ function kitBuildings(group: THREE.Group) {
     });
     group.add(im);
   }
+}
+
+/** The tower: base, shaft, glass cab, roof and antenna (vertex-coloured parts, 52 m high incl. antenna). */
+export function towerGeometry(tx: number, tz: number, base = 16) {
+  return [
+    colored(new THREE.BoxGeometry(base, 6, base).translate(tx, 3, tz), '#d4d0c8'),
+    colored(new THREE.CylinderGeometry(3.2, 3.8, 36, 10).translate(tx, 24, tz), '#ece8e0'),
+    colored(new THREE.CylinderGeometry(7.5, 5.5, 5, 8).translate(tx, 44.5, tz), '#35546e'),
+    colored(new THREE.CylinderGeometry(8.2, 8.2, 0.9, 8).translate(tx, 47.4, tz), '#d8d8d8'),
+    colored(new THREE.CylinderGeometry(0.15, 0.15, 9, 5).translate(tx, 52.3, tz), '#c62f2f'),
+  ];
 }
 
 /** Terminal, docks (piers with glass bands) and the tower – procedural, one mesh. */
@@ -280,13 +317,7 @@ function terminalDocksTower(group: THREE.Group) {
     if (d.d > d.w) for (const s of [-1, 1]) box(0.3, 3.5, d.d - 10, d.x + s * (d.w / 2 + 0.15), 7, d.z, '#2f4a63');
     else for (const s of [-1, 1]) box(d.w - 10, 3.5, 0.3, d.x, 7, d.z + s * (d.d / 2 + 0.15), '#2f4a63');
   }
-  // the tower: base, shaft, glass cab, roof and antenna
-  const { x: tx, z: tz } = AIRPORT.tower;
-  box(16, 6, 16, tx, 3, tz, '#d4d0c8');
-  parts.push(colored(new THREE.CylinderGeometry(3.2, 3.8, 36, 10).translate(tx, 24, tz), '#ece8e0'));
-  parts.push(colored(new THREE.CylinderGeometry(7.5, 5.5, 5, 8).translate(tx, 44.5, tz), '#35546e'));
-  parts.push(colored(new THREE.CylinderGeometry(8.2, 8.2, 0.9, 8).translate(tx, 47.4, tz), '#d8d8d8'));
-  parts.push(colored(new THREE.CylinderGeometry(0.15, 0.15, 9, 5).translate(tx, 52.3, tz), '#c62f2f'));
+  parts.push(...towerGeometry(AIRPORT.tower.x, AIRPORT.tower.z));
   group.add(new THREE.Mesh(mergeGeometries(parts)!, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true })));
 
   // generic signs
@@ -297,6 +328,8 @@ function terminalDocksTower(group: THREE.Group) {
     group.add(m);
   };
   sign('Flughafen', 60, 11, t.x + t.w / 2 + 0.5, 22, t.z, Math.PI / 2);
+  const cargo = AIRPORT.hangars[AIRPORT.hangars.length - 1];
+  sign('Fracht', 30, 6, cargo.x - cargo.w / 2 - 0.6, 18, cargo.z, -Math.PI / 2);
   for (const d of AIRPORT.docks) {
     if (d.d > d.w) sign(d.name, 26, 5, d.x, 14.5, d.z - d.d / 2 - 0.5, Math.PI);
     else sign(d.name, 26, 5, d.x + d.w / 2 + 0.5, 14.5, d.z, Math.PI / 2);
@@ -341,7 +374,7 @@ function swept(g: THREE.BufferGeometry, perX: number, perY = 0, yFrom = 0) {
 }
 
 /** A stylised airliner, nose at the origin pointing +z, ~37 m long, 34 m span. body = neutral parts, livery = tinted per instance. */
-function planeGeometries() {
+export function planeGeometries() {
   const body = mergeGeometries([
     colored(new THREE.ConeGeometry(2, 5, 12).rotateX(Math.PI / 2).translate(0, 3.2, -2.5), '#f2f4f6'),
     colored(new THREE.CylinderGeometry(2, 2, 26, 12).rotateX(Math.PI / 2).translate(0, 3.2, -18), '#f2f4f6'),
@@ -361,7 +394,60 @@ function planeGeometries() {
   return { body, livery };
 }
 
-const LIVERIES = ['#c8202a', '#1f5fb8', '#2f8a4a', '#e07a1a'];
+export const LIVERIES = ['#c8202a', '#1f5fb8', '#2f8a4a', '#e07a1a'];
+
+/** A departure: lined up at (x, z), take-off run along `heading`, then climbing away; repeats every `period` s. */
+export interface Departure {
+  x: number;
+  z: number;
+  heading: number;
+  livery: string;
+  /** seconds into the cycle at load time (so several departures do not start together) */
+  offset: number;
+}
+
+const WAIT = 15, ROLL = 450, VR = 75, PERIOD = 100, CLIMB = Math.tan((9 * Math.PI) / 180);
+
+/** Position along the departure path after t seconds of the cycle: distance, height and nose-up angle (or null = gone). */
+export function departureAt(t: number): { d: number; y: number; pitch: number } | null {
+  const accel = (VR * VR) / (2 * ROLL), tRoll = VR / accel;
+  if (t < WAIT) return { d: 0, y: 0, pitch: 0 };
+  if (t < WAIT + tRoll) return { d: 0.5 * accel * (t - WAIT) ** 2, y: 0, pitch: 0 };
+  const air = t - WAIT - tRoll;
+  if (air > 60) return null;
+  const d = ROLL + VR * air;
+  // rotate within 3 s
+  return { d, y: (d - ROLL) * CLIMB * Math.min(1, air / 3), pitch: Math.atan(CLIMB) * Math.min(1, air / 3) };
+}
+
+/** Aircraft that take off again and again (animated in onBeforeRender, so nothing has to call them). */
+export function departures(group: THREE.Group, list: Departure[]) {
+  const { body, livery } = planeGeometries();
+  const bodyMat = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
+  const start = performance.now() / 1000;
+  const yAxis = new THREE.Vector3(0, 1, 0), xAxis = new THREE.Vector3(1, 0, 0);
+  for (const dep of list) {
+    const q = new THREE.Quaternion(), qp = new THREE.Quaternion(), pos = new THREE.Vector3(), one = new THREE.Vector3(1, 1, 1);
+    const fx = Math.sin(dep.heading), fz = Math.cos(dep.heading);
+    const place = (m: THREE.Object3D) => {
+      const t = (performance.now() / 1000 - start + dep.offset) % PERIOD;
+      const p = departureAt(t);
+      // gone: far below the ground until the next cycle
+      if (!p) pos.set(dep.x, -500, dep.z);
+      else pos.set(dep.x + fx * p.d, p.y, dep.z + fz * p.d);
+      q.setFromAxisAngle(yAxis, dep.heading).multiply(qp.setFromAxisAngle(xAxis, -(p?.pitch ?? 0)));
+      m.matrixWorld.compose(pos, q, one);
+    };
+    for (const [geo, mat] of [[body, bodyMat], [livery, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, color: dep.livery })]] as const) {
+      const m = new THREE.Mesh(geo, mat);
+      m.matrixAutoUpdate = false;
+      m.matrixWorldAutoUpdate = false;
+      m.frustumCulled = false;
+      m.onBeforeRender = () => place(m);
+      group.add(m);
+    }
+  }
+}
 
 function aircraft(group: THREE.Group) {
   const { body, livery } = planeGeometries();
@@ -427,11 +513,14 @@ function apronVehicles(group: THREE.Group, rand: () => number) {
   variants.forEach((v, i) => instanced(v, buckets[i]).forEach((m) => group.add(m)));
 }
 
+/** Pole with an orange sock blowing towards +x. */
+export const windsockGeometry = () => mergeGeometries([
+  colored(new THREE.CylinderGeometry(0.12, 0.15, 6, 6).translate(0, 3, 0), '#d8d8d8'),
+  colored(new THREE.ConeGeometry(0.65, 3.6, 8).rotateZ(Math.PI / 2).translate(1.9, 5.6, 0), '#ff6a13'),
+])!;
+
 function windsocks(group: THREE.Group) {
-  const geo = mergeGeometries([
-    colored(new THREE.CylinderGeometry(0.12, 0.15, 6, 6).translate(0, 3, 0), '#d8d8d8'),
-    colored(new THREE.ConeGeometry(0.65, 3.6, 8).rotateZ(Math.PI / 2).translate(1.9, 5.6, 0), '#ff6a13'),
-  ])!;
+  const geo = windsockGeometry();
   const list = AIRPORT.windsocks.filter((w) => clearOfTracks(w.x, w.z, 2.5));
   const im = new THREE.InstancedMesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }), list.length);
   // the wind blows from the west
@@ -501,6 +590,11 @@ export function buildAirportScenery(_track: Track, _terrain: Terrain): THREE.Gro
   terminalDocksTower(group);
   taxiwayBridge(group);
   aircraft(group);
+  const [, r10, r14] = AIRPORT.runways;
+  departures(group, [
+    { x: r10.x2 - 50, z: r10.z2, heading: -Math.PI / 2, livery: LIVERIES[1], offset: 0 },
+    { x: r14.x1 + (r14.x2 - r14.x1) * 0.03, z: r14.z1 + (r14.z2 - r14.z1) * 0.03, heading: Math.atan2(r14.x2 - r14.x1, r14.z2 - r14.z1), livery: LIVERIES[0], offset: 50 },
+  ]);
   apronVehicles(group, rand);
   windsocks(group);
   fence(group);

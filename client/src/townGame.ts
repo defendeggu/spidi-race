@@ -8,7 +8,7 @@ import {
 import { audio, EngineVoice } from './audio';
 import { townSpec } from './cheats';
 import { input, padKindAt, type KeyMap } from './input';
-import { ChaseCamera, TOPDOWN_MODE, viewForCar } from './render/cameras';
+import { ChaseCamera, TOPDOWN_MODE, viewForSpec } from './render/cameras';
 import { Particles } from './render/particles';
 import { carColor, CarVisual } from './render/carModel';
 import { getTownWorld, type TownWorld } from './render/townWorld';
@@ -180,7 +180,7 @@ export class TownGame {
       this.players.push({
         cfg, spec, state, visual, color: carColor(spec), renderHeading: state.heading,
         prev: { x: state.x, y: state.y, z: state.z, heading: state.heading },
-        cam: new ChaseCamera(0, viewForCar(spec.shape.length, visual.height)),
+        cam: new ChaseCamera(0, viewForSpec(spec, visual.height, true)),
         hud: new TownHud(holder, town, opts.task, duel, cfg.keymap, split),
         voice: audio.ctx ? new EngineVoice(split ? (k === 0 ? -0.45 : 0.45) : 0, split ? 0.75 : 1, pitch) : null,
         tasks: this.session.trackers[k],

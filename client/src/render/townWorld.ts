@@ -8,6 +8,7 @@ import {
 import { assetsReady, getTexture, type TextureName } from './assets';
 import { buildingMeshes, variantColors, type BuildingInstance } from './buildingKit';
 import { colored, fallback, instanced, towerGeo, type Variant } from './scenery';
+import { buildTownAirport, TOWN_AIRPORT_MODELS } from './townAirport';
 import { TownLife } from './townLife';
 import { sky, THEMES } from './world';
 
@@ -49,7 +50,7 @@ function rampGeometry(r: Ramp) {
 }
 
 /** Axis-aligned flat rectangles collected into one mesh; uv in metres. */
-class Quads {
+export class Quads {
   private pos: number[] = [];
   private uv: number[] = [];
 
@@ -69,7 +70,7 @@ class Quads {
 }
 
 /** Lambert material with a CC0 texture repeating every `metres` (or a plain colour without assets). */
-function ground(tex: TextureName, metres: number, tint: string, plain: string) {
+export function ground(tex: TextureName, metres: number, tint: string, plain: string) {
   const src = getTexture(tex);
   let map: THREE.Texture | null = null;
   if (src) {
@@ -117,7 +118,7 @@ export function getTownWorld(): TownWorld {
   walk.add(-outer, -outer, outer, -ext);
   walk.add(ext, -ext, outer, ext);
   walk.add(-outer, -ext, -ext, ext);
-  const far = TOWN_HALF + 400;
+  const far = TOWN_BOUNDS.maxX + 600;
   const { minX, maxX, maxZ } = TOWN_BOUNDS, Q = HARBOR.quayZ;
   grass.add(-far, outer, far, far);
   grass.add(outer, -outer, far, outer);
@@ -271,6 +272,8 @@ export function getTownWorld(): TownWorld {
   const q = new THREE.Quaternion(), yAxis = new THREE.Vector3(0, 1, 0);
   const windmills: typeof town.props = [];
   for (const b of [...town.buildings, ...town.props]) {
+    // terminal, tower, aircraft … of the airfield are drawn by buildTownAirport
+    if (TOWN_AIRPORT_MODELS.has(b.model)) continue;
     // the wind turbine is drawn separately so its rotor can turn
     if (b.model === 'ind-windmill' && assetsReady()) {
       windmills.push(b);
@@ -301,6 +304,7 @@ export function getTownWorld(): TownWorld {
     city.add(box);
   }
   addVariants(city, TREES, trees);
+  city.add(buildTownAirport(town));
 
   // the wall around the town and a skyline behind it
   const WT = 4, WH = 3, wallZ = maxZ - Q;

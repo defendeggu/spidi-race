@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { mulberry32, RUNWAY_X, WALL_OFFSET, type Track, type TrackTheme } from '@spidi/shared';
+import { mulberry32, onRunwayStrip, WALL_OFFSET, type Track, type TrackTheme } from '@spidi/shared';
 import { getTexture, type TextureName } from './assets';
 import { bannerTexture, checkerTexture, chevronTexture } from './textures';
 
@@ -84,8 +84,8 @@ interface TrackStyle {
   bridge?: boolean;
 }
 
-/** airport: samples on the main runway */
-const onRunway = (t: Track, i: number) => Math.abs(t.px[i] - RUNWAY_X) < 20;
+/** airport: samples on one of the runways */
+const onRunway = (t: Track, i: number) => onRunwayStrip(t.px[i], t.pz[i]);
 
 const STYLES: Record<TrackTheme, TrackStyle> = {
   alpine: { asphalt: ['#9a9a9a', '#46484b'], centre: 'dashed-white', shoulder: ['#b8b0a0', '#6f685a'], curbs: 'redwhite', barrier: 'guardrail', verge: ['#9fb07a', '#5a6a3a'], vergeTex: 'grass', chevrons: true },

@@ -1,4 +1,4 @@
-import { FLUGHAFEN_KART_POINTS, FLUGHAFEN_POINTS, FLUGHAFEN_UNDERPASS } from './airport';
+import { FLUGHAFEN_KART_POINTS, FLUGHAFEN_POINTS } from './airport';
 import { Track, type TrackDef, type TrackMode } from './track';
 
 /**
@@ -211,14 +211,13 @@ export const TRACK_DEFS: TrackDef[] = [
   {
     id: 'flughafen',
     name: 'Flughafen',
-    description: 'Vollgas über die lange Piste, zurück über Rollwege mit 90°-Abzweigen und unter der Rollwegbrücke durch.',
+    description: 'Über alle drei gekreuzten Pisten: lange Gerade, Haarnadel auf die Schräg-Piste, dann über Rollwege und das Vorfeld mit 90°-Ecken.',
     theme: 'airport',
     modes: ['race'],
     width: 13,
     defaultLaps: 2,
     seed: 109,
     points: FLUGHAFEN_POINTS,
-    galleries: [[...FLUGHAFEN_UNDERPASS, 1]],
     banking: { gain: 0, max: 0 },
   },
   {

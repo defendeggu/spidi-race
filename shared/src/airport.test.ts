@@ -81,17 +81,42 @@ describe('airport tracks', () => {
     expect(kart.length).toBeLessThan(3600);
   });
 
-  it('the road race has a long runway straight and goes under the taxiway bridge', () => {
+  it('the road race has a long runway straight and drives over all three crossing runways', () => {
     // the runway part (x = 0) is one straight piece
     const onRunway = [...road.px].filter((x) => Math.abs(x) < 1).length * road.ds;
-    expect(onRunway).toBeGreaterThan(2000);
-    const b = AIRPORT.bridge;
-    const under = [...road.gallery.keys()].filter((i) => road.gallery[i]);
-    expect(under.length).toBeGreaterThan(10);
-    for (const i of under) {
-      expect(Math.abs(road.px[i] - b.x)).toBeLessThan(b.length / 2);
-      expect(Math.abs(road.pz[i] - b.z)).toBeLessThan(b.width);
+    expect(onRunway).toBeGreaterThan(1500);
+    for (const r of AIRPORT.runways) {
+      // metres of the race line on this runway, driven along it (not just across)
+      const len = Math.hypot(r.x2 - r.x1, r.z2 - r.z1), tx = (r.x2 - r.x1) / len, tz = (r.z2 - r.z1) / len;
+      let along = 0;
+      for (let i = 0; i < road.n; i++) {
+        const dx = road.px[i] - r.x1, dz = road.pz[i] - r.z1;
+        const t = dx * tx + dz * tz, lat = Math.abs(-dx * tz + dz * tx);
+        if (t > 0 && t < len && lat < r.width / 2 && Math.abs(road.tx[i] * tx + road.tz[i] * tz) > 0.95) along += road.ds;
+      }
+      expect(along, r.name).toBeGreaterThan(450);
     }
+    // the runways really cross each other: 10/28 crosses both others
+    const [r16, r10, r14] = AIRPORT.runways;
+    const crossAt = (a: typeof r16, b: typeof r16) => {
+      const ax = a.x2 - a.x1, az = a.z2 - a.z1, bx = b.x2 - b.x1, bz = b.z2 - b.z1;
+      const den = ax * bz - az * bx;
+      const t = ((b.x1 - a.x1) * bz - (b.z1 - a.z1) * bx) / den, u = ((b.x1 - a.x1) * az - (b.z1 - a.z1) * ax) / den;
+      return t > 0 && t < 1 && u > 0 && u < 1;
+    };
+    expect(crossAt(r10, r16)).toBe(true);
+    expect(crossAt(r10, r14)).toBe(true);
+  });
+
+  it('the road race never comes close to itself apart from neighbouring stretches', () => {
+    let closest = Infinity;
+    for (let i = 0; i < road.n; i += 2) {
+      for (let j = i + 2; j < road.n; j += 2) {
+        if (Math.min(j - i, road.n - (j - i)) * road.ds < 120) continue;
+        closest = Math.min(closest, Math.hypot(road.px[i] - road.px[j], road.pz[i] - road.pz[j]));
+      }
+    }
+    expect(closest).toBeGreaterThan(2 * (road.maxHalfWidth + WALL_OFFSET) + 10);
   });
 
   it('the kart race: a short runway straight, the hairpin is the tightest corner, karts fit everywhere', () => {

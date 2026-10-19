@@ -33,12 +33,13 @@ export interface PadState {
   throttle: number;
   brake: number;
   handbrake: boolean;
+  /** Back / Select or d-pad up, in every mode */
   camera: boolean;
   pause: boolean;
-  /** Y / △: also the item button in kart races */
+  /** Y / △: the item button in kart races */
   item: boolean;
-  /** Back / Select or d-pad up: the camera button in kart races */
-  altCamera: boolean;
+  /** Y / △: the rocket hop of the camper */
+  rocket: boolean;
 }
 
 /** Logitech Chillstream (046d:cad1): shaped like a DualShock 3, so it gets the PlayStation buttons and labels. */
@@ -158,9 +159,9 @@ export function readPad(p: PadLike, throttleMode: PadThrottle = 'buttons'): PadS
     throttle: Math.max(rt, south ? 1 : 0, stickGas),
     brake: Math.max(lt, east ? 1 : 0, stickBrake),
     handbrake: west || bumper,
-    camera: north,
+    camera: select || up,
     pause: start,
     item: north,
-    altCamera: select || up,
+    rocket: north,
   };
 }

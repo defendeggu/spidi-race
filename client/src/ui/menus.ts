@@ -94,7 +94,7 @@ function showControls(app: App) {
         <tr><td>Gas / Bremse / Rückwärts</td><td>${k('W')} / ${k('S')}</td><td>${k('↑')} / ${k('↓')}</td></tr>
         <tr><td>Lenken</td><td>${k('A')} ${k('D')}</td><td>${k('←')} ${k('→')}</td></tr>
         <tr><td>Handbremse</td><td>${k('Leertaste')}</td><td>${k('Strg rechts')} / ${k('Shift rechts')} / ${k('Num 0')}</td></tr>
-        <tr><td>Camper rocket hop (5 s cooldown)</td><td>${k('F')}</td><td>${k('Num 2')} / ${k('Delete')}</td></tr>
+        <tr><td>Raketensprung Weltenbummler (5 s Abkühlzeit)</td><td>${k('F')}</td><td>${k('Num 2')} / ${k('Delete')}</td></tr>
         <tr><td>Kamera wechseln</td><td>${k('C')}</td><td>${k('Enter')} / ${k('.')}</td></tr>
         <tr><td>Pause</td><td colspan="2">${k('Esc')}</td></tr>
         <tr><td>Ton an/aus</td><td colspan="2">${k('M')}</td></tr>
@@ -108,8 +108,10 @@ function showControls(app: App) {
         <tr><td>Bremse / Rückwärts</td><td>LT oder B${stickGas ? html`, ${stickGas} runter` : ''}</td><td>L2 oder ○${stickGas ? html`, ${stickGas} runter` : ''}</td></tr>
         <tr><td>Lenken</td><td colspan="2">${pt === 'right' ? 'linker Stick' : 'linker oder rechter Stick'}, Steuerkreuz</td></tr>
         <tr><td>Handbremse</td><td>X oder RB</td><td>□ oder R1</td></tr>
-        <tr><td>Kamera / Pause</td><td>Y / Start</td><td>△ / Start</td></tr>
-        <tr><td>Kart-Rennen: Item / Kamera</td><td>Y / Back oder ↑</td><td>△ / Select oder ↑</td></tr>
+        <tr><td>Kamera wechseln</td><td>Back oder ↑</td><td>Select oder ↑</td></tr>
+        <tr><td>Pause</td><td>Start</td><td>Start</td></tr>
+        <tr><td>Raketensprung (Weltenbummler)</td><td>Y</td><td>△</td></tr>
+        <tr><td>Item benutzen (Kart-Rennen)</td><td>Y</td><td>△</td></tr>
       </table>
       <div class="toggle pad-throttle" title="Trigger und Tasten geben in jeder Einstellung weiterhin Gas">
         <span>Gas am Gamepad</span>

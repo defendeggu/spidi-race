@@ -55,30 +55,41 @@ export interface AirportLayout {
 /** Main runway (north–south) shared by both tracks: x = 0. */
 export const RUNWAY_X = 0;
 
+/** Runway 14/32 (diagonal, heading 140°): from its north-west end, crossing 10/28 at about (-788, 1350). */
+const R14 = { x: -1250, z: 1900, len: 1700, heading: (140 * Math.PI) / 180 };
+const on14 = (s: number, w?: number) => {
+  const p = [R14.x + Math.sin(R14.heading) * s, R14.z + Math.cos(R14.heading) * s, 0];
+  return w ? [...p, w] : p;
+};
+/** where 14/32 crosses 10/28 (z = 1350), in metres from the north-west end of 14/32 */
+const S_CROSS = (R14.z - 1350) / -Math.cos(R14.heading);
+
 /**
- * Road race: a 2.4 km run along the main runway, a right-hand U-turn over a rapid-exit taxiway, back
- * south on the parallel taxiway east of the runway with a detour over the service road (under the
- * taxiway bridge) and a second U-turn onto the runway. [x, z, height, width?]
+ * Road race over the three crossing runways (like Zurich): north on the long runway 16/34, left onto
+ * the crossing runway 10/28, a hairpin onto the diagonal runway 14/32, south-east on it, then onto the
+ * taxiways: a loop over the apron in front of the docks with four 90° corners, south on taxiway "W"
+ * and back east onto 16/34. [x, z, height, width?]
  */
 export const FLUGHAFEN_POINTS: number[][] = [
-  [0, -800, 0, 22], [0, -300, 0, 22], [0, 300, 0, 22], [0, 800, 0, 22], [0, 1000, 0, 22], [0, 1120, 0, 20],
-  // U-turn north (right) over the rapid-exit taxiway
-  [25, 1235, 0, 15], [100, 1305, 0, 14], [190, 1300, 0, 14], [252, 1225, 0, 14],
-  // parallel taxiway south
-  [262, 1050, 0], [262, 820, 0],
-  // 90° left onto the service road, then 90° right
-  [270, 700, 0], [310, 662, 0], [400, 655, 0], [440, 620, 0],
-  // service road south, under the taxiway bridge
-  [450, 520, 0], [452, 380, 0], [452, 250, 0], [450, 120, 0],
-  // back west onto the taxiway: 90° right, 90° left
-  [432, 70, 0], [380, 45, 0], [300, 42, 0], [266, 5, 0],
-  [262, -150, 0], [262, -500, 0], [262, -850, 0], [262, -1080, 0],
-  // U-turn south (right) onto the runway
-  [245, -1200, 0, 14], [180, -1280, 0, 14], [80, -1290, 0, 15], [15, -1225, 0, 20], [0, -1110, 0, 22], [0, -980, 0, 22],
+  [0, 200, 0, 22], [0, 600, 0, 22], [0, 1000, 0, 22], [0, 1200, 0, 22],
+  // 90° left onto runway 10/28
+  [-6, 1300, 0, 20], [-35, 1342, 0, 18], [-100, 1350, 0, 18],
+  [-300, 1350, 0, 18], [-500, 1350, 0, 18], [-650, 1350, 0, 17],
+  // hairpin onto runway 14/32 (just before the runways cross)
+  [-724.2, 1350, 0, 15], [-740.1, 1345.4, 0, 15], [-751.4, 1332.7, 0, 15], [-754, 1316.3, 0, 15], [-747.4, 1301, 0, 15],
+  // south-east on 14/32
+  on14(S_CROSS + 150, 18), on14(S_CROSS + 400, 18), on14(S_CROSS + 650, 18), on14(S_CROSS + 760, 16),
+  // right onto taxiway "W" (x = -200)
+  [-223.5, 676.7, 0, 14], [-203, 640, 0, 13], [-200, 600, 0],
+  // loop over the apron: 90° right, 90° left, 90° left, 90° right
+  [-200, 520, 0], [-202, 455, 0], [-218, 436, 0], [-245, 430, 0], [-330, 430, 0],
+  [-410, 430, 0], [-437, 425, 0], [-449, 408, 0], [-450, 380, 0], [-450, 300, 0],
+  [-450, 210, 0], [-448, 182, 0], [-433, 160, 0], [-410, 150, 0], [-330, 150, 0],
+  [-245, 150, 0], [-218, 144, 0], [-202, 125, 0], [-200, 90, 0],
+  // south on taxiway "W", 90° left onto the link taxiway, 90° left onto 16/34
+  [-200, -50, 0], [-200, -200, 0], [-200, -350, 0], [-198, -410, 0], [-185, -438, 0], [-160, -450, 0],
+  [-100, -450, 0], [-40, -450, 0, 15], [-12, -440, 0, 18], [0, -412, 0, 20], [0, -330, 0, 22], [0, -150, 0, 22],
 ];
-
-/** u range (control-point units) of the underpass below the taxiway bridge on the road race. */
-export const FLUGHAFEN_UNDERPASS: [number, number] = [17.35, 17.75];
 
 /**
  * Kart race: a 0.9 km start/finish straight on the southern part of the main runway, then a fast left
@@ -112,12 +123,14 @@ export const FLUGHAFEN_KART_POINTS: number[][] = [
 export const AIRPORT: AirportLayout = {
   runways: [
     { name: '16/34', x1: 0, z1: -1600, x2: 0, z2: 1600, width: 60 },
-    // crossing runway in the north (east–west), only scenery
-    { name: '10/28', x1: -1300, z1: 1750, x2: 900, z2: 1750, width: 50 },
+    // crossing runway (east–west): crosses 16/34 and 14/32
+    { name: '10/28', x1: -1300, z1: 1350, x2: 700, z2: 1350, width: 50 },
+    // diagonal runway north-west of the docks
+    { name: '14/32', x1: R14.x, z1: R14.z, x2: on14(R14.len)[0], z2: on14(R14.len)[1], width: 50 },
   ],
   taxiways: [
     // parallel taxiway east of the main runway
-    { x1: 262, z1: -1450, x2: 262, z2: 1450, width: 23 },
+    { x1: 262, z1: -1450, x2: 262, z2: 1350, width: 23 },
     // taxiways west of the main runway (kart race)
     { x1: -312, z1: -1250, x2: -312, z2: -104, width: 23 },
     { x1: -1000, z1: -104, x2: 0, z2: -104, width: 23 },
@@ -127,14 +140,20 @@ export const AIRPORT: AirportLayout = {
     // rapid exits and links to the crossing runway
     { x1: 0, z1: 1200, x2: 262, z2: 1300, width: 23 },
     { x1: 0, z1: -1200, x2: 262, z2: -1300, width: 23 },
-    { x1: 262, z1: 1450, x2: 262, z2: 1750, width: 23 },
-    { x1: -200, z1: -104, x2: -200, z2: 1750, width: 23 },
+    // taxiway "W" from the crossing runway down to the southern link (road race)
+    { x1: -200, z1: -450, x2: -200, z2: 1350, width: 23 },
+    { x1: -200, z1: -450, x2: 0, z2: -450, width: 23 },
+    // taxiway north of the crossing runway with the northern apron
+    { x1: -1000, z1: 1420, x2: 0, z2: 1420, width: 23 },
     // service road east (road race) – the taxiway bridge spans it
     { x1: 450, z1: 30, x2: 450, z2: 680, width: 16 },
   ],
   aprons: [
     { x: -560, z: 190, w: 600, d: 560 },
     { x: -720, z: -760, w: 420, d: 200 },
+    // northern apron (remote stands) and the cargo apron east of the runway
+    { x: -400, z: 1490, w: 460, d: 110 },
+    { x: 470, z: -700, w: 260, d: 300 },
   ],
   terminal: { x: -960, z: 190, w: 110, d: 520 },
   docks: [
@@ -146,6 +165,8 @@ export const AIRPORT: AirportLayout = {
     { x: -760, z: -760, w: 110, d: 70, facing: 0 },
     { x: -500, z: -1230, w: 120, d: 80, facing: Math.PI },
     { x: -700, z: -1230, w: 120, d: 80, facing: Math.PI },
+    // cargo hall at the cargo apron, doors to the west (w, d are world x, z)
+    { x: 650, z: -720, w: 70, d: 150, facing: -Math.PI / 2 },
   ],
   tower: { x: -655, z: -540 },
   bridge: { x: 452, z: 315, length: 120, width: 40, heading: Math.PI / 2 },
@@ -168,10 +189,33 @@ export const AIRPORT: AirportLayout = {
     // in front of the hangars
     { x: -560, z: -700, heading: Math.PI, livery: 1 },
     { x: -760, z: -700, heading: Math.PI, livery: 0 },
-    // waiting on the northern taxiway, and one on the taxiway bridge
-    { x: -200, z: 1200, heading: Math.PI, livery: 2 },
+    // waiting on taxiway "W", and one on the taxiway bridge
+    { x: -200, z: 1240, heading: Math.PI, livery: 2 },
     { x: 470, z: 315, heading: -Math.PI / 2, livery: 3 },
+    // northern apron: remote stands, noses north
+    ...[-580, -500, -420, -340, -260].map((x, k) => ({ x, z: 1525, heading: 0, livery: (k + 1) % 4 })),
+    // cargo apron: noses towards the cargo hall in the east
+    ...[-800, -720, -640].map((z, k) => ({ x: 520, z, heading: Math.PI / 2, livery: k + 1 })),
+    // taxiing on the parallel taxiway, lined up on 16 (north end); departures on 28 and 14 are animated
+    { x: 262, z: 450, heading: Math.PI, livery: 0 },
+    { x: 262, z: -250, heading: 0, livery: 1 },
+    { x: 0, z: 1570, heading: Math.PI, livery: 3 },
+    // holding short of 14/32 on the northern taxiway
+    { x: -960, z: 1420, heading: Math.PI / 2, livery: 0 },
   ],
-  windsocks: [{ x: 70, z: 1450 }, { x: -70, z: -1500 }, { x: 330, z: 0 }],
-  bounds: { minX: -1400, maxX: 950, minZ: -1650, maxZ: 1800 },
+  windsocks: [{ x: 70, z: 1450 }, { x: -70, z: -1500 }, { x: 330, z: 0 }, { x: -1000, z: 1260 }],
+  bounds: { minX: -1400, maxX: 950, minZ: -1650, maxZ: 1980 },
 };
+
+/** True if (x, z) lies on the paved strip (with an extra margin around it). */
+export function onStrip(s: Strip, x: number, z: number, margin = 0) {
+  const len = Math.hypot(s.x2 - s.x1, s.z2 - s.z1);
+  const tx = (s.x2 - s.x1) / len, tz = (s.z2 - s.z1) / len;
+  const dx = x - s.x1, dz = z - s.z1;
+  const t = dx * tx + dz * tz;
+  return t > -margin && t < len + margin && Math.abs(-dx * tz + dz * tx) < s.width / 2 + margin;
+}
+
+/** True on any of the three runways. */
+export const onRunwayStrip = (x: number, z: number) => AIRPORT.runways.some((r) => onStrip(r, x, z));
+

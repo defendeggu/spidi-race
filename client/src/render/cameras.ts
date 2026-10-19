@@ -25,6 +25,15 @@ export function viewForCar(length: number, roof: number): Partial<ChaseView> {
   };
 }
 
+/** Fire engine (6 m long, 3.3 m high): the view behind it, also used for other tall vehicles. */
+const FIRETRUCK_VIEW = viewForCar(6, 3.3);
+
+/** Chase view for a car: tall vehicles get the fire engine's view, karts and town cars one from their size. */
+export function viewForSpec(spec: { class: string; tallView?: boolean; shape: { length: number } }, height: number, sized: boolean): Partial<ChaseView> {
+  if (spec.tallView) return FIRETRUCK_VIEW;
+  return sized ? viewForCar(spec.shape.length, height) : {};
+}
+
 export class ChaseCamera {
   readonly camera = new THREE.PerspectiveCamera(68, 1, 0.3, 9000);
   mode = 0;

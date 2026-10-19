@@ -2,6 +2,20 @@
 
 Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.4.0] – 2026-10-19
+
+### Hinzugefügt
+- **Flugplatz in der Übungsstadt** auf dem Grünstreifen im Westen (Stadtgrenze nach Westen verschoben): gerade Piste entlang dem Rand, Parallelrollweg mit drei Verbindungen, Vorfeld, Terminal mit Fluggastbrücken, Frachthalle mit ein paar Containern, Tower, Windsack, Parkplatz; geparkte Flugzeuge am Terminal, auf dem Vorfeld, an der Frachthalle und auf dem Rollweg, eines am Pistenende startbereit. Piste, Rollweg und Vorfeld sind befahrbar, die Flugzeuge sind Hindernisse, auf der Stadtkarte eingezeichnet
+- Flughafen: dritte, schräge Piste 14/32; die Querpiste 10/28 kreuzt nun beide anderen Pisten (wie in Zürich), Vorfeld Nord, Frachtvorfeld mit Frachthalle und Containern, deutlich mehr Flugzeuge (Vorfeld Nord, Fracht, Rollweg, Pistenanfang) und zwei Flugzeuge, die immer wieder auf 28 und 14 starten und über die Strecke wegsteigen
+- Raketensprung des Weltenbummlers auch am Gamepad: △ (PlayStation, Logitech Chillstream) bzw. Y
+
+### Geändert
+- **Flughafen-Rennstrecke neu** (5,1 km): über alle drei gekreuzten Pisten – lange Gerade auf 16/34, links auf 10/28, Haarnadel auf die Schräg-Piste 14/32, dann über Rollweg „W“ mit einer Schleife über das Vorfeld (vier 90°-Ecken) zurück auf 16/34. Alle Pisten mit Beton-Belag. Die Rollwegbrücke bleibt als Kulisse. Die bisherigen Bestzeiten der Flughafen-Strecke wurden gelöscht
+- **Älteste Strecken aufgefrischt** mit den Gebäuden der Übungsstadt und mehr Farben: Alpenpass mit bunten Chalets, Fachwerkdorf am Start und Laubbäumen im Tal; Küstenstrasse mit allen 21 Haustypen und Altstadthäusern in vielen Farben, Fischer- und Segelbooten und Bojen; Downtown mit eingefärbten Geschäftshäusern, Hochhäusern und Backsteinhäusern, mehr Baumarten; Speedway mit Fahrerlager im Innenraum (Garagen, Team-Transporter, Container, Rennleitung) und mehr Baumarten
+- Weltenbummler: Verfolgerkamera so hoch und weit hinten wie beim Feuerwehrauto (in allen Modi), damit man über den Camper hinwegsieht
+- Gamepad-Belegung in allen Modi gleich (Rennen, Kart-Rennen, Battle, Übungsfahrt): Kamera wechseln immer mit Select / Back (oder Steuerkreuz ↑), Handbremse □ / X (oder R1 / RB); △ / Y ist Raketensprung bzw. im Kart-Rennen das Item
+- Steuerungsseite und README zeigen die neue Belegung
+
 ## [1.3.0] – 2026-10-19
 
 ### Hinzugefügt
@@ -334,6 +348,7 @@ Erste stabile Version: Das Spiel ist auf echter Hardware getestet.
 - HUD mit Minimap, synthetischer Sound, 3 Kameras
 - Docker-Image und docker-compose (Port 8090)
 
+[1.4.0]: https://github.com/defendeggu/spidi-race/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/defendeggu/spidi-race/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/defendeggu/spidi-race/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/defendeggu/spidi-race/compare/v1.0.1...v1.1.0

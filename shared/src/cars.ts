@@ -41,6 +41,8 @@ export interface CarSpec {
   keepPaint?: boolean;
   /** Short cold-gas hop, followed by a ballistic landing. */
   rocket?: boolean;
+  /** tall vehicle (camper with roof box): chase camera as high and far back as behind the fire engine */
+  tallView?: boolean;
   shape: CarShape;
 }
 
@@ -51,6 +53,7 @@ const CALIFORNIA: CarSpec = {
   description: 'Anthrazitfarbener Camper mit Aufstelldach und Raketensprung (F)',
   model: 'vw-t6-california',
   rocket: true,
+  tallView: true,
   color: '#383e42',
   accent: '#161b20',
   suspension: 0.12,
