@@ -83,7 +83,7 @@ export class Backdrop {
       renderViewports(scene, [{ camera: this.camera, rect: [0, 0, 1, 1] }]);
       return true;
     }
-    const m = /[?&]view=([a-z]+)@(\d+)/.exec(location.search);
+    const m = /[?&]view=([a-z-]+)@(\d+)/.exec(location.search);
     if (!m) return false;
     const world = getWorld(m[1]);
     if (this.debugS < 0) {
