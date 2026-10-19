@@ -1,6 +1,6 @@
 # Spidi Race 🏁
 
-![Version](https://img.shields.io/badge/version-1.1.0-ffcc00)
+![Version](https://img.shields.io/badge/version-1.2.0-ffcc00)
 ![Lizenz Code](https://img.shields.io/badge/code-MIT-blue)
 ![Lizenz Assets](https://img.shields.io/badge/assets-CC0-green)
 ![Docker](https://img.shields.io/badge/docker-ready-2496ED)
@@ -20,6 +20,8 @@ Ein Arcade-Rennspiel im Browser im Geist von *Need for Speed II: Special Edition
 | ![Frühstückstisch](docs/fruehstueck.jpg) | ![Übungsstadt](docs/uebungsstadt.jpg) |
 | **Kart-Rennen mit Items** | **Kart-Battle in der Stadt** |
 | ![Kart-Rennen](docs/kart.jpg) | ![Kart-Battle](docs/battle.jpg) |
+| **Flughafen (Autorennen)** | **Flughafen Kart** |
+| ![Flughafen](docs/flughafen.jpg) | ![Flughafen Kart](docs/flughafen-kart.jpg) |
 
 ## Inhalt
 
@@ -38,17 +40,19 @@ Ein Arcade-Rennspiel im Browser im Geist von *Need for Speed II: Special Edition
 
 ## Features
 
-- **7 Strecken** in drei Klassen
+- **9 Strecken** in drei Klassen
 
-  | Strecke | Klasse | Länge | Charakter |
-  |---|---|---|---|
-  | Alpenpass | Strasse | 2,5 km | Serpentinen, Lawinengalerie, Schneeberge |
-  | Küstenstrasse | Strasse | 2,9 km | Fischerdorf, Klippen, Palmen, Leuchtturm |
-  | Downtown | Strasse | 2,0 km | Stadtkurs: 90°-Ecken, Schikane, Unterführung, Hochhäuser |
-  | Speedway | Strasse | 5,5 km | Superspeedway-Oval mit Steilkurven: fast permanent Vollgas, über 280 km/h Schnitt |
-  | Canyon Run | Offroad | 2,6 km | Schotter und Sand in einer roten Schlucht, 3 Sprünge, einer über ein Flussbett |
-  | Waldtrail | Offroad | 2,8 km | Waldweg, Kuppen, Schlammlöcher, Furt, Sprung über den Bach |
-  | Frühstückstisch | Micro | 0,9 km | Spielzeugautos auf dem Küchentisch: Müslischale, Kaffeetasse, Croissant, Strohhalme als Banden |
+  | Strecke | Klasse | Modus | Länge | Charakter |
+  |---|---|---|---|---|
+  | Alpenpass | Strasse | Auto + Kart | 2,5 km | Serpentinen, Lawinengalerie, Schneeberge |
+  | Küstenstrasse | Strasse | Auto + Kart | 2,9 km | Fischerdorf, Klippen, Palmen, Leuchtturm |
+  | Downtown | Strasse | Auto + Kart | 2,0 km | Stadtkurs: 90°-Ecken, Schikane, Unterführung, Hochhäuser |
+  | Speedway | Strasse | Auto + Kart | 5,5 km | Superspeedway-Oval mit Steilkurven: fast permanent Vollgas, über 280 km/h Schnitt |
+  | Canyon Run | Offroad | Auto + Kart | 2,6 km | Schotter und Sand in einer roten Schlucht, 3 Sprünge, einer über ein Flussbett |
+  | Waldtrail | Offroad | Auto + Kart | 2,8 km | Waldweg, Kuppen, Schlammlöcher, Furt, Sprung über den Bach |
+  | Frühstückstisch | Micro | Auto | 0,9 km | Spielzeugautos auf dem Küchentisch: Müslischale, Kaffeetasse, Croissant, Strohhalme als Banden |
+  | Flughafen | Strasse | nur Auto | 5,7 km | 2,4 km Vollgas auf der Piste, zurück über Rollwege mit 90°-Abzweigen, unter der Rollwegbrücke durch |
+  | Flughafen Kart | Strasse | nur Kart | 3,4 km | Kurze Pistengerade, dann Rollwege und Vorfeld: schneller Bogen, Schikane, S-Kurven an den Docks, Haarnadel am Tower, Hangars |
 
 - **20 Fahrzeuge** mit eigenen Fahrwerten, je nach Streckenklasse bzw. Modus:
 
@@ -71,7 +75,7 @@ Ein Arcade-Rennspiel im Browser im Geist von *Need for Speed II: Special Edition
   | Kaito ZX | Stadt | Formelwagen | schneller, für Fortgeschrittene |
   | Oobi, Oodi, Ooli, Oopi, Oozi | Kart | Karts mit Alien-Fahrern | Allrounder, Beschleunigung, Kurven, Spitze, Gewicht |
 
-- **Kart-Rennen mit Items** auf allen Strassen- und Offroad-Strecken und **Kart-Battle** in der Übungsstadt (3 Ballons, Bots): ?-Boxen, Blaster, Zielsucher, Minen, Turbo und Schild, Drift-Boost, KI-Karts mit Items, siehe [unten](#kart-rennen-mit-items)
+- **Kart-Rennen mit Items** auf allen Strassen- und Offroad-Strecken (auf dem Flughafen mit eigener Kartstrecke) und **Kart-Battle** in der Übungsstadt (3 Ballons, Bots): ?-Boxen, Blaster, Zielsucher, Minen, Turbo und Schild, Drift-Boost, KI-Karts mit Items, siehe [unten](#kart-rennen-mit-items)
 - **Übungsfahrt**: eine offene Stadt von 1 × 1 km ohne Rennen, mit 4 Alltagsautos und einem Formelwagen, Aufgaben (Sterne sammeln, Einparken) und langsamem Verkehr, siehe [unten](#übungsfahrt-in-der-stadt)
 - **Offroad**: echte Sprünge mit Flugphase, Untergründe Schotter, Sand, Schlamm und Wasser mit eigenem Grip, Federung, Staub- und Schlammpartikel
 - **Micro**: Spielzeugautos im Massstab 1:100 auf einem Frühstückstisch, gefahren aus der Vogelperspektive wie bei *Micro Machines*
@@ -145,7 +149,7 @@ Das Image ist zweistufig aufgebaut (Node 22). Beim Build laufen die Tests und de
 
 ## Kart-Rennen mit Items
 
-Hauptmenü → **Kart-Rennen mit Items**. Gefahren wird auf allen Strassen- und Offroad-Strecken, allein oder zu zweit im Splitscreen, gegen bis zu 7 KI-Karts – oder im [Netzwerkspiel](#netzwerkspiel) mit allen im Haus.
+Hauptmenü → **Kart-Rennen mit Items**. Gefahren wird auf allen Strassen- und Offroad-Strecken (ausser dem Flughafen, der hat mit **Flughafen Kart** eine eigene kurvige Kartstrecke), allein oder zu zweit im Splitscreen, gegen bis zu 7 KI-Karts – oder im [Netzwerkspiel](#netzwerkspiel) mit allen im Haus.
 
 | Was | Details |
 |---|---|
@@ -246,7 +250,7 @@ npm run assets       # CC0-Assets neu herunterladen (siehe unten)
 ```
 
 **Neue Strecke anlegen:**
-1. In `shared/src/tracks.ts` eine Liste von Kontrollpunkten `[x, z, höhe, breite?]` hinzufügen. Dazu ein Theme wählen (`alpine`, `coast`, `city`, `speedway`, `desert`, `forest`, `table`). Optional kommen dazu: Galerien/Unterführungen, eine Kurvenüberhöhung (`banking`) für Micro `class: 'micro'` (mit `camera: 'topdown'`) und für Offroad `class: 'offroad'`, Untergründe (`surface`, `surfaces`) sowie Sprünge (`jumps`).
+1. In `shared/src/tracks.ts` eine Liste von Kontrollpunkten `[x, z, höhe, breite?]` hinzufügen. Dazu ein Theme wählen (`alpine`, `coast`, `city`, `speedway`, `desert`, `forest`, `table`, `airport`). Mit `modes: ['race']` bzw. `modes: ['kart']` erscheint eine Strecke nur im Autorennen bzw. nur im Kart-Rennen (ohne Angabe: alle im Autorennen, alle ausser Micro im Kart-Rennen). Optional kommen dazu: Galerien/Unterführungen, eine Kurvenüberhöhung (`banking`) für Micro `class: 'micro'` (mit `camera: 'topdown'`) und für Offroad `class: 'offroad'`, Untergründe (`surface`, `surfaces`) sowie Sprünge (`jumps`).
 2. `npm test` ausführen. Der Test prüft, dass sich die Strecke nicht selbst schneidet und dass KI-Fahrer sie komplett befahren können.
 3. Mit `http://localhost:5173/?view=<strecken-id>@<meter>` fährt die Kamera langsam ab der gewünschten Stelle über die Strecke, das ist praktisch zum Begutachten der Szenerie.
 
@@ -281,7 +285,8 @@ Fehlen die Assets oder lassen sie sich nicht laden, startet das Spiel automatisc
 
 ```
 shared/   Fahrphysik, Strecken (Catmull-Rom-Spline), Autos, Rennlogik, KI, Netzwerkprotokoll,
-          Übungsstadt (town.ts), Stadtverkehr (traffic.ts), Aufgaben (townTasks.ts)
+          Übungsstadt (town.ts), Stadtverkehr (traffic.ts), Aufgaben (townTasks.ts),
+          Flughafen-Layout für beide Flughafenstrecken (airport.ts), Modus-Zuordnung (tracks.ts: RACE_TRACKS, KART_TRACKS)
 client/   Vite + Three.js
   src/render/   Asset-Loader, Gelände (Splat-Shader), Strasse, Szenerie, Frühstückstisch/Küche, Automodelle, Kameras
   src/ui/       app.ts (Ablauf, Pause) · menus · town · results (Ergebnis, Rangliste) · lobby · widgets · prefs
@@ -289,6 +294,7 @@ client/   Vite + Three.js
   src/game.ts   Spielschleife (feste 60 Hz), Splitscreen, Interpolation, Netz-Sync
   src/townGame.ts, townHud.ts, render/townWorld.ts   Übungsfahrt in der Stadt
   src/render/buildingKit.ts   Gebäude der Übungsstadt: Farbvarianten per Shader, Häuser aus Bauteilen, Supermarkt
+  src/render/airportScenery.ts   Flughafen-Kulisse (Pisten, Docks, Tower, Hangars, Rollwegbrücke, prozedurale Jets)
 scripts/footprints.mjs      misst die Grundflächen der Stadtgebäude (Kollision ohne Vordächer) → shared/src/townFootprints.ts
 server/   Node + ws: app.ts (HTTP, Statik, API, WebSocket-Upgrade), room.ts (Lobby, Rennstatus, KI), leaderboard.ts
 .github/  CI: Typecheck, Tests und Build bei jedem Push
@@ -301,7 +307,7 @@ scripts/  Asset-Download
 
 ## Versionierung
 
-Das Projekt folgt [Semantic Versioning](https://semver.org/lang/de/). Die aktuelle Version ist **1.1.0**. Änderungen stehen im [CHANGELOG](CHANGELOG.md), Releases sind als Git-Tags `vX.Y.Z` markiert. Die Version steht auch unten rechts im Hauptmenü.
+Das Projekt folgt [Semantic Versioning](https://semver.org/lang/de/). Die aktuelle Version ist **1.2.0**. Änderungen stehen im [CHANGELOG](CHANGELOG.md), Releases sind als Git-Tags `vX.Y.Z` markiert. Die Version steht auch unten rechts im Hauptmenü.
 
 ## Lizenz und Credits
 
