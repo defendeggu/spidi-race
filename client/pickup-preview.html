@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Hilux model preview</title><style>body{margin:0;background:#ced5dc;font:14px system-ui}aside{position:absolute;top:24px;left:28px;color:#25303b}canvas{display:block}</style></head>
+<body><aside><h2>Toyota Hilux</h2>White double cab · Drag to rotate · Scroll to zoom</aside>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { CarVisual } from './src/render/carModel.ts';
+import { getCar } from '@spidi/shared';
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.setClearColor('#ced5dc');
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.add(new THREE.HemisphereLight('#e4f1ff', '#69645d', 2.4));
+const key = new THREE.DirectionalLight('#fff3df', 3.2);
+key.position.set(4, 7, 5); scene.add(key);
+const fill = new THREE.DirectionalLight('#d6e8ff', 1.6);
+fill.position.set(-4, 3, -4); scene.add(fill);
+scene.add(new CarVisual(getCar('hilux')).group);
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshLambertMaterial({color:'#c1c8ce'}));
+floor.rotation.x = -Math.PI / 2; floor.position.y = -0.015; scene.add(floor);
+const camera = new THREE.PerspectiveCamera(36, innerWidth / innerHeight, 0.1, 300);
+camera.position.set(7, 3.9, 8);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 1, 0); controls.update();
+renderer.setAnimationLoop(() => renderer.render(scene, camera));
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+</script></body></html>

@@ -1,6 +1,6 @@
 # Spidi Race 🏁
 
-![Version](https://img.shields.io/badge/version-1.2.0-ffcc00)
+![Version](https://img.shields.io/badge/version-1.3.0-ffcc00)
 ![Lizenz Code](https://img.shields.io/badge/code-MIT-blue)
 ![Lizenz Assets](https://img.shields.io/badge/assets-CC0-green)
 ![Docker](https://img.shields.io/badge/docker-ready-2496ED)
@@ -54,7 +54,7 @@ Ein Arcade-Rennspiel im Browser im Geist von *Need for Speed II: Special Edition
   | Flughafen | Strasse | nur Auto | 5,7 km | 2,4 km Vollgas auf der Piste, zurück über Rollwege mit 90°-Abzweigen, unter der Rollwegbrücke durch |
   | Flughafen Kart | Strasse | nur Kart | 3,4 km | Kurze Pistengerade, dann Rollwege und Vorfeld: schneller Bogen, Schikane, S-Kurven an den Docks, Haarnadel am Tower, Hangars |
 
-- **20 Fahrzeuge** mit eigenen Fahrwerten, je nach Streckenklasse bzw. Modus:
+- **23 Fahrzeuge** mit eigenen Fahrwerten, je nach Streckenklasse bzw. Modus:
 
   | Auto | Klasse | Modell | Stärke |
   |---|---|---|---|
@@ -62,9 +62,12 @@ Ein Arcade-Rennspiel im Browser im Geist von *Need for Speed II: Special Edition
   | Sturmvogel RS | Strasse | Prototyp | Höchstgeschwindigkeit |
   | Kaito ZX | Strasse | Formelwagen | Kurven |
   | Brutale V10 | Strasse | Hot Hatch | Beschleunigung |
+  | Toro Fulmine | Strasse | V12-Supersportwagen | Höchstgeschwindigkeit, Beschleunigung |
+  | Weltenbummler | Strasse | Camper mit Aufstelldach | gemütlich, Raketensprung mit Fassrolle (`F`) |
   | Bergziege 4x4 | Offroad | Geländewagen | wendig, viel Grip |
   | Baron V8 | Offroad | Luxus-SUV | schnell, schwer |
   | Sahara Raider | Offroad | Pickup | Beschleunigung |
+  | Steinbock DC | Offroad | Doppelkabinen-Pickup | robust, viel Grip |
   | Mini-Blitz | Micro | Spielzeug-Rennwagen | Höchstgeschwindigkeit |
   | Taschen-Flitzer | Micro | Spielzeug-Hatchback | wendig, Beschleunigung |
   | Zwergrakete | Micro | Spielzeug-Prototyp | ausgewogen |
@@ -73,6 +76,7 @@ Ein Arcade-Rennspiel im Browser im Geist von *Need for Speed II: Special Edition
   | Polizeiauto | Stadt | Streifenwagen | gemütlich, Originallackierung |
   | Feuerwehr | Stadt | Feuerwehrauto | gross, etwas langsamer |
   | Kaito ZX | Stadt | Formelwagen | schneller, für Fortgeschrittene |
+  | Weltenbummler, Steinbock DC, Toro Fulmine | Stadt | Stadt-Varianten | gemütlich, der Weltenbummler mit Raketensprung |
   | Oobi, Oodi, Ooli, Oopi, Oozi | Kart | Karts mit Alien-Fahrern | Allrounder, Beschleunigung, Kurven, Spitze, Gewicht |
 
 - **Kart-Rennen mit Items** auf allen Strassen- und Offroad-Strecken (auf dem Flughafen mit eigener Kartstrecke) und **Kart-Battle** in der Übungsstadt (3 Ballons, Bots): ?-Boxen, Blaster, Zielsucher, Minen, Turbo und Schild, Drift-Boost, KI-Karts mit Items, siehe [unten](#kart-rennen-mit-items)
@@ -307,7 +311,7 @@ scripts/  Asset-Download
 
 ## Versionierung
 
-Das Projekt folgt [Semantic Versioning](https://semver.org/lang/de/). Die aktuelle Version ist **1.2.0**. Änderungen stehen im [CHANGELOG](CHANGELOG.md), Releases sind als Git-Tags `vX.Y.Z` markiert. Die Version steht auch unten rechts im Hauptmenü.
+Das Projekt folgt [Semantic Versioning](https://semver.org/lang/de/). Die aktuelle Version ist **1.3.0**. Änderungen stehen im [CHANGELOG](CHANGELOG.md), Releases sind als Git-Tags `vX.Y.Z` markiert. Die Version steht auch unten rechts im Hauptmenü.
 
 ## Lizenz und Credits
 

@@ -1,7 +1,7 @@
 import type { CarInput } from '@spidi/shared';
 import { html, setHtml } from './ui/html';
 
-export type TouchAction = 'item' | 'camera' | 'pause';
+export type TouchAction = 'item' | 'camera' | 'pause' | 'rocket';
 
 /** A phone or tablet: the touch controls are shown in games. */
 export function isTouchDevice() {
@@ -35,6 +35,7 @@ export class TouchControls {
       <div class="touch-top">
         <button class="touch-mini" data-t="camera">📷</button>
         <button class="touch-mini" data-t="pause">⏸</button>
+        <button class="touch-mini" data-t="rocket" style="display:none">ROCKET</button>
       </div>
       <div class="touch-rotate">Bitte das Gerät quer halten 🔄</div>`);
     parent.appendChild(this.root);
@@ -83,8 +84,9 @@ export class TouchControls {
     hold('gas', (d) => (this.state.throttle = d ? 1 : 0));
     hold('brake', (d) => (this.state.brake = d ? 1 : 0));
     hold('hand', (d) => (this.state.handbrake = d));
+    hold('rocket', (d) => (this.state.rocket = d));
     // tapped buttons
-    for (const a of ['item', 'camera', 'pause'] as TouchAction[]) {
+    for (const a of ['item', 'camera', 'pause', 'rocket'] as TouchAction[]) {
       const el = this.root.querySelector<HTMLElement>(`[data-t="${a}"]`);
       el?.addEventListener('pointerdown', (e) => {
         e.preventDefault();
@@ -102,5 +104,11 @@ export class TouchControls {
 
   dispose() {
     this.root.remove();
+  }
+
+  setRocketEnabled(enabled: boolean) {
+    const button = this.root.querySelector<HTMLElement>('[data-t="rocket"]')!;
+    button.style.display = enabled ? '' : 'none';
+    if (!enabled) this.state.rocket = false;
   }
 }
