@@ -211,7 +211,7 @@ export const TRACK_DEFS: TrackDef[] = [
   {
     id: 'flughafen',
     name: 'Flughafen',
-    description: 'Über alle drei gekreuzten Pisten: lange Gerade, Haarnadel auf die Schräg-Piste, dann über Rollwege und das Vorfeld mit 90°-Ecken.',
+    description: 'Nach dem Luftbild gezeichnet: lange Gerade auf der Schräg-Piste, Haken ins Vorfeld, Schleife über die Hauptpiste, Haarnadel am Pistenende.',
     theme: 'airport',
     modes: ['race'],
     width: 13,
@@ -223,7 +223,7 @@ export const TRACK_DEFS: TrackDef[] = [
   {
     id: 'flughafen-kart',
     name: 'Flughafen Kart',
-    description: 'Kart: kurze Pistengerade, dann Rollwege und Vorfeld – Schikane, S-Kurven an den Docks, Haarnadel am Tower.',
+    description: 'Kart: kurze Pistengerade, dann Rollwege und Vorfeld – Schikane, S-Kurven am Vorfeld, Haarnadel am Tower.',
     theme: 'airport',
     modes: ['kart'],
     width: 12,

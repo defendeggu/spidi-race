@@ -81,31 +81,48 @@ describe('airport tracks', () => {
     expect(kart.length).toBeLessThan(3600);
   });
 
-  it('the road race has a long runway straight and drives over all three crossing runways', () => {
-    // the runway part (x = 0) is one straight piece
-    const onRunway = [...road.px].filter((x) => Math.abs(x) < 1).length * road.ds;
-    expect(onRunway).toBeGreaterThan(1500);
-    for (const r of AIRPORT.runways) {
-      // metres of the race line on this runway, driven along it (not just across)
-      const len = Math.hypot(r.x2 - r.x1, r.z2 - r.z1), tx = (r.x2 - r.x1) / len, tz = (r.z2 - r.z1) / len;
-      let along = 0;
-      for (let i = 0; i < road.n; i++) {
-        const dx = road.px[i] - r.x1, dz = road.pz[i] - r.z1;
-        const t = dx * tx + dz * tz, lat = Math.abs(-dx * tz + dz * tx);
-        if (t > 0 && t < len && lat < r.width / 2 && Math.abs(road.tx[i] * tx + road.tz[i] * tz) > 0.95) along += road.ds;
-      }
-      expect(along, r.name).toBeGreaterThan(450);
-    }
-    // the runways really cross each other: 10/28 crosses both others
+  it('the road race: start on the long 14/32 straight, a stretch on 16/34, across 10/28 and 16/34 twice', () => {
     const [r16, r10, r14] = AIRPORT.runways;
-    const crossAt = (a: typeof r16, b: typeof r16) => {
-      const ax = a.x2 - a.x1, az = a.z2 - a.z1, bx = b.x2 - b.x1, bz = b.z2 - b.z1;
-      const den = ax * bz - az * bx;
-      const t = ((b.x1 - a.x1) * bz - (b.z1 - a.z1) * bx) / den, u = ((b.x1 - a.x1) * az - (b.z1 - a.z1) * ax) / den;
-      return t > 0 && t < 1 && u > 0 && u < 1;
+    const frame = (r: typeof r16) => {
+      const len = Math.hypot(r.x2 - r.x1, r.z2 - r.z1), tx = (r.x2 - r.x1) / len, tz = (r.z2 - r.z1) / len;
+      // metres from the start of the runway along it, and to the left of its centre line
+      return (i: number) => {
+        const dx = road.px[i] - r.x1, dz = road.pz[i] - r.z1;
+        return { t: dx * tx + dz * tz, lat: -dx * tz + dz * tx, len, parallel: Math.abs(road.tx[i] * tx + road.tz[i] * tz) > 0.99 };
+      };
     };
-    expect(crossAt(r10, r16)).toBe(true);
-    expect(crossAt(r10, r14)).toBe(true);
+    // metres of the race line on a runway, driven along it (not just across)
+    const along = (r: typeof r16) => {
+      const f = frame(r);
+      let m = 0;
+      for (let i = 0; i < road.n; i++) {
+        const p = f(i);
+        if (p.t > 0 && p.t < p.len && Math.abs(p.lat) < r.width / 2 && p.parallel) m += road.ds;
+      }
+      return m;
+    };
+    // how often the race line changes sides of a runway (more than 5 m off its centre line on both sides)
+    const crossings = (r: typeof r16) => {
+      const f = frame(r);
+      let n = 0, side = 0;
+      for (let k = 0; k <= road.n; k++) {
+        const p = f(k % road.n);
+        if (p.t < 0 || p.t > p.len || Math.abs(p.lat) < 5) continue;
+        if (side && Math.sign(p.lat) !== side && k < road.n) n++;
+        side = Math.sign(p.lat);
+      }
+      return n;
+    };
+    expect(along(r14)).toBeGreaterThan(1200);
+    const start = frame(r14)(0);
+    expect(Math.abs(start.lat)).toBeLessThan(1);
+    expect(start.parallel).toBe(true);
+    expect(along(r16)).toBeGreaterThan(250);
+    expect(crossings(r10)).toBe(2);
+    expect(crossings(r16)).toBe(2);
+    // 10/28 crosses 16/34, 14/32 ends north of 10/28
+    expect(r10.x1 < 0 && r10.x2 > 0).toBe(true);
+    expect(r14.z2).toBeGreaterThan(r10.z1 + (r14.x2 - r10.x1) * ((r10.z2 - r10.z1) / (r10.x2 - r10.x1)));
   });
 
   it('the road race never comes close to itself apart from neighbouring stretches', () => {
@@ -155,7 +172,7 @@ describe('airport tracks', () => {
       ...AIRPORT.hangars.map((h, i): [string, number[][]] => [`hangar ${i}`, corners(h)]),
       ['tower', [[AIRPORT.tower.x, AIRPORT.tower.z]]],
       // a plane: nose, tail (36 m behind) and both wing tips
-      ...AIRPORT.planes.filter((p) => !(p.x === 470 && p.z === 315)).map((p, i): [string, number[][]] => {
+      ...AIRPORT.planes.map((p, i): [string, number[][]] => {
         const fx = Math.sin(p.heading), fz = Math.cos(p.heading);
         return [`plane ${i}`, [[p.x, p.z], [p.x - fx * 36, p.z - fz * 36], [p.x - fx * 18 + fz * 17, p.z - fz * 18 - fx * 17], [p.x - fx * 18 - fz * 17, p.z - fz * 18 + fx * 17]]];
       }),

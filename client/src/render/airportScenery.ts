@@ -252,14 +252,14 @@ function kitBuildings(group: THREE.Group) {
     if (assetsReady()) add(hangarModels[k % 2], stretched(hangarModels[k % 2], h.x, h.z, side ? h.d : h.w, side ? h.w : h.d, 22, h.facing), k);
     else boxes.push({ m: new THREE.Matrix4().compose(new THREE.Vector3(h.x, 0, h.z), new THREE.Quaternion(), new THREE.Vector3(h.w, 22, h.d)), color: '#b8bcc2' });
   });
-  // landside offices and car park buildings west of the terminal
+  // landside offices and car park buildings in a row behind the terminal (south of it)
   const offices = ['building-e', 'building-k', 'building-j', 'building-i'];
   const t = AIRPORT.terminal;
-  for (let k = 0; k < 7; k++) {
-    const z = t.z - t.d / 2 + 30 + k * 75;
+  for (let k = 0; k < Math.floor((t.w - 20) / 75) + 1; k++) {
+    const x = t.x - t.w / 2 + 30 + k * 75, z = t.z - t.d / 2 - 70;
     const model = offices[k % offices.length];
-    if (assetsReady()) add(model, stretched(model, t.x - t.w / 2 - 70, z, 50, 40, 18 + (k % 3) * 8, -Math.PI / 2), k);
-    else boxes.push({ m: new THREE.Matrix4().compose(new THREE.Vector3(t.x - t.w / 2 - 70, 0, z), new THREE.Quaternion(), new THREE.Vector3(50, 20, 40)), color: '#c9c4ba' });
+    if (assetsReady()) add(model, stretched(model, x, z, 50, 40, 18 + (k % 3) * 8, Math.PI), k);
+    else boxes.push({ m: new THREE.Matrix4().compose(new THREE.Vector3(x, 0, z), new THREE.Quaternion(), new THREE.Vector3(50, 20, 40)), color: '#c9c4ba' });
   }
   // containers on the cargo apron, in stacks of one or two
   const cargo = AIRPORT.aprons[AIRPORT.aprons.length - 1];
@@ -308,8 +308,8 @@ function terminalDocksTower(group: THREE.Group) {
   const t = AIRPORT.terminal;
   box(t.w, 16, t.d, t.x, 8, t.z, '#dcd8d0');
   box(t.w + 2, 1.2, t.d + 2, t.x, 16.6, t.z, '#9aa0a6');
-  // glass front towards the apron (east)
-  box(0.4, 7, t.d - 20, t.x + t.w / 2 + 0.2, 8, t.z, '#2f4a63');
+  // glass front towards the apron (north)
+  box(t.w - 20, 7, 0.4, t.x, 8, t.z + t.d / 2 + 0.2, '#2f4a63');
   for (const d of AIRPORT.docks) {
     box(d.w, 11, d.d, d.x, 5.5, d.z, '#e4e0d8');
     box(d.w + 1, 0.8, d.d + 1, d.x, 11.4, d.z, '#8a9096');
@@ -327,11 +327,13 @@ function terminalDocksTower(group: THREE.Group) {
     m.rotation.y = rot;
     group.add(m);
   };
-  sign('Flughafen', 60, 11, t.x + t.w / 2 + 0.5, 22, t.z, Math.PI / 2);
+  // on the terminal roof edge between the two piers, facing the apron
+  sign('Flughafen', 60, 11, t.x, 22, t.z + t.d / 2 + 0.5, 0);
   const cargo = AIRPORT.hangars[AIRPORT.hangars.length - 1];
   sign('Fracht', 30, 6, cargo.x - cargo.w / 2 - 0.6, 18, cargo.z, -Math.PI / 2);
   for (const d of AIRPORT.docks) {
-    if (d.d > d.w) sign(d.name, 26, 5, d.x, 14.5, d.z - d.d / 2 - 0.5, Math.PI);
+    // piers: on the head end, away from the terminal
+    if (d.d > d.w) sign(d.name, 26, 5, d.x, 14.5, d.z + d.d / 2 + 0.5, 0);
     else sign(d.name, 26, 5, d.x + d.w / 2 + 0.5, 14.5, d.z, Math.PI / 2);
   }
 }
@@ -580,7 +582,7 @@ function trees(group: THREE.Group, rand: () => number) {
 }
 
 /** Scenery of the airport (shared by the road race and the kart race). */
-export function buildAirportScenery(_track: Track, _terrain: Terrain): THREE.Group {
+export function buildAirportScenery(track: Track, _terrain: Terrain): THREE.Group {
   const group = new THREE.Group();
   // the same seed for both tracks: identical airport in both races
   const rand = mulberry32(4711);
@@ -590,11 +592,16 @@ export function buildAirportScenery(_track: Track, _terrain: Terrain): THREE.Gro
   terminalDocksTower(group);
   taxiwayBridge(group);
   aircraft(group);
-  const [, r10, r14] = AIRPORT.runways;
-  departures(group, [
-    { x: r10.x2 - 50, z: r10.z2, heading: -Math.PI / 2, livery: LIVERIES[1], offset: 0 },
-    { x: r14.x1 + (r14.x2 - r14.x1) * 0.03, z: r14.z1 + (r14.z2 - r14.z1) * 0.03, heading: Math.atan2(r14.x2 - r14.x1, r14.z2 - r14.z1), livery: LIVERIES[0], offset: 50 },
-  ]);
+  const [r16, r10, r14] = AIRPORT.runways;
+  // lined up 3 % into the runway, from its end (x2, z2) when `reverse`
+  const lineUp = (r: Strip, reverse: boolean, livery: number, offset: number): Departure => {
+    const f = reverse ? 0.97 : 0.03;
+    const heading = Math.atan2(r.x2 - r.x1, r.z2 - r.z1) + (reverse ? Math.PI : 0);
+    return { x: r.x1 + (r.x2 - r.x1) * f, z: r.z1 + (r.z2 - r.z1) * f, heading, livery: LIVERIES[livery], offset };
+  };
+  // only where the take-off run stays off the race's roadway: the road race drives on 14/32 and crosses
+  // 10/28, so it sees departures on 34 climbing over it; the kart race (south of 10/28) those on 28 and 14
+  departures(group, track.def.id === 'flughafen' ? [lineUp(r16, false, 1, 0)] : [lineUp(r10, true, 1, 0), lineUp(r14, false, 0, 50)]);
   apronVehicles(group, rand);
   windsocks(group);
   fence(group);

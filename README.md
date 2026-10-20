@@ -51,8 +51,8 @@ Ein Arcade-Rennspiel im Browser im Geist von *Need for Speed II: Special Edition
   | Canyon Run | Offroad | Auto + Kart | 2,6 km | Schotter und Sand in einer roten Schlucht, 3 Sprünge, einer über ein Flussbett |
   | Waldtrail | Offroad | Auto + Kart | 2,8 km | Waldweg, Kuppen, Schlammlöcher, Furt, Sprung über den Bach |
   | Frühstückstisch | Micro | Auto | 0,9 km | Spielzeugautos auf dem Küchentisch: Müslischale, Kaffeetasse, Croissant, Strohhalme als Banden |
-  | Flughafen | Strasse | nur Auto | 5,1 km | Über alle drei gekreuzten Pisten: lange Gerade, Haarnadel auf die Schräg-Piste, Rollwege und eine Schleife übers Vorfeld; startende Flugzeuge |
-  | Flughafen Kart | Strasse | nur Kart | 3,4 km | Kurze Pistengerade, dann Rollwege und Vorfeld: schneller Bogen, Schikane, S-Kurven an den Docks, Haarnadel am Tower, Hangars |
+  | Flughafen | Strasse | nur Auto | 5,2 km | Nach dem Luftbild des Zürcher Flughafens: lange Gerade auf der Schräg-Piste 14/32, Rollweg über die Querpiste, Haken ins Vorfeld vor den Docks, Schleife über die Hauptpiste, Parallelrollweg, Haarnadel am Pistenende; startende Flugzeuge |
+  | Flughafen Kart | Strasse | nur Kart | 3,4 km | Kurze Pistengerade, dann Rollwege und Vorfeld: schneller Bogen, Schikane, S-Kurven, Haarnadel am Tower, Hangars |
 
 - **23 Fahrzeuge** mit eigenen Fahrwerten, je nach Streckenklasse bzw. Modus:
 

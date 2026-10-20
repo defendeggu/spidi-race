@@ -1,11 +1,12 @@
 /**
  * The airport ("Flughafen"): one shared layout for two tracks, the road race `flughafen` and the kart
- * race `flughafen-kart`. Loosely inspired by Zurich airport (a long north–south runway with a parallel
- * taxiway, a crossing east–west runway in the north, docks and the terminal west of the runway, the
- * tower between them, hangars in the south-west and a taxiway bridge over a service road), but not to
- * scale and without any names or logos.
+ * race `flughafen-kart`. Runways and road race traced from an aerial photo of Zurich airport (the long
+ * runway 16/34 with a parallel taxiway east of it, the crossing runway 10/28, the diagonal runway 14/32
+ * east of 16/34, the midfield dock between them, terminal and docks south of 10/28), the kart race with
+ * tower and hangars west of the southern part of 16/34; without any names or logos.
  *
- * Coordinates in metres, x east, z north, everything flat at height 0. Both tracks use the same world;
+ * Coordinates in metres, x east, z north – turned so that 16/34 runs along z (in reality it points 156°),
+ * everything flat at height 0. Both tracks use the same world;
  * they may overlap each other (they never run at the same time) but each of them is free of crossings.
  */
 
@@ -55,40 +56,45 @@ export interface AirportLayout {
 /** Main runway (north–south) shared by both tracks: x = 0. */
 export const RUNWAY_X = 0;
 
-/** Runway 14/32 (diagonal, heading 140°): from its north-west end, crossing 10/28 at about (-788, 1350). */
-const R14 = { x: -1250, z: 1900, len: 1700, heading: (140 * Math.PI) / 180 };
-const on14 = (s: number, w?: number) => {
-  const p = [R14.x + Math.sin(R14.heading) * s, R14.z + Math.cos(R14.heading) * s, 0];
-  return w ? [...p, w] : p;
-};
-/** where 14/32 crosses 10/28 (z = 1350), in metres from the north-west end of 14/32 */
-const S_CROSS = (R14.z - 1350) / -Math.cos(R14.heading);
+/** Runway 14/32 (heading 162°, 18° east of 16/34): from its north-west end north of 16/34 to the midfield. */
+const R14 = { x: 141, z: 2180, len: 2001, heading: (161.7 * Math.PI) / 180 };
+const on14 = (s: number) => [R14.x + Math.sin(R14.heading) * s, R14.z + Math.cos(R14.heading) * s];
 
 /**
- * Road race over the three crossing runways (like Zurich): north on the long runway 16/34, left onto
- * the crossing runway 10/28, a hairpin onto the diagonal runway 14/32, south-east on it, then onto the
- * taxiways: a loop over the apron in front of the docks with four 90° corners, south on taxiway "W"
- * and back east onto 16/34. [x, z, height, width?]
+ * Road race, traced from the aerial photo, clockwise: start and finish on the long diagonal runway 14/32,
+ * at its south-east end right onto the taxiway, across 10/28 and right again onto the taxiway along the
+ * docks, a hook into the apron (sharp left, hairpin right), diagonally north-west across 16/34 into a
+ * wide loop, east over 10/28 and 16/34 right at their crossing, a jink onto the parallel taxiway, north
+ * on it, over the rapid exit onto 16/34, north on the runway and through the hairpin at its end back onto
+ * 14/32. [x, z, height, width?]
  */
 export const FLUGHAFEN_POINTS: number[][] = [
-  [0, 200, 0, 22], [0, 600, 0, 22], [0, 1000, 0, 22], [0, 1200, 0, 22],
-  // 90° left onto runway 10/28
-  [-6, 1300, 0, 20], [-35, 1342, 0, 18], [-100, 1350, 0, 18],
-  [-300, 1350, 0, 18], [-500, 1350, 0, 18], [-650, 1350, 0, 17],
-  // hairpin onto runway 14/32 (just before the runways cross)
-  [-724.2, 1350, 0, 15], [-740.1, 1345.4, 0, 15], [-751.4, 1332.7, 0, 15], [-754, 1316.3, 0, 15], [-747.4, 1301, 0, 15],
-  // south-east on 14/32
-  on14(S_CROSS + 150, 18), on14(S_CROSS + 400, 18), on14(S_CROSS + 650, 18), on14(S_CROSS + 760, 16),
-  // right onto taxiway "W" (x = -200)
-  [-223.5, 676.7, 0, 14], [-203, 640, 0, 13], [-200, 600, 0],
-  // loop over the apron: 90° right, 90° left, 90° left, 90° right
-  [-200, 520, 0], [-202, 455, 0], [-218, 436, 0], [-245, 430, 0], [-330, 430, 0],
-  [-410, 430, 0], [-437, 425, 0], [-449, 408, 0], [-450, 380, 0], [-450, 300, 0],
-  [-450, 210, 0], [-448, 182, 0], [-433, 160, 0], [-410, 150, 0], [-330, 150, 0],
-  [-245, 150, 0], [-218, 144, 0], [-202, 125, 0], [-200, 90, 0],
-  // south on taxiway "W", 90° left onto the link taxiway, 90° left onto 16/34
-  [-200, -50, 0], [-200, -200, 0], [-200, -350, 0], [-198, -410, 0], [-185, -438, 0], [-160, -450, 0],
-  [-100, -450, 0], [-40, -450, 0, 15], [-12, -440, 0, 18], [0, -412, 0, 20], [0, -330, 0, 22], [0, -150, 0, 22],
+  [407.9, 1373, 0, 22],
+  // south-east on 14/32, near its end right onto the taxiway (heading 205°)
+  [727.2, 407.5, 0, 22], [746, 350.5, 0, 22], [750.4, 332.9, 0, 22], [752.1, 314.9, 0, 16], [751, 296.8, 0, 16],
+  [747.3, 279.1, 0, 16], [740.9, 262.1, 0, 16], [715.5, 207.7, 0, 16],
+  // across 10/28, 90° right onto the taxiway along the docks (heading 295°)
+  [619, 0.6, 0, 14], [593.6, -53.7, 0, 14], [583.2, -67.9, 0, 14], [568.3, -77, 0, 14], [551, -79.7, 0, 14],
+  [533.9, -75.6, 0, 14], [479.4, -50.4, 0, 14],
+  // the hook into the apron: sharp left, then a hairpin right
+  [261.9, 50.1, 0, 13], [207.4, 75.3, 0, 13], [187.1, 77.5, 0, 13], [169.5, 66.8, 0, 13], [162.1, 47.8, 0, 13],
+  [157.7, -43.2, 0, 14], [149.7, -60.8, 0, 14], [131.8, -68, 0, 14], [113.8, -60.8, 0, 14], [70.3, -19.4, 0, 14],
+  // north-west across 16/34, the wide loop round to the east
+  [-167.1, 206.7, 0, 15], [-210.5, 248.1, 0, 15], [-224.4, 264.7, 0, 15], [-234.1, 284, 0, 15], [-239.3, 305, 0, 15],
+  [-239.5, 326.6, 0, 15], [-234.9, 347.7, 0, 15], [-225.6, 367.2, 0, 15], [-212.1, 384.1, 0, 15], [-195.2, 397.5, 0, 15],
+  [-175.7, 406.8, 0, 15], [-154.6, 411.4, 0, 15], [-132.9, 411.1, 0, 15],
+  // east over 10/28 and 16/34 right at their crossing, a jink left-right-left onto the parallel taxiway
+  [-28.6, 397.7, 0, 14], [-15.9, 398.8, 0, 14], [-4.8, 405.1, 0, 14], [32, 437.9, 0, 14], [40.7, 443.2, 0, 14],
+  [50.7, 445, 0, 14], [110, 445, 0, 14], [125, 449, 0, 14], [136, 460, 0, 14], [140, 475, 0, 14], [140, 535, 0, 14],
+  // north on the parallel taxiway, over the rapid exit onto 16/34
+  [140, 1028.8, 0, 15], [140, 1088.8, 0, 15], [137, 1107.6, 0, 15], [128.1, 1124.6, 0, 15], [114.4, 1137.9, 0, 15],
+  [25.6, 1200.1, 0, 18], [11.9, 1213.4, 0, 18], [3, 1230.4, 0, 18], [0, 1249.2, 0, 20], [0, 1309.2, 0, 20],
+  // north on 16/34, bearing right at its end
+  [0, 1466.7, 0, 20], [0, 1526.7, 0, 20], [1.6, 1548.5, 0, 20], [6.3, 1569.8, 0, 20], [14.1, 1590.1, 0, 20], [39.5, 1644.5, 0, 20],
+  // the hairpin back onto 14/32
+  [76, 1722.9, 0, 16], [101.3, 1777.3, 0, 16], [112, 1794.9, 0, 16], [126.2, 1809.7, 0, 16], [143.2, 1821.2, 0, 16],
+  [162.4, 1828.8, 0, 16], [182.7, 1832, 0, 16], [203.2, 1830.8, 0, 16], [223, 1825.2, 0, 16], [241.1, 1815.5, 0, 16],
+  [256.7, 1802.1, 0, 16], [269.1, 1785.7, 0, 16], [277.6, 1766.9, 0, 22], [296.4, 1709.9, 0, 22],
 ];
 
 /**
@@ -122,43 +128,52 @@ export const FLUGHAFEN_KART_POINTS: number[][] = [
 
 export const AIRPORT: AirportLayout = {
   runways: [
-    { name: '16/34', x1: 0, z1: -1600, x2: 0, z2: 1600, width: 60 },
-    // crossing runway (east–west): crosses 16/34 and 14/32
-    { name: '10/28', x1: -1300, z1: 1350, x2: 700, z2: 1350, width: 50 },
-    // diagonal runway north-west of the docks
+    { name: '16/34', x1: 0, z1: -1600, x2: 0, z2: 1650, width: 60 },
+    // crossing runway (heading 120°): crosses 16/34 at (0, 345)
+    { name: '10/28', x1: -522, z1: 637, x2: 924, z2: -183, width: 50 },
+    // diagonal runway east of 16/34, ends north of 10/28
     { name: '14/32', x1: R14.x, z1: R14.z, x2: on14(R14.len)[0], z2: on14(R14.len)[1], width: 50 },
   ],
   taxiways: [
-    // parallel taxiway east of the main runway
-    { x1: 262, z1: -1450, x2: 262, z2: 1350, width: 23 },
+    // parallel taxiway east of the main runway (road race in the north) with links at both ends
+    { x1: 140, z1: -1450, x2: 140, z2: 1600, width: 23 },
+    { x1: 0, z1: -1500, x2: 140, z2: -1450, width: 23 },
+    { x1: 0, z1: 1600, x2: 140, z2: 1600, width: 23 },
+    // rapid exit from 16/34 (road race)
+    { x1: 140, z1: 1120, x2: 0, z2: 1218, width: 23 },
+    // road race: from the end of 14/32 south across 10/28, along the docks, the hook into the apron
+    { x1: 761, z1: 305, x2: 575, z2: -94, width: 23 },
+    { x1: 700, z1: -152, x2: 0, z2: 171, width: 23 },
+    { x1: 164, z1: 95, x2: 155, z2: -100, width: 23 },
+    // to the midfield dock
+    { x1: 0, z1: 445, x2: 680, z2: 445, width: 23 },
     // taxiways west of the main runway (kart race)
     { x1: -312, z1: -1250, x2: -312, z2: -104, width: 23 },
     { x1: -1000, z1: -104, x2: 0, z2: -104, width: 23 },
     { x1: -900, z1: -1145, x2: 0, z2: -1145, width: 23 },
     { x1: -392, z1: -1145, x2: -392, z2: -580, width: 20 },
     { x1: -900, z1: -580, x2: -312, z2: -580, width: 20 },
-    // rapid exits and links to the crossing runway
-    { x1: 0, z1: 1200, x2: 262, z2: 1300, width: 23 },
-    { x1: 0, z1: -1200, x2: 262, z2: -1300, width: 23 },
-    // taxiway "W" from the crossing runway down to the southern link (road race)
-    { x1: -200, z1: -450, x2: -200, z2: 1350, width: 23 },
-    { x1: -200, z1: -450, x2: 0, z2: -450, width: 23 },
-    // taxiway north of the crossing runway with the northern apron
+    // taxiway west of 16/34 with the northern apron
     { x1: -1000, z1: 1420, x2: 0, z2: 1420, width: 23 },
-    // service road east (road race) – the taxiway bridge spans it
-    { x1: 450, z1: 30, x2: 450, z2: 680, width: 16 },
+    // service road under the taxiway bridge
+    { x1: 20, z1: -1000, x2: 900, z2: -1000, width: 16 },
   ],
   aprons: [
-    { x: -560, z: 190, w: 600, d: 560 },
+    // apron west (remote stands), midfield apron at Dock E, apron in front of the terminal, at the hangars
+    { x: -680, z: 110, w: 400, d: 300 },
+    { x: 420, z: 520, w: 440, d: 170 },
+    { x: 450, z: -260, w: 500, d: 260 },
     { x: -720, z: -760, w: 420, d: 200 },
     // northern apron (remote stands) and the cargo apron east of the runway
     { x: -400, z: 1490, w: 460, d: 110 },
     { x: 470, z: -700, w: 260, d: 300 },
   ],
-  terminal: { x: -960, z: 190, w: 110, d: 520 },
+  terminal: { x: 450, z: -430, w: 420, d: 60 },
   docks: [
-    { name: 'Dock A', x: -620, z: 260, w: 40, d: 360 },
-    { name: 'Dock B', x: -420, z: 20, w: 260, d: 36 },
+    // two piers north of the terminal and the midfield dock between 16/34 and 14/32
+    { name: 'Dock A', x: 330, z: -300, w: 36, d: 200 },
+    { name: 'Dock B', x: 560, z: -300, w: 36, d: 200 },
+    { name: 'Dock E', x: 420, z: 520, w: 320, d: 36 },
   ],
   hangars: [
     { x: -560, z: -760, w: 110, d: 70, facing: 0 },
@@ -169,42 +184,40 @@ export const AIRPORT: AirportLayout = {
     { x: 650, z: -720, w: 70, d: 150, facing: -Math.PI / 2 },
   ],
   tower: { x: -655, z: -540 },
-  bridge: { x: 452, z: 315, length: 120, width: 40, heading: Math.PI / 2 },
+  // the parallel taxiway crosses the service road on a bridge
+  bridge: { x: 140, z: -1000, length: 120, width: 40, heading: 0 },
   planes: [
-    // Dock A, west and east side, noses at the pier (heading = where the nose points)
-    { x: -646, z: 140, heading: Math.PI / 2, livery: 0 },
-    { x: -646, z: 240, heading: Math.PI / 2, livery: 1 },
-    { x: -646, z: 340, heading: Math.PI / 2, livery: 2 },
-    { x: -594, z: 140, heading: -Math.PI / 2, livery: 3 },
-    { x: -594, z: 240, heading: -Math.PI / 2, livery: 0 },
-    { x: -594, z: 340, heading: -Math.PI / 2, livery: 2 },
-    // Dock B, north and south side – the southern ones are seen from the kart race
-    { x: -480, z: 44, heading: Math.PI, livery: 1 },
-    { x: -380, z: 44, heading: Math.PI, livery: 3 },
-    { x: -480, z: -4, heading: 0, livery: 0 },
-    { x: -380, z: -4, heading: 0, livery: 1 },
-    // remote stands on the open apron
-    { x: -800, z: -20, heading: 0, livery: 2 },
-    { x: -820, z: 380, heading: Math.PI / 2, livery: 3 },
+    // Dock A and Dock B, both sides, noses at the pier (heading = where the nose points)
+    ...[-340, -250].flatMap((z, k) => [
+      { x: 306, z, heading: Math.PI / 2, livery: k },
+      { x: 354, z, heading: -Math.PI / 2, livery: k + 1 },
+      { x: 536, z, heading: Math.PI / 2, livery: k + 2 },
+      { x: 584, z, heading: -Math.PI / 2, livery: k + 3 },
+    ]),
+    // Dock E, south and north side
+    ...[300, 380, 460, 540].flatMap((x, k) => [
+      { x, z: 496, heading: 0, livery: k },
+      { x, z: 544, heading: Math.PI, livery: k + 2 },
+    ]),
+    // remote stands on the apron west
+    ...[-800, -700, -600].map((x, k) => ({ x, z: 60, heading: 0, livery: k + 1 })),
     // in front of the hangars
     { x: -560, z: -700, heading: Math.PI, livery: 1 },
     { x: -760, z: -700, heading: Math.PI, livery: 0 },
-    // waiting on taxiway "W", and one on the taxiway bridge
-    { x: -200, z: 1240, heading: Math.PI, livery: 2 },
-    { x: 470, z: 315, heading: -Math.PI / 2, livery: 3 },
+    // on the taxiway bridge
+    { x: 140, z: -985, heading: 0, livery: 3 },
     // northern apron: remote stands, noses north
     ...[-580, -500, -420, -340, -260].map((x, k) => ({ x, z: 1525, heading: 0, livery: (k + 1) % 4 })),
     // cargo apron: noses towards the cargo hall in the east
     ...[-800, -720, -640].map((z, k) => ({ x: 520, z, heading: Math.PI / 2, livery: k + 1 })),
-    // taxiing on the parallel taxiway, lined up on 16 (north end); departures on 28 and 14 are animated
-    { x: 262, z: 450, heading: Math.PI, livery: 0 },
-    { x: 262, z: -250, heading: 0, livery: 1 },
-    { x: 0, z: 1570, heading: Math.PI, livery: 3 },
-    // holding short of 14/32 on the northern taxiway
-    { x: -960, z: 1420, heading: Math.PI / 2, livery: 0 },
+    // taxiing on the parallel taxiway (the departures are animated)
+    { x: 140, z: -600, heading: 0, livery: 0 },
+    { x: 140, z: 1450, heading: Math.PI, livery: 2 },
+    // holding short of 16/34 on the northern taxiway
+    { x: -80, z: 1420, heading: Math.PI / 2, livery: 0 },
   ],
-  windsocks: [{ x: 70, z: 1450 }, { x: -70, z: -1500 }, { x: 330, z: 0 }, { x: -1000, z: 1260 }],
-  bounds: { minX: -1400, maxX: 950, minZ: -1650, maxZ: 1980 },
+  windsocks: [{ x: 60, z: 1450 }, { x: -70, z: -1500 }, { x: 330, z: 250 }, { x: -560, z: 720 }],
+  bounds: { minX: -1400, maxX: 1000, minZ: -1650, maxZ: 2260 },
 };
 
 /** True if (x, z) lies on the paved strip (with an extra margin around it). */
