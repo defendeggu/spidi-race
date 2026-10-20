@@ -2,6 +2,14 @@
 
 Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.5.0] – 2026-10-20
+
+### Geändert
+- **Flughafen-Rennstrecke neu** (5,2 km), nach einem Luftbild des Zürcher Flughafens nachgezeichnet: Start und Ziel auf der langen Schräg-Piste 14/32, an ihrem Ende rechts auf den Rollweg über die Querpiste 10/28, rechts entlang der Docks, ein Haken ins Vorfeld (scharf links, Haarnadel rechts), schräg über die Hauptpiste 16/34 in eine weite Schleife, zurück über 10/28 und 16/34 direkt an ihrer Kreuzung, Schlenker auf den Parallelrollweg, über den Schnellabrollweg auf 16/34 und durch die Haarnadel am Pistenende zurück auf 14/32
+- Flughafen-Gelände wie in Zürich angeordnet: 14/32 östlich von 16/34, Querpiste 10/28 schräg über 16/34, Dock E zwischen den Pisten, Terminal mit Dock A und B südlich der Querpiste, Parallelrollweg östlich der Hauptpiste mit Rollwegbrücke über eine Servicestrasse, Vorfeld West mit Aussenpositionen. Die Kartstrecke bleibt unverändert
+- Startende Flugzeuge: im Autorennen auf 34 (steigen über die Strecke weg), im Kart-Rennen auf 28 und 14
+- Bestzeiten der alten Flughafen-Strecke passen nicht mehr zur neuen Strecke
+
 ## [1.4.1] – 2026-10-19
 
 ### Geändert
