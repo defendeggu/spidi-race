@@ -94,15 +94,19 @@ const GRAVITY = 9.81;
 export const ROCKET_BURN_TIME = 0.4;
 export const ROCKET_COOLDOWN = 5;
 
-/** One press launches one hop; holding the key cannot launch again on landing. */
+/**
+ * One press launches one hop – from the ground or in mid-air (say after a ramp), where it pushes the car
+ * up and on again. Holding the key cannot launch again; the cooldown keeps it from flying for ever.
+ */
 export function stepRocket(c: CarState, spec: CarSpec, inp: CarInput, dt: number, canLaunch = true) {
   if (!spec.rocket) return;
   c.rocketCooldown = Math.max(0, (c.rocketCooldown ?? 0) - dt);
   const pressed = inp.rocket === true;
-  if (pressed && !c.rocketHeld && !c.airborne && c.rocketCooldown === 0 && canLaunch) {
+  if (pressed && !c.rocketHeld && c.rocketCooldown === 0 && canLaunch) {
+    if (!c.airborne) c.airTime = 0;
     c.airborne = true;
-    c.airTime = 0;
-    c.vy = 7.5;
+    // in the air a falling car is caught first, then lifted like from the ground
+    c.vy = Math.max(c.vy, 0) + 7.5;
     c.rocketBurn = ROCKET_BURN_TIME;
     c.rocketCooldown = ROCKET_COOLDOWN;
   }

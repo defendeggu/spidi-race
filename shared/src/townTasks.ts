@@ -104,8 +104,43 @@ export interface TownResult {
   fastest: number[];
   /** duel: index of the winner, -1 for a draw */
   winner: number;
-  /** player who drove into the water (the session ended there), -1 if none */
-  fell: number;
+  /** per player: why their run ended early (null: still in it to the end) – such runs do not count */
+  out: (OutReason | null)[];
+}
+
+/** Why a player's run ended early: fell into the harbour, stayed in the cemetery, ran into people. */
+export type OutReason = 'water' | 'cemetery' | 'people';
+
+/** seconds a car may stay in the cemetery before the run is over */
+export const CEMETERY_GRACE = 5;
+/** the third pedestrian hit ends the run */
+export const PEOPLE_STRIKES = 3;
+
+/**
+ * Watches one player for unseemly driving: in the cemetery a countdown runs (leaving it resets it),
+ * hitting a pedestrian (or their dog or pram) gives a warning, the third one ends the run.
+ */
+export class FoulWatch {
+  /** seconds in the cemetery so far (0 = outside) */
+  cemetery = 0;
+  strikes = 0;
+
+  /** Advance by dt; returns true when the time in the cemetery has run out. */
+  step(inCemetery: boolean, dt: number) {
+    this.cemetery = inCemetery ? this.cemetery + dt : 0;
+    return this.cemetery >= CEMETERY_GRACE;
+  }
+
+  /** Seconds left before the run ends, while in the cemetery. */
+  get cemeteryLeft() {
+    return Math.max(0, CEMETERY_GRACE - this.cemetery);
+  }
+
+  /** A pedestrian was hit: returns true on the strike that ends the run. */
+  hit() {
+    this.strikes++;
+    return this.strikes >= PEOPLE_STRIKES;
+  }
 }
 
 /** Street distance in a grid town (Manhattan) – fairer than straight-line distance for picking duel goals. */
@@ -123,8 +158,8 @@ export class TownSession {
   readonly trackers: TaskTracker[];
   readonly scores: number[];
   readonly fastest: number[];
-  /** player who fell into the water, -1 if none */
-  fell = -1;
+  /** per player: why their run ended early, null while they are still in it */
+  readonly out: (OutReason | null)[];
   private goalStart: number[];
   private rnd: () => number;
 
@@ -137,6 +172,7 @@ export class TownSession {
     this.scores = this.trackers.map(() => 0);
     this.fastest = this.trackers.map(() => 0);
     this.goalStart = this.trackers.map(() => 0);
+    this.out = this.trackers.map(() => null);
   }
 
   /** Where player k starts: the practice square, or opposite corners in a duel. */
@@ -196,7 +232,7 @@ export class TownSession {
     this.time += dt;
     const scored: number[] = [];
     this.trackers.forEach((t, k) => {
-      if (!t.update(cars[k], dt)) return;
+      if (this.out[k] || !t.update(cars[k], dt)) return;
       scored.push(k);
       // in a duel only the first one counts when both arrive in the same step
       if (this.mode === 'duel' && scored.length > 1) return;
@@ -222,17 +258,26 @@ export class TownSession {
     return scored;
   }
 
-  /** Player k drove into the water: the session ends; in a duel the other player wins. */
-  knockOut(k: number) {
-    if (this.phase === 'finished') return;
-    this.fell = k;
-    this.phase = 'finished';
+  /**
+   * Player k's run is over (into the water, too long in the cemetery, the third pedestrian hit). It does
+   * not count; the others play on – the session ends when nobody is left.
+   */
+  knockOut(k: number, reason: OutReason = 'water') {
+    if (this.phase === 'finished' || this.out[k]) return;
+    this.out[k] = reason;
+    if (this.out.every(Boolean)) this.phase = 'finished';
+  }
+
+  /** Still in the game (not knocked out)? */
+  playing(k: number) {
+    return !this.out[k];
   }
 
   result(): TownResult {
     const [a, b] = this.scores;
     let winner = this.mode !== 'duel' ? 0 : a === b ? -1 : a > b ? 0 : 1;
-    if (this.mode === 'duel' && this.fell >= 0) winner = 1 - this.fell;
-    return { mode: this.mode, task: this.task, time: this.time, scores: [...this.scores], fastest: [...this.fastest], winner, fell: this.fell };
+    // a player who is out cannot win; if both are out nobody does
+    if (this.mode === 'duel' && (this.out[0] || this.out[1])) winner = this.out[0] && this.out[1] ? -1 : this.out[0] ? 1 : 0;
+    return { mode: this.mode, task: this.task, time: this.time, scores: [...this.scores], fastest: [...this.fastest], winner, out: [...this.out] };
   }
 }

@@ -176,16 +176,18 @@ export class TownHud {
   /**
    * arrow: direction to the goal in screen terms (radians, clockwise from up) or null without a goal.
    */
-  update(speed: number, gear: number, status: { count: string; time: string; center: string }, arrow: number | null, dist: number, park: number,
+  update(speed: number, gear: number, status: { count: string; time: string; center: string; warn?: boolean }, arrow: number | null, dist: number, park: number,
     inp: CarInput, pad: PadKind | null, dots: TownDot[], dt: number) {
     this.el.speed.textContent = String(Math.round(Math.abs(speed) * 3.6));
     this.el.gear.textContent = gear === 0 ? 'R' : String(gear);
     this.el.count.textContent = status.count;
     this.el.time.textContent = status.time;
-    if (status.center !== this.lastCenter) {
-      this.lastCenter = status.center;
+    const key = status.center + (status.warn ? '!' : '');
+    if (key !== this.lastCenter) {
+      this.lastCenter = key;
       this.el.center.textContent = status.center;
-      this.el.center.className = 'hud-center' + (status.center ? ' show' : '');
+      // warnings blink red like the wrong-way warning on the race tracks
+      this.el.center.className = 'hud-center' + (status.center ? ' show' : '') + (status.warn ? ' warn' : '');
     }
     this.el.goal.style.visibility = arrow === null ? 'hidden' : 'visible';
     if (arrow !== null) {

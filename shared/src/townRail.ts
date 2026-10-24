@@ -82,21 +82,36 @@ export const TOWN_RAIL = {
   north: 486,
   /** along the north green strip */
   northZ: 478,
-  /** the airport leg runs south at this x and ends at the buffer stop */
-  airportX: 488,
-  airportEnd: 322,
+  /** the airport leg runs south between the landside parking and the terminal, ends at the buffer stop */
+  airportX: 490,
+  airportEnd: 140,
   /** east station platform (x range) beside track 1, centred on z = 0 */
   platform: [-519.6, -508] as const,
-  /** airport station: platform on the town side of the track, z range */
-  airportPlatform: { x0: 477.6, x1: 485.6, z0: 330, z1: 440 },
-  airportStation: { x: 469, z: 385, w: 10, d: 40 },
-  /** asphalt forecourt of the airport station */
-  airportForecourt: { x0: 458, x1: 477, z0: 326, z1: 446 },
+  /** airport station: platform on the terminal side of the track, a short walk north of the terminal entrance */
+  airportPlatform: { x0: 492.4, x1: 499.4, z0: 150, z1: 250 },
+  airportStation: { x: 499, z: 280 },
+  /** where the travellers walk to: the terminal entrance (town side) */
+  terminalDoor: { x: 496.5, z: 28 },
+  /** asphalt around the airport station (the landside is paved anyway; north of it grass) */
+  airportForecourt: { x0: 486, x1: 507, z0: 250, z1: 300 },
 };
 
 const R = TOWN_RAIL;
 export const SBAHN_PATH = railPath([[R.trackX, R.south], [R.trackX, R.northZ], [R.airportX, R.northZ], [R.airportX, R.airportEnd]], 30);
 export const FREIGHT_PATH = railPath([[R.freightX, R.south], [R.freightX, R.north]], 30);
+
+/** On the ballast of a track (within 3 m of its centre line, tunnels excluded)? */
+export function onTrack(x: number, z: number) {
+  // quick reject: the tracks only run along the east strip, the north strip and the airport leg
+  if (x > R.trackX + 4 && z < R.northZ - 34 && Math.abs(x - R.airportX) > 4) return false;
+  for (const path of [SBAHN_PATH, FREIGHT_PATH]) {
+    for (let i = 0; i < path.points.length; i += 2) {
+      const p = path.points[i];
+      if (Math.abs(p.x - x) < 3.2 && Math.abs(p.z - z) < 3.2 && Math.hypot(p.x - x, p.z - z) < 3.2) return true;
+    }
+  }
+  return false;
+}
 
 /** Train cars (length in m, as drawn: Kenney train kit × 3.2) and whether a car is turned around. */
 export const TRAIN_SCALE = 3.2;

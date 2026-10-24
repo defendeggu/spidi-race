@@ -65,7 +65,9 @@ export type ClientMsg =
   /** karts: the drift and boost of the own karts go along (the server judges hits and mines with them) */
   | { type: 'state'; cars: NetCar[]; karts?: NetKart[] }
   /** kart races: use the held item of an own kart */
-  | { type: 'item'; id: string };
+  | { type: 'item'; id: string }
+  /** kart battle: an own kart is out (too long in the cemetery, ran into people three times) */
+  | { type: 'forfeit'; id: string };
 
 export type ServerMsg =
   | { type: 'welcome'; clientId: string }

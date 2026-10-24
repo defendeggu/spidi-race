@@ -2,7 +2,21 @@
 
 Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
-## [1.6.0] – 2026-10-24
+## [1.7.0] – 2026-10-24
+
+### Hinzugefügt
+- Übungsstadt und Kart-Battle: **Friedhof** – wer hineinfährt, bekommt eine rot blinkende Warnung mit Countdown („pietätlos“), nach 5 Sekunden ist die Fahrt vorbei
+- **Fussgänger anfahren** gibt eine Verwarnung (auch Hund und Kinderwagen), beim dritten Mal ist die Fahrt vorbei; die Leute weichen langsamen Autos aus, schnellen nicht mehr ganz
+- Reisende laufen zwischen Flughafen-Bahnhof und Terminal, drei Polizisten an der Polizeistation
+- Raketensprung auch in der Luft, z.B. mitten im Sprung über eine Rampe
+
+### Geändert
+- Wer ausscheidet (Friedhof, Fussgänger, Hafenbecken), beendet nur die eigene Fahrt: im Duell und im Kart-Battle (auch im Netzwerk) fahren die anderen weiter; solche Fahrten zählen nicht
+- Flughafen-Bahnhof näher am Terminal, zwischen Parkplatz und Flughafengebäude
+- Fussgänger queren Strassen nur auf Zebrastreifen (Einkäufer am Spidi-Markt, Reisende über die Vorfeld-Zufahrt)
+- Auf Gleisen und Schotter rüttelt das Auto wie auf den Offroad-Strecken, und der Motor rumpelt auf rauem Untergrund
+
+ – 2026-10-24
 
 ### Hinzugefügt
 - Übungsstadt: **Fussgänger** (Kenney Mini Characters): Frauen, Männer und Kinder in Parks, Gärten und auf den Plätzen, mit Hund oder Kinderwagen auf den Gehwegen, Einkäufer zwischen Parkplatz und Spidi-Markt, Spaziergänger auf dem Friedhof, Sitzende auf Bänken; sie springen zur Seite, wenn ein Auto kommt

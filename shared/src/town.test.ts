@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { CARS, carsForClass, getCar, PARKED_MODELS, townVersion } from './cars';
 import { forwardSpeed, NO_INPUT, type CarInput } from './physics';
-import { BLOCK_INNER, GRID as GRID_STEP, HARBOR, OFFROAD_PARK, OUTER, TOWN_AIRPORT, TOWN_BOUNDS, createTownCar, getTown, stepCarTown, TOWN_HALF } from './town';
-import { DUEL_SECONDS, TaskTracker, TownSession } from './townTasks';
+import { BLOCK_INNER, GRID as GRID_STEP, HARBOR, LINES, OFFROAD_PARK, OUTER, ROAD_HW, TOWN_AIRPORT, TOWN_BOUNDS, createTownCar, getTown, stepCarTown, TOWN_HALF } from './town';
+import { DUEL_SECONDS, FoulWatch, TaskTracker, TownSession } from './townTasks';
 import { DEPARTURE_CYCLE, departureAt, planeBoxes } from './townPlane';
 import { personAt, townPeople } from './townPeople';
 import { collideTrains, FREIGHT_PATH, SBAHN_PATH, TOWN_RAIL, TRAIN_HALF_WIDTH, trainsAt } from './townRail';
@@ -352,21 +352,42 @@ describe('practice session', () => {
   });
 });
 
-describe('falling into the water', () => {
-  it('ends a solo run without a time and makes the other duel player win', () => {
+describe('falling into the water, the cemetery and pedestrians', () => {
+  it('ends a solo run without a time; in a duel the other player plays on and wins', () => {
     const solo = new TownSession(town, 'stars', 1, 5, 1);
     for (let i = 0; i <= 60 * 3; i++) solo.step(DT, [createTownCar('p', solo.spawn(0))]);
     solo.knockOut(0);
     expect(solo.phase).toBe('finished');
-    expect(solo.result().fell).toBe(0);
+    expect(solo.result().out).toEqual(['water']);
     const duel = new TownSession(town, 'stars', 2, 5, 1);
     duel.scores[1] = 0;
     duel.scores[0] = 4;
-    duel.knockOut(0);
-    expect(duel.result()).toMatchObject({ winner: 1, fell: 0 });
+    duel.knockOut(0, 'cemetery');
+    // the other one is still driving
+    expect(duel.phase).not.toBe('finished');
+    expect(duel.playing(1)).toBe(true);
+    expect(duel.result()).toMatchObject({ winner: 1, out: ['cemetery', null] });
+    duel.knockOut(1, 'people');
+    expect(duel.phase).toBe('finished');
+    expect(duel.result().winner).toBe(-1);
     const free = new TownSession(town, 'free', 1, 5, 1);
     free.knockOut(0);
     expect(free.phase).toBe('finished');
+  });
+
+  it('five seconds in the cemetery or the third pedestrian end the run, leaving in time resets the countdown', () => {
+    const church = town.blocks.find((b) => b.kind === 'church')!;
+    expect(town.inCemetery(church.cx + 10, church.cz - 20)).toBe(true);
+    expect(town.inCemetery(church.cx + 10, church.cz + 20)).toBe(false);
+    const w = new FoulWatch();
+    for (let i = 0; i < 60 * 4; i++) expect(w.step(true, DT)).toBe(false);
+    w.step(false, DT);
+    expect(w.cemetery).toBe(0);
+    let out = false;
+    for (let i = 0; i < 60 * 5 + 2 && !out; i++) out = w.step(true, DT);
+    expect(out).toBe(true);
+    const p = new FoulWatch();
+    expect([p.hit(), p.hit(), p.hit()]).toEqual([false, false, true]);
   });
 });
 
@@ -701,6 +722,19 @@ describe('airfield in the west', () => {
     for (const kind of ['park', 'plaza', 'towerplaza', 'church']) expect(near(kind), kind).toBeGreaterThan(1);
     const supermarket = town.buildings.find((b) => b.model === 'supermarket')!;
     expect(people.filter((p) => !p.loop && p.pts.some((q) => Math.hypot(q.x - supermarket.x, q.z - supermarket.z) < 30)).length).toBeGreaterThan(2);
+    // streets are crossed only at zebra crossings (6–9 m from the middle of an intersection)
+    const nearest = (v: number) => LINES.reduce((b, L) => (Math.abs(v - L) < Math.abs(v - b) ? L : b), LINES[0]);
+    for (const p of people.filter((q) => q.kind !== 'sitter')) {
+      for (let t = 0; t < 300; t += 1) {
+        const at = personAt(p, t);
+        if (Math.abs(at.x) > OUTER || Math.abs(at.z) > OUTER) continue;
+        const dx = Math.abs(at.x - nearest(at.x)), dz = Math.abs(at.z - nearest(at.z));
+        const onRoad = dx < ROAD_HW || dz < ROAD_HW;
+        const zebra = (dx < ROAD_HW + 0.5 && dz >= ROAD_HW && dz <= ROAD_HW + 4.5) || (dz < ROAD_HW + 0.5 && dx >= ROAD_HW && dx <= ROAD_HW + 4.5);
+        expect(!onRoad || zebra, `${p.kind} on the street at ${at.x.toFixed(1)},${at.z.toFixed(1)}`).toBe(true);
+      }
+    }
+    expect(people.filter((p) => p.pts.length === 6).length, 'shoppers over the zebra').toBeGreaterThan(2);
     // nobody walks through an obstacle
     for (const p of people.filter((q) => q.kind !== 'sitter')) {
       for (let t = 0; t < 120; t += 7) {

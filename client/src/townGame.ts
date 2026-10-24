@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 import { updateRocketHud } from './rocketHud';
 import {
-  collideCars, createTownCar, formatTime, forwardSpeed, getCar, HARBOR, idleCar, lerp, lerpAngle, NO_INPUT, PARKING_BAY, SURFACE_PROPS,
-  collideMoving, planeBoxes, planesAt, trainBoxes, stepCarTown, TownSession, Traffic, trainsAt,
+  collideCars, createTownCar, formatTime, forwardSpeed, getCar, HARBOR, idleCar, lerp, lerpAngle, NO_INPUT, PARKING_BAY,
+  collideMoving, FoulWatch, PEOPLE_STRIKES, planeBoxes, planesAt, trainBoxes, stepCarTown, TownSession, Traffic, trainsAt,
+  type OutReason,
   type CarInput, type CarSpec, type CarState, type TaskTracker, type TownMap, type TownResult, type TownTask, type TrafficCar,
 } from '@spidi/shared';
 import { audio, EngineVoice } from './audio';
@@ -140,6 +141,12 @@ export class TownGame {
   private particles = new Particles();
   /** players that drove into the water */
   private sunk = new Set<number>();
+  /** cemetery countdown and pedestrian warnings per player */
+  private fouls: FoulWatch[] = [];
+  /** a warning shown big in the middle for a moment (pedestrian hit), per player */
+  private warnings: { text: string; time: number }[] = [];
+  /** the end of the session was noticed (results follow after a moment) */
+  private ended = false;
   private lastBeep = -1;
   private finishTimer = -1;
   readonly session: TownSession;
@@ -188,6 +195,7 @@ export class TownGame {
         tasks: this.session.trackers[k],
         goal, lastInput: NO_INPUT, impactCooldown: 0,
       });
+      this.fouls.push(new FoulWatch());
     });
     this.world.dynamic.add(this.particles.points);
     this.session.begin(this.players.map((p) => p.state));
@@ -266,7 +274,7 @@ export class TownGame {
   private fixedStep(dt: number) {
     const town = this.world.town;
     this.time += dt;
-    for (const p of this.players) {
+    for (const [k, p] of this.players.entries()) {
       const s = p.state;
       p.prev.x = s.x;
       p.prev.y = s.y;
@@ -276,7 +284,7 @@ export class TownGame {
       const phase = this.session.phase;
       // engines can be revved during the countdown; after the end the cars roll to a stop
       if (phase === 'countdown') idleCar(s, p.lastInput, dt);
-      else stepCarTown(s, p.spec, phase === 'finished' ? { ...NO_INPUT, handbrake: true } : p.lastInput, town, dt);
+      else stepCarTown(s, p.spec, phase === 'finished' || !this.session.playing(k) ? { ...NO_INPUT, handbrake: true } : p.lastInput, town, dt);
     }
     this.players.forEach((p, k) => {
       if (p.state.y > HARBOR.waterY || this.sunk.has(k)) return;
@@ -284,10 +292,15 @@ export class TownGame {
       this.sunk.add(k);
       this.splash(p.state.x, p.state.z);
       p.hud.flash('PLATSCH! Ins Wasser gefallen', 2.5);
-      const wasRunning = this.session.phase !== 'finished';
-      this.session.knockOut(k);
-      if (wasRunning) this.finishTimer = 2.5;
+      this.knockOut(k, 'water');
     });
+    // the cemetery is no place for a joyride: 5 seconds to get out again
+    if (this.session.phase !== 'countdown') {
+      this.players.forEach((p, k) => {
+        if (!this.session.playing(k)) return;
+        if (this.fouls[k].step(town.inCemetery(p.state.x, p.state.z), dt)) this.knockOut(k, 'cemetery');
+      });
+    }
     for (const t of this.trafficVisuals) {
       t.prev.x = t.car.state.x;
       t.prev.z = t.car.state.z;
@@ -303,7 +316,6 @@ export class TownGame {
     // the trains run on open tracks, the departing aircraft rolls along the runway: they push cars aside
     const movers = [...trainBoxes(trainsAt(this.clock)), ...planesAt(this.clock).flatMap(planeBoxes)];
     for (const p of this.players) p.state.impact = Math.max(p.state.impact, collideMoving(p.state, p.spec, movers));
-    const wasRunning = this.session.phase === 'running';
     const scored = this.session.step(dt, this.players.map((p) => p.state));
     for (const k of scored) {
       const p = this.players[k];
@@ -316,7 +328,8 @@ export class TownGame {
       setTimeout(() => audio.beep(990, 0.25), 120);
     }
     if (scored.length) this.showGoals();
-    if (wasRunning && this.session.phase === 'finished') {
+    if (this.session.phase === 'finished' && !this.ended) {
+      this.ended = true;
       this.showGoals();
       this.finishTimer = 2.5;
       audio.beep(880, 0.6);
@@ -325,6 +338,16 @@ export class TownGame {
       this.finishTimer -= dt;
       if (this.finishTimer <= 0) this.onFinish?.(this.session.result());
     }
+  }
+
+  /** Player k's run is over (it does not count); in a duel the other one drives on. */
+  private knockOut(k: number, reason: OutReason) {
+    if (!this.session.playing(k)) return;
+    this.session.knockOut(k, reason);
+    const p = this.players[k];
+    // the reason stays big in the middle of the player's view (see status)
+    if (reason !== 'water') audio.sweep(500, 140, 0.7, 0.15);
+    for (const o of this.players) if (o !== p && this.session.playing(this.players.indexOf(o))) o.hud.flash(`${p.cfg.name} ist ausgeschieden – fahr weiter!`, 2.5);
   }
 
   /** Water fountain where a car hits the water. */
@@ -352,21 +375,44 @@ export class TownGame {
       const r = Math.ceil(se.remaining);
       time = `${Math.floor(r / 60)}:${String(r % 60).padStart(2, '0')}`;
     }
+    let warn = false;
+    const out = se.out[k];
+    const foul = this.fouls[k], w = this.warnings[k];
     if (se.phase === 'countdown') center = String(Math.ceil(se.countdown));
-    else if (se.mode !== 'free' && se.time < 1) center = 'LOS!';
+    else if (out) {
+      center = out === 'water' ? 'PLATSCH!' : out === 'cemetery' ? 'AUS!\nPietätlos auf dem Friedhof' : 'AUS!\nZu viele Fussgänger angefahren';
+      warn = out !== 'water';
+    } else if (foul.cemetery > 0) {
+      // like the wrong-way warning on the race tracks, with a countdown
+      center = `FRIEDHOF!\nDas ist pietätlos – sofort raus! ${Math.ceil(foul.cemeteryLeft)}`;
+      warn = true;
+    } else if (w && this.clock - w.time < 2.5) {
+      center = w.text;
+      warn = true;
+    } else if (se.mode !== 'free' && se.time < 1) center = 'LOS!';
     else if (se.phase === 'finished') {
       const res = se.result();
-      if (res.fell >= 0 && (se.mode !== 'duel' || res.fell === k)) center = 'PLATSCH!';
-      else if (se.mode === 'free') center = '';
+      if (se.mode === 'free') center = '';
       else center = se.mode === 'solo' ? 'GESCHAFFT!' : res.winner < 0 ? 'UNENTSCHIEDEN' : res.winner === k ? 'GEWONNEN!' : 'ZEIT UM!';
     }
-    return { count, time, center };
+    return { count, time, center, warn };
   }
 
   private render(alpha: number, dt: number) {
     const town = this.world.town;
     this.world.life.update(this.clock);
-    this.world.people.update(this.clock, dt, this.players.map((p) => p.state));
+    // running into people: a warning, the third one ends the run
+    const hits = this.world.people.update(this.clock, dt, this.players.map((p) => p.state));
+    for (const k of hits) {
+      if (this.session.phase === 'countdown' || !this.session.playing(k) || this.paused) continue;
+      const out = this.fouls[k].hit();
+      audio.crash(5);
+      if (out) this.knockOut(k, 'people');
+      else {
+        this.warnings[k] = { text: `VERWARNUNG ${this.fouls[k].strikes}/${PEOPLE_STRIKES}\nPass auf die Fussgänger auf!`, time: this.clock };
+        audio.beep(220, 0.35, 0.25);
+      }
+    }
     this.particles.update(dt);
     // countdown beeps like at the start of a race
     const se = this.session;
@@ -385,7 +431,7 @@ export class TownGame {
     for (const p of this.players) {
       const s = p.state;
       p.renderHeading = lerpAngle(p.prev.heading, s.heading, alpha);
-      const rough = SURFACE_PROPS[town.surfaceAt(s.x, s.z)].rough;
+      const rough = town.roughAt(s.x, s.z);
       p.visual.update(lerp(p.prev.x, s.x, alpha), lerp(p.prev.y, s.y, alpha), lerp(p.prev.z, s.z, alpha), p.renderHeading, s, dt, groundNormal(town, s.x, s.z), rough);
       const spin = p.goal.getObjectByName('spin');
       if (spin) spin.rotation.y += dt * 2;
@@ -422,11 +468,13 @@ export class TownGame {
         }
         myDots.push({ x: t.x, z: t.z, color: this.session.mode === 'duel' ? GOAL_COLORS[0] : GOAL_COLORS[k], kind: 'target' });
       }
-      if (this.session.phase === 'finished') arrow = null;
+      if (this.session.phase === 'finished' || !this.session.playing(k)) arrow = null;
       p.hud.update(v, s.gear, this.status(k), arrow, dist, p.tasks.parkProgress, p.lastInput, padKindAt(p.cfg.pad), myDots, dt);
       updateRocketHud(p.hud.root, p.spec, s, p.cfg.keymap, k === 0);
 
-      p.voice?.update(s.rpm, s.throttle, s.skid * Math.min(1, Math.abs(v) / 8), 0);
+      // the engine sound rumbles on rough ground like on the offroad tracks (tracks, grass, offroad park)
+      const rough = s.airborne ? 0 : this.world.town.roughAt(s.x, s.z);
+      p.voice?.update(s.rpm, s.throttle, s.skid * Math.min(1, Math.abs(v) / 8), rough * Math.min(1, Math.abs(v) / 25));
       p.impactCooldown -= dt;
       if (s.impact > 3 && p.impactCooldown <= 0) {
         audio.crash(s.impact, split ? (k === 0 ? -0.45 : 0.45) : 0);

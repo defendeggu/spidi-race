@@ -5,11 +5,15 @@ import { assetsReady, getClips, getModel, PEOPLE_MODELS } from './assets';
 
 /** only people this close to a player are drawn and animated (m) */
 const VIEW = 180;
-/** a car closer than this makes a pedestrian step aside (m) */
-const DODGE = 5;
+/** a car closer than this makes a pedestrian step aside (m) – too late for a car that comes fast */
+const DODGE = 4;
 const ADULT_HEIGHT = 1.75;
 const CHILD_HEIGHT = 1.15;
 const DOG_HEIGHT = 0.6;
+/** a car this close (from either end of the car) to a person, dog or pram has hit them (m) */
+const HIT = 1.5;
+/** the same person counts once within this time (s) */
+const HIT_COOLDOWN = 3;
 
 interface Animated {
   obj: THREE.Object3D;
@@ -27,6 +31,8 @@ interface Walker {
   /** sideways step away from a car */
   offset: THREE.Vector2;
   moving: boolean;
+  /** time of the last hit per car index (cooldown) */
+  hitAt: number[];
 }
 
 /** A Kenney model (skinned, animated) scaled to the given height, feet on the ground. */
@@ -92,7 +98,7 @@ export class TownPeople {
       const name = `pp-${PEOPLE_MODELS[route.model % PEOPLE_MODELS.length]}`;
       const body = animated(name, route.kind === 'child' ? CHILD_HEIGHT : ADULT_HEIGHT);
       if (!body) continue;
-      const w: Walker = { route, body, offset: new THREE.Vector2(), moving: false };
+      const w: Walker = { route, body, offset: new THREE.Vector2(), moving: false, hitAt: [] };
       this.group.add(body.obj);
       if (route.kind === 'sitter') {
         const sit = getClips(name).find((c) => c.name === 'sit');
@@ -118,16 +124,36 @@ export class TownPeople {
     }
   }
 
-  /** Move everybody to where the game time puts them; cars (the players) make them step aside. */
-  update(t: number, dt: number, cars: CarState[]) {
+  /**
+   * Move everybody to where the game time puts them; cars (the players) make them step aside.
+   * Returns the indices of the cars that ran into someone (a person, a dog or a pram) in this frame.
+   */
+  update(t: number, dt: number, cars: CarState[]): number[] {
+    const hits: number[] = [];
     for (const w of this.walkers) {
       const r = w.route;
       const home = r.pts[0];
       const near = cars.some((c) => Math.abs(c.x - home.x) < VIEW + 60 && Math.abs(c.z - home.z) < VIEW + 60);
       const pose = personAt(r, t);
       const seen = near && cars.some((c) => Math.hypot(c.x - pose.x, c.z - pose.z) < VIEW);
+      const wasShown = w.body.obj.visible;
       this.show(w, seen);
       if (!seen) continue;
+
+      // ran into: the person, the dog or the pram – where they were drawn in the last frame, as the player
+      // saw them – is within reach of either end of a moving car
+      const parts = !wasShown ? [] : [w.body.obj.position, ...(w.dog ? [w.dog.obj.position] : []), ...(w.pram ? [w.pram.position] : [])];
+      cars.forEach((c, k) => {
+        if (Math.hypot(c.vx, c.vz) < 2 || c.y > 1.5 || t - (w.hitAt[k] ?? -1e9) < HIT_COOLDOWN) return;
+        const cx = Math.sin(c.heading) * 1.3, cz = Math.cos(c.heading) * 1.3;
+        const hit = parts.some((p) => Math.hypot(p.x - c.x - cx, p.z - c.z - cz) < HIT || Math.hypot(p.x - c.x + cx, p.z - c.z + cz) < HIT);
+        if (!hit) return;
+        w.hitAt[k] = t;
+        hits.push(k);
+        // knocked aside (and back on the feet a moment later)
+        const ax = w.body.obj.position.x - c.x, az = w.body.obj.position.z - c.z, d = Math.hypot(ax, az) || 1;
+        w.offset.set(w.offset.x + (ax / d) * 3, w.offset.y + (az / d) * 3);
+      });
 
       // step aside: away from the nearest car, back again once it has passed
       let tx = 0, tz = 0;
@@ -140,7 +166,7 @@ export class TownPeople {
       }
       // quick to jump aside, slow to walk back onto the way
       const dodging = tx !== 0 || tz !== 0;
-      const k = Math.min(1, dt * (dodging ? 9 : 1.5));
+      const k = Math.min(1, dt * (dodging ? 5 : 1.5));
       w.offset.x += (tx - w.offset.x) * k;
       w.offset.y += (tz - w.offset.y) * k;
       const len = w.offset.length();
@@ -180,7 +206,9 @@ export class TownPeople {
         w.pram.position.set(x + fx * 0.95, 0, z + fz * 0.95);
         w.pram.rotation.y = pose.heading;
       }
+
     }
+    return hits;
   }
 
   private show(w: Walker, on: boolean) {
