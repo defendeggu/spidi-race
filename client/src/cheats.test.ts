@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { getCar } from '@spidi/shared';
-import { cheats, townSpec, typeCheat } from './cheats';
+import { cheats, PIONEER_BOOST, raceSpec, townSpec, typeCheat } from './cheats';
 
 describe('cheats', () => {
   it('a typed code unlocks once, other keys are ignored', () => {
@@ -11,8 +11,18 @@ describe('cheats', () => {
     expect([...'pioneer'].map((k) => typeCheat(k)).filter(Boolean)).toEqual([]);
   });
 
-  it('only changes the town formula car, to the race top speed', () => {
+  it('the pioneer cars get their race top speed in the town', () => {
     expect(townSpec(getCar('kaito-stadt')).topSpeed).toBe(getCar('kaito').topSpeed);
+    expect(townSpec(getCar('california-town')).topSpeed).toBe(getCar('california').topSpeed);
+    expect(townSpec(getCar('aventador-town')).topSpeed).toBe(getCar('aventador').topSpeed);
+    expect(townSpec(getCar('sturmvogel-town')).topSpeed).toBe(getCar('sturmvogel').topSpeed);
     expect(townSpec(getCar('familie'))).toBe(getCar('familie'));
+    expect(townSpec(getCar('falcone-town'))).toBe(getCar('falcone-town'));
+  });
+
+  it('and are 15 % faster in races', () => {
+    expect(raceSpec(getCar('sturmvogel')).topSpeed).toBeCloseTo(getCar('sturmvogel').topSpeed * PIONEER_BOOST);
+    expect(raceSpec(getCar('kaito')).accel).toBeCloseTo(getCar('kaito').accel * PIONEER_BOOST);
+    expect(raceSpec(getCar('falcone'))).toBe(getCar('falcone'));
   });
 });

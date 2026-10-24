@@ -369,10 +369,11 @@ function churchHouse(cx: number, cz: number, floors: number): Part[] {
     }
   };
   const naveD = cz - 2, naveZ = -1;
-  walls(cx, naveD, 0, naveZ, floors, (_front, k, f) => (f === 1 && k % 2 === 0 ? 'fan-wall-window-round' : f === 0 && k % 3 === 1 ? 'fan-wall-arch' : 'fan-wall'));
+  // closed walls only: glazed windows below, round windows above (open arches let you see through the church)
+  walls(cx, naveD, 0, naveZ, floors, (_front, k, f) => (f === 1 && k % 2 === 0 ? 'fan-wall-window-round' : f === 0 && k % 3 === 1 ? 'fan-wall-window-glass' : 'fan-wall'));
   const towerFloors = floors * 2, towerZ = cz / 2 - 1;
   walls(2, 2, 0, towerZ, towerFloors, (front, k, f) =>
-    f === 0 && front ? (k === 0 ? 'fan-wall-doorway-round' : 'fan-wall') : f % 2 === 1 && f > 1 ? 'fan-wall-window-round' : 'fan-wall');
+    f === 0 && front ? (k === 0 ? 'fan-wall-door' : 'fan-wall') : f % 2 === 1 && f > 1 ? 'fan-wall-window-round' : 'fan-wall');
   if (pal) {
     const roof = gableRoof(naveD, cx, 1.8, 0.15);
     const rot = (g: THREE.BufferGeometry) => g.rotateY(Math.PI / 2).translate(0, floors, naveZ);
@@ -553,14 +554,14 @@ function kitMarker(kit: Kit) {
 
 // ------------------------------------------------------------------ procedural specials
 
-function signTexture(text: string) {
+function signTexture(text: string, bg = '#c8202a', fg = '#ffd200') {
   const c = document.createElement('canvas');
   c.width = 1024;
   c.height = 128;
   const g = c.getContext('2d')!;
-  g.fillStyle = '#c8202a';
+  g.fillStyle = bg;
   g.fillRect(0, 0, 1024, 128);
-  g.fillStyle = '#ffd200';
+  g.fillStyle = fg;
   g.font = 'italic 900 86px "Arial Black", Impact, sans-serif';
   g.textAlign = 'center';
   g.textBaseline = 'middle';
@@ -620,6 +621,57 @@ function supermarket(): Part[] {
   ];
 }
 
+/** Fire station 30 × 16 × 8 m: red hall with three white-framed doors on the +z side, a hose tower, sign. */
+function fireStation(): Part[] {
+  const m = mats();
+  const W = 30, D = 16, H = 8;
+  const brick = new THREE.MeshLambertMaterial({ color: '#b5402e' });
+  const door = new THREE.MeshLambertMaterial({ color: '#d8dde2' });
+  const sign = new THREE.MeshBasicMaterial({ map: signTexture('FEUERWEHR', '#c8202a', '#ffffff') });
+  // own colours: not tinted by the town's wall / roof palettes
+  for (const x of [brick, door, sign]) x.userData.keep = true;
+  const doors: THREE.BufferGeometry[] = [], frames: THREE.BufferGeometry[] = [];
+  for (const x of [-9, 0, 9]) {
+    doors.push(new THREE.BoxGeometry(6.4, 5.2, 0.2).translate(x, 2.6, D / 2 + 0.05));
+    // horizontal panel lines on the roller doors
+    for (let y = 0.8; y < 5.2; y += 0.9) frames.push(new THREE.BoxGeometry(6.4, 0.08, 0.1).translate(x, y, D / 2 + 0.2));
+    frames.push(new THREE.BoxGeometry(7, 0.4, 0.3).translate(x, 5.4, D / 2 + 0.1));
+  }
+  return [
+    { geometry: new THREE.BoxGeometry(W, H, D).translate(0, H / 2, 0), material: brick },
+    { geometry: new THREE.BoxGeometry(W + 0.4, 0.6, D + 0.4).translate(0, H + 0.1, 0), material: m.metal },
+    { geometry: mergeGeometries(doors)!, material: door },
+    { geometry: mergeGeometries(frames)!, material: m.metal },
+    // hose drying tower at the back corner with a lookout window
+    { geometry: new THREE.BoxGeometry(4.5, 15, 4.5).translate(W / 2 - 3, 7.5, -D / 2 + 3), material: brick },
+    { geometry: new THREE.BoxGeometry(5, 0.6, 5).translate(W / 2 - 3, 15.2, -D / 2 + 3), material: m.metal },
+    { geometry: new THREE.BoxGeometry(2.4, 1.6, 0.2).translate(W / 2 - 3, 12.5, -D / 2 + 5.3), material: m.glass },
+    { geometry: new THREE.PlaneGeometry(14, 1.8).translate(0, 6.7, D / 2 + 0.2), material: sign },
+  ];
+}
+
+/** Police station 24 × 14 × 9 m: white two-storey building with a blue band, glass entrance on +z, sign. */
+function policeStation(): Part[] {
+  const m = mats();
+  const W = 24, D = 14, H = 9;
+  const blue = new THREE.MeshLambertMaterial({ color: '#1f4f9a' });
+  const white = new THREE.MeshLambertMaterial({ color: '#eef0f2' });
+  const sign = new THREE.MeshBasicMaterial({ map: signTexture('POLIZEI', '#1f4f9a', '#ffffff') });
+  for (const x of [blue, white, sign]) x.userData.keep = true;
+  const windows: THREE.BufferGeometry[] = [];
+  for (const y of [2.2, 5.8]) for (let x = -9.5; x <= 9.5; x += 3.8) if (y > 3 || Math.abs(x) > 3) windows.push(new THREE.BoxGeometry(2.2, 1.6, 0.2).translate(x, y, D / 2 + 0.05));
+  return [
+    { geometry: new THREE.BoxGeometry(W, H, D).translate(0, H / 2, 0), material: white },
+    { geometry: new THREE.BoxGeometry(W + 0.1, 0.8, D + 0.1).translate(0, 4, 0), material: blue },
+    { geometry: new THREE.BoxGeometry(W + 0.4, 0.5, D + 0.4).translate(0, H + 0.1, 0), material: blue },
+    { geometry: mergeGeometries(windows)!, material: m.glass },
+    // glass entrance with a canopy
+    { geometry: new THREE.BoxGeometry(5, 3, 0.25).translate(0, 1.5, D / 2 + 0.1), material: m.glass },
+    { geometry: new THREE.BoxGeometry(7, 0.3, 2.5).translate(0, 3.3, D / 2 + 1.25), material: blue },
+    { geometry: new THREE.PlaneGeometry(10, 1.6).translate(0, 7.6, D / 2 + 0.2), material: sign },
+  ];
+}
+
 /** Trolley shelter 7 × 2.6 m with a few trolleys. */
 function cartShelter(): Part[] {
   const m = mats();
@@ -649,6 +701,8 @@ function partsFor(model: string): Part[] {
       : tpl.kit === 'church' ? churchHouse(tpl.x, tpl.z, tpl.floors) : retroHouse(model, tpl.x, tpl.z, tpl.floors));
   }
   else if (model === 'supermarket') parts = supermarket();
+  else if (model === 'firestation') parts = fireStation();
+  else if (model === 'policestation') parts = policeStation();
   else if (model === 'cart-shelter') parts = cartShelter();
   else if (model === 'fence') parts = fenceUnit();
   else if (model === 'tunnel-portal') parts = portalUnit();

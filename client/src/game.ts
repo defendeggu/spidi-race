@@ -7,6 +7,7 @@ import {
   type CarSpec, type CarState, type NetCar, type ResultRow, type ServerMsg, type Slot, type Track,
 } from '@spidi/shared';
 import { audio, EngineVoice } from './audio';
+import { raceSpec } from './cheats';
 import { Hud, type MapDot } from './hud';
 import { input, type KeyMap } from './input';
 import type { Net } from './net';
@@ -88,6 +89,8 @@ export class Game {
   private finishedNotified = false;
   private offNet: (() => void) | null = null;
   paused = false;
+  /** a cheat changed a player's car: such races stay out of the leaderboard */
+  cheated = false;
   /** HUD containers of this game (one per player) */
   private holders: HTMLElement[] = [];
   private particles = new Particles();
@@ -119,7 +122,10 @@ export class Game {
     }
 
     for (const slot of opts.slots) {
-      const spec = getCar(slot.carId);
+      // the players' own cars may be changed by a cheat
+      const mine = !slot.isAI && (!opts.net || slot.ownerId === myId);
+      const spec = mine ? raceSpec(getCar(slot.carId)) : getCar(slot.carId);
+      if (spec !== getCar(slot.carId)) this.cheated = true;
       const hue = variant.get(slot.id) ?? 0;
       const g = gridPosition(this.track, slot.grid);
       const state = createCarState(slot.id, this.track, g.x, g.z, g.heading);

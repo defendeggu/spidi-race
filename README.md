@@ -59,7 +59,7 @@ Ein Arcade-Rennspiel im Browser im Geist von *Need for Speed II: Special Edition
   | Auto | Klasse | Modell | Stärke |
   |---|---|---|---|
   | Falcone Strada | Strasse | Sportcoupé | ausgewogen |
-  | Sturmvogel RS | Strasse | Prototyp | Höchstgeschwindigkeit |
+  | Sturmvogel RS | Strasse | Prototyp | Höchstgeschwindigkeit, Raketensprung (`F`, Gamepad △ / Y) |
   | Kaito ZX | Strasse | Formelwagen | Kurven |
   | Brutale V10 | Strasse | Hot Hatch | Beschleunigung |
   | Toro Fulmine | Strasse | V12-Supersportwagen | Höchstgeschwindigkeit, Beschleunigung |
@@ -67,7 +67,7 @@ Ein Arcade-Rennspiel im Browser im Geist von *Need for Speed II: Special Edition
   | Bergziege 4x4 | Offroad | Geländewagen | wendig, viel Grip |
   | Baron V8 | Offroad | Luxus-SUV | schnell, schwer |
   | Sahara Raider | Offroad | Pickup | Beschleunigung |
-  | Steinbock DC | Offroad | Doppelkabinen-Pickup | robust, viel Grip |
+  | Steinbock DC | Offroad | Doppelkabinen-Pickup | robust, viel Grip, Raketensprung |
   | Mini-Blitz | Micro | Spielzeug-Rennwagen | Höchstgeschwindigkeit |
   | Taschen-Flitzer | Micro | Spielzeug-Hatchback | wendig, Beschleunigung |
   | Zwergrakete | Micro | Spielzeug-Prototyp | ausgewogen |
@@ -76,7 +76,7 @@ Ein Arcade-Rennspiel im Browser im Geist von *Need for Speed II: Special Edition
   | Polizeiauto | Stadt | Streifenwagen | gemütlich, Originallackierung |
   | Feuerwehr | Stadt | Feuerwehrauto | gross, etwas langsamer |
   | Kaito ZX | Stadt | Formelwagen | schneller, für Fortgeschrittene |
-  | Weltenbummler, Steinbock DC, Toro Fulmine | Stadt | Stadt-Varianten | gemütlich, der Weltenbummler mit Raketensprung |
+  | alle Strassen-, Offroad- und Micro-Autos | Stadt | Stadt-Varianten | gezähmt auf ca. 65–85 km/h; Weltenbummler (80 km/h), Sturmvogel und Steinbock mit Raketensprung |
   | Oobi, Oodi, Ooli, Oopi, Oozi | Kart | Karts mit Alien-Fahrern | Allrounder, Beschleunigung, Kurven, Spitze, Gewicht |
 
 - **Kart-Rennen mit Items** auf allen Strassen- und Offroad-Strecken (auf dem Flughafen mit eigener Kartstrecke) und **Kart-Battle** in der Übungsstadt (3 Ballons, Bots): ?-Boxen, Blaster, Zielsucher, Minen, Turbo und Schild, Drift-Boost, KI-Karts mit Items, siehe [unten](#kart-rennen-mit-items)
@@ -182,19 +182,20 @@ Hauptmenü → **Übungsfahrt in der Stadt**. Gedacht für Kinder und alle, die 
 | Was | Details |
 |---|---|
 | Stadt | gut 1 × 1 km, Strassen alle 100 m mit zwei Spuren (Rechtsverkehr), Parkplätze und ein Übungsplatz mit Pylonen. Gärten und Innenhöfe sind befahrbar, aussen steht eine Mauer |
-| Am Stadtrand | **Hafen** im Süden: Lagerhallen, Containerlager mit Stapeln bis drei hoch, Sattelschlepper und Parkfelder; der Kai hat **kein Geländer** – wer ins Wasser fährt, fällt hinein und die Fahrt ist zu Ende (im Duell gewinnt der andere). Im Wasser Frachter, Schlepper, Fischer- und Hausboote, Boote fahren durchs Becken · **Bahn** im Osten: eingezäuntes Gleis zwischen zwei Tunnelportalen, Backstein-Bahnhof mit Bahnsteig, Vordach und Parkplatz; S-Bahn und Güterzug halten abwechselnd · **Flugplatz** im Westen: gerade Piste entlang dem Rand, Rollweg, Vorfeld mit Terminal, Fluggastbrücken, Frachthalle mit Containern und Tower, geparkte Flugzeuge und eines startbereit am Pistenende – Piste, Rollweg und Vorfeld sind befahrbar |
-| Quartiere | bunte Einfamilienhäuser, Geschäftsstrassen, Hochhauszone mit Plaza in der Mitte, **Backstein-Viertel**, **Altstadt** mit Fachwerkhäusern und Marktplatz, **Industriequartier** mit Wasserturm, drehendem Windrad und Containern, **Kraftwerk**, Parks, **zwei Supermärkte** direkt neben Parkplätzen, eine **Kirche mit Friedhof** und zwei befahrbare **Skaterparks** (einer davon neben dem Parkplatz des zweiten Supermarkts) mit Funbox, Kicker zum Springen, Halfpipe und Quarterpipe – schnelle Autos springen auch über die Kante der Quarterpipes. Wände und Dächer haben pro Gebäude eigene Farben |
+| Am Stadtrand | **Hafen** im Süden: Lagerhallen, Containerlager mit Stapeln bis drei hoch, Sattelschlepper und Parkfelder; der Kai hat **kein Geländer** – wer ins Wasser fährt, fällt hinein und die Fahrt ist zu Ende (im Duell gewinnt der andere). Im Wasser Frachter, Schlepper, Fischer- und Hausboote, Boote fahren durchs Becken · **Bahn** im Osten: zwei offene, befahrbare Gleise. Die S-Bahn kommt aus dem Südtunnel, hält am Backstein-Bahnhof, fährt über den nördlichen Grünstreifen zum **Flughafen-Bahnhof** (Kopfbahnhof mit Bahnsteig, Vordach und Vorplatz nördlich des Flughafen-Parkplatzes) und zurück; der Güterzug pendelt ohne Pause zwischen Süd- und Nordtunnel, so fährt immer mindestens ein Zug. Züge schieben Autos beiseite · **Flugplatz** im Westen: gerade Piste entlang dem Rand, Rollweg, Vorfeld mit Terminal, Fluggastbrücken, Frachthalle mit Containern und Tower, geparkte Flugzeuge. Ein Flugzeug rollt ständig über Rollweg und Vorfeldrand, ein anderes rollt zur Piste, hebt bei zwei Dritteln ab und steigt weg – dann kommt das nächste. Piste, Rollweg und Vorfeld sind befahrbar · **Offroad-Park** zwischen Flughafen und Hafen: Rundkurs mit Kicker, Tisch-Sprüngen, Sand, Schlamm, Wasserloch und Schikane, Felsen und Kakteen wie im Canyon |
+| Quartiere | bunte Einfamilienhäuser, Geschäftsstrassen, Hochhauszone mit Plaza in der Mitte, **Backstein-Viertel**, **Altstadt** mit Fachwerkhäusern und Marktplatz, **Industriequartier** mit Wasserturm, drehendem Windrad und Containern, **Kraftwerk**, Parks, **zwei Supermärkte** direkt neben Parkplätzen, eine **Kirche mit Friedhof**, **Feuerwache und Polizeistation** mit ihren Fahrzeugen neben dem nördlichen Supermarkt und zwei befahrbare **Skaterparks** (einer davon neben dem Parkplatz des zweiten Supermarkts) mit Funbox, Kicker zum Springen, Halfpipe und Quarterpipe – schnelle Autos springen auch über die Kante der Quarterpipes. Wände und Dächer haben pro Gebäude eigene Farben |
+| Leben | **Fussgänger**: Frauen, Männer und Kinder in den Parks, Gärten und auf den Plätzen, Leute mit Hund oder Kinderwagen auf den Gehwegen, Einkäufer zwischen Parkplatz und Spidi-Markt, Spaziergänger auf dem Friedhof, einige sitzen auf Bänken. Kommt ein Auto zu nahe, springen sie zur Seite. Aus den Kühltürmen des Kraftwerks steigt Dampf |
 | Start | auf dem Übungsplatz (gelbe Startfelder) neben Slalom und Pylonenkreis |
-| Autos | Familienauto, Taxi, Polizeiauto, Feuerwehr: gutmütig, viel Grip, Spitze ca. 65 km/h (Feuerwehr etwas langsamer). Kaito ZX: Formelwagen mit ca. 90 km/h für Fortgeschrittene |
+| Autos | Familienauto, Taxi, Polizeiauto, Feuerwehr: gutmütig, viel Grip, Spitze ca. 65 km/h (Feuerwehr etwas langsamer). Kaito ZX: Formelwagen mit ca. 90 km/h für Fortgeschrittene. Dazu alle anderen Autos des Spiels in gezähmter Stadt-Version |
 | Allein | Bei Sterne sammeln und Einparken wählt man **5, 10 oder 20 Ziele**. Nach einem Countdown läuft die Zeit, bis alle geschafft sind. Die Zeit kommt in die **Rangliste** („Stadt: Sterne“ bzw. „Stadt: Einparken“, getrennt nach Anzahl) |
 | Duell | Zu zweit im Splitscreen mit Sternen oder Einparken: Start in **entgegengesetzten Ecken** der Stadt, beide jagen **dasselbe Ziel**, das ungefähr gleich weit (Strassenweg) von beiden entfernt erscheint. Wer zuerst dort ist, bekommt den Punkt. Nach **3 Minuten** gewinnt, wer mehr Punkte hat (kein Eintrag in der Rangliste) |
 | Frei fahren | allein oder zu zweit ohne Ziel und ohne Zeit |
-| Aufgaben | **Frei fahren** · **Sterne sammeln**: ein Stern auf einer Lichtsäule, oben zeigt ein Pfeil die Richtung · **Einparken**: ein Parkfeld leuchtet, meist auf einem anderen der 5 Parkplätze; gerade hineinfahren (vorwärts oder rückwärts) und kurz stehen bleiben |
+| Aufgaben | **Frei fahren** · **Sterne sammeln**: ein Stern auf einer Lichtsäule, oben zeigt ein Pfeil die Richtung; der nächste Stern erscheint mindestens rund 220 m entfernt · **Einparken**: ein Parkfeld leuchtet mit derselben hohen Lichtsäule, meist auf einem anderen der 5 Parkplätze; gerade hineinfahren (vorwärts oder rückwärts) und kurz stehen bleiben |
 | Verkehr | aus, wenig (10 Autos) oder mehr (22 Autos), höchstens 30 km/h; die Autos warten an Kreuzungen und halten hinter den Spielern an |
 | Hilfe | Unten links leuchten die gedrückten Tasten (bzw. Gamepad-Knöpfe) auf, `H` blendet die Hilfe aus. Rechts oben zeigt die Stadtkarte Ziel, Spieler und Verkehr |
 | Pause | `Esc` / Start: Weiter, **Auto zum Start**, Neustart, Hauptmenü |
 
-![Übungsstadt von oben](docs/stadt-uebersicht-2026.jpg)
+![Übungsstadt von oben](docs/stadt-uebersicht-2026-10.jpg)
 
 | Supermarkt | Altstadt | Industrie |
 |---|---|---|
@@ -279,6 +280,8 @@ Alle Modelle und Texturen stehen unter **CC0 (Public Domain)** und liegen in [`c
 | [Kenney](https://kenney.nl/assets/train-kit) | Train Kit | S-Bahn, Lok und Güterwagen |
 | [Kenney](https://kenney.nl/assets/graveyard-kit) | Graveyard Kit | Grabsteine, Grüfte, Eisenzaun, Laternen und Kiefern des Friedhofs |
 | [Kenney](https://kenney.nl/assets/blaster-kit) | Blaster Kit | Blaster auf den Karts, Schaumstoffpfeile, Granaten als Minen |
+| [Kenney](https://kenney.nl/assets/mini-characters) | Mini Characters | Fussgänger in der Übungsstadt (Lauf- und Sitz-Animationen) |
+| [Kenney](https://kenney.nl/assets/cube-pets) | Cube Pets | Hunde der Spaziergänger |
 | [ambientCG](https://ambientcg.com) | Asphalt031, Grass004, Rock064, Snow010A, Ground080, Gravel043, Concrete034 | Strasse, Gelände, Bankett, Mauern |
 | [ambientCG](https://ambientcg.com) | Ground106, Ground037, Ground071, Ground093C, Rock029, Ground097 | Offroad: Waldweg, Waldboden, Schlamm, Dünen, roter Fels, Wüstenpiste |
 | [ambientCG](https://ambientcg.com) | Wood049 | Micro: Holztisch |

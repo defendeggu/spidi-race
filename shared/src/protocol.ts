@@ -27,6 +27,8 @@ export interface NetCar {
 export interface LobbyPlayer {
   name: string;
   carId: string;
+  /** a cheat changes this player's car: the server keeps the times out of the leaderboard */
+  cheat?: boolean;
 }
 
 export interface LobbySettings {

@@ -2,7 +2,29 @@
 
 Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
-## [1.5.0] – 2026-10-20
+## [1.6.0] – 2026-10-24
+
+### Hinzugefügt
+- Übungsstadt: **Fussgänger** (Kenney Mini Characters): Frauen, Männer und Kinder in Parks, Gärten und auf den Plätzen, mit Hund oder Kinderwagen auf den Gehwegen, Einkäufer zwischen Parkplatz und Spidi-Markt, Spaziergänger auf dem Friedhof, Sitzende auf Bänken; sie springen zur Seite, wenn ein Auto kommt
+- **Bahn bis zum Flughafen**: die S-Bahn fährt vom Ostbahnhof über den nördlichen Grünstreifen zum neuen **Flughafen-Bahnhof** und zurück, der Güterzug pendelt auf einem zweiten Gleis zwischen den Tunneln – es fährt immer mindestens ein Zug. Die Gleise sind offen und befahrbar, Züge schieben Autos beiseite
+- **Flugzeuge in Bewegung**: eines rollt ständig über Rollweg und Vorfeldrand, ein anderes rollt zur Piste, hebt bei zwei Dritteln ab und steigt weg, danach kommt das nächste
+- **Offroad-Park** zwischen Flughafen und Hafen: Rundkurs mit Kicker, Tisch-Sprüngen, Sand, Schlamm, Wasserloch und Schikane, Felsen und Kakteen aus dem Canyon
+- **Feuerwache und Polizeistation** mit Feuerwehr- und Streifenwagen neben dem nördlichen Supermarkt
+- Dampf aus den Kühltürmen des Kraftwerks
+- Alle Strassen-, Offroad- und Micro-Autos sind in der Übungsstadt wählbar (gezähmt auf ca. 65–85 km/h)
+- Raketensprung auch für Sturmvogel RS und Steinbock DC (in allen Modi)
+- Neues Übersichtsbild der Stadt im README
+
+### Geändert
+- Weltenbummler in der Stadt: 80 km/h
+- Sterne sammeln (allein und im Duell): der nächste Stern erscheint weiter weg (mindestens rund 220 m, weitere Ziele häufiger)
+- Einparken: das Zielfeld hat dieselbe hohe Lichtsäule wie ein Stern
+
+### Behoben
+- Frachthalle am Flughafen: unsichtbare Wand – das Hallenmodell stand 8,6 m neben seiner Kollisionsbox
+- Kirche: keine offenen Bögen mehr im Kirchenschiff, das Portal hat eine Tür – man sieht nicht mehr durch das Gebäude
+
+ – 2026-10-20
 
 ### Geändert
 - **Flughafen-Rennstrecke neu** (5,2 km), nach einem Luftbild des Zürcher Flughafens nachgezeichnet: Start und Ziel auf der langen Schräg-Piste 14/32, an ihrem Ende rechts auf den Rollweg über die Querpiste 10/28, rechts entlang der Docks, ein Haken ins Vorfeld (scharf links, Haarnadel rechts), schräg über die Hauptpiste 16/34 in eine weite Schleife, zurück über 10/28 und 16/34 direkt an ihrer Kreuzung, Schlenker auf den Parallelrollweg, über den Schnellabrollweg auf 16/34 und durch die Haarnadel am Pistenende zurück auf 14/32

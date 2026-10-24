@@ -67,7 +67,7 @@ function showCredits(app: App) {
       </p>
       <p class="hint">Grafiken (alle ${link('https://creativecommons.org/publicdomain/zero/1.0/', 'CC0')}, Public Domain) – herzlichen Dank an:</p>
       <ul class="credits">
-        <li><b>Kenney</b> (${link('https://kenney.nl', 'kenney.nl')}): Car Kit, Nature Kit, City Kit (Suburban), City Kit (Commercial), City Kit (Industrial), Fantasy Town Kit, Retro Urban Kit, Mini Skate, Watercraft Kit, Train Kit, Graveyard Kit, Blaster Kit</li>
+        <li><b>Kenney</b> (${link('https://kenney.nl', 'kenney.nl')}): Car Kit, Nature Kit, City Kit (Suburban), City Kit (Commercial), City Kit (Industrial), Fantasy Town Kit, Retro Urban Kit, Mini Skate, Watercraft Kit, Train Kit, Graveyard Kit, Blaster Kit, Mini Characters, Cube Pets</li>
         <li><b>ambientCG</b> (${link('https://ambientcg.com', 'ambientcg.com')}): Asphalt031, Grass004, Rock064, Snow010A, Ground080, Gravel043, Concrete034, Ground106, Ground037, Ground071, Ground093C, Rock029, Ground097</li>
       </ul>
       <p class="hint">Sounds werden live im Browser synthetisiert. Inspiriert von <i>Need for Speed II: Special Edition</i> (1997).</p>

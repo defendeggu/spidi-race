@@ -1,4 +1,4 @@
-import { HARBOR, LINES, RAIL, TOWN_AIRPORT, TOWN_BOUNDS, type CarInput, type KartState, type TownMap, type TownTask } from '@spidi/shared';
+import { FREIGHT_PATH, HARBOR, LINES, OFFROAD_PARK, RAIL, SBAHN_PATH, TOWN_AIRPORT, TOWN_BOUNDS, TOWN_RAIL, type CarInput, type KartState, type TownMap, type TownTask } from '@spidi/shared';
 import { ItemSlot } from './itemSlot';
 import { CAMERA_MODES } from './render/cameras';
 import { getPadThrottle, type KeyMap } from './input';
@@ -89,9 +89,33 @@ export class TownHud {
     // harbour apron, water strip below the quay, railway line with station
     rect(minX, HARBOR.quayZ, maxX, -LINES[LINES.length - 1] - 8, 'rgba(150,150,150,0.55)');
     rect(minX, HARBOR.quayZ - 12, maxX, HARBOR.quayZ, 'rgba(60,140,210,0.85)');
-    rect(RAIL.trackX - 2, RAIL.south, RAIL.trackX + 2, RAIL.north, 'rgba(80,70,60,0.9)');
-    const f = RAIL.forecourt;
+    const f = RAIL.forecourt, af = TOWN_RAIL.airportForecourt;
     rect(f.x0, f.z0, f.x1, f.z1, 'rgba(150,150,150,0.6)');
+    rect(af.x0, af.z0, af.x1, af.z1, 'rgba(150,150,150,0.6)');
+    // both tracks: the S-Bahn to the airport, the freight line between the tunnels
+    g.strokeStyle = 'rgba(80,70,60,0.9)';
+    g.lineWidth = 2;
+    // the offroad park loop (dirt brown, wider)
+    g.strokeStyle = 'rgba(170,110,60,0.95)';
+    g.lineWidth = 3;
+    g.beginPath();
+    OFFROAD_PARK.loop.forEach(([x, z], i) => {
+      const [mx, my] = this.toMap(x, z);
+      if (i === 0) g.moveTo(mx, my);
+      else g.lineTo(mx, my);
+    });
+    g.stroke();
+    g.strokeStyle = 'rgba(80,70,60,0.9)';
+    g.lineWidth = 2;
+    for (const path of [SBAHN_PATH, FREIGHT_PATH]) {
+      g.beginPath();
+      path.points.forEach((p, i) => {
+        const [mx, my] = this.toMap(p.x, p.z);
+        if (i === 0) g.moveTo(mx, my);
+        else if (i % 8 === 0 || i === path.points.length - 1) g.lineTo(mx, my);
+      });
+      g.stroke();
+    }
     // airfield: landside and apron, taxiway with its links, runway
     const A = TOWN_AIRPORT, ap = A.apron, ls = A.landside, r = A.runway, t = A.taxiway;
     rect(ls.x0, ls.z0, ap.x1, ap.z1, 'rgba(160,160,160,0.6)');
@@ -104,6 +128,7 @@ export class TownHud {
       brick: 'rgba(190,110,80,0.6)', oldtown: 'rgba(210,160,110,0.6)', plaza: 'rgba(230,200,150,0.7)',
       industry: 'rgba(140,130,110,0.7)', power: 'rgba(110,100,90,0.8)', supermarket: 'rgba(230,70,60,0.85)',
       towerplaza: 'rgba(170,190,210,0.7)', skate: 'rgba(200,200,200,0.85)', church: 'rgba(120,160,110,0.75)',
+      emergency: 'rgba(210,60,50,0.8)',
     };
     for (const b of this.town.blocks) {
       const [x0, y0] = this.toMap(b.cx + 45, b.cz + 45);

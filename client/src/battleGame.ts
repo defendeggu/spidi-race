@@ -1,5 +1,5 @@
 import {
-  applyNetBattle, applyNetCar, BATTLE_BOT_NAMES, ItemMirror, BattleBot, BattleSession, battleSpawn, collideCars,
+  applyNetBattle, applyNetCar, BATTLE_BOT_NAMES, collideMoving, planeBoxes, planesAt, trainBoxes, ItemMirror, trainsAt, BattleBot, BattleSession, battleSpawn, collideCars,
   createTownCar, forwardSpeed, getCar, HARBOR, idleCar, ItemWorld, lerp, lerpAngle, NO_INPUT, stepCarTown, stepKartWith,
   SURFACE_PROPS, toNetCar, toNetKart, townArena,
   type BattleRow, type CarInput, type CarSpec, type CarState, type ItemEvent, type ItemKind, type NetCar, type ServerMsg, type Slot,
@@ -298,6 +298,9 @@ export class BattleGame {
         net.send({ type: 'state', cars: mine.map((k) => toNetCar(k.state)), karts: mine.map((k) => toNetKart(this.items.kart(k.id))) });
       }
     }
+    // the trains on the open tracks and the departing aircraft push the own karts aside
+    const movers = [...trainBoxes(trainsAt(this.clock)), ...planesAt(this.clock).flatMap(planeBoxes)];
+    for (const k of this.karts) if (!k.remote) k.state.impact = Math.max(k.state.impact, collideMoving(k.state, k.spec, movers));
     if (se.phase !== 'running') return;
     for (let a = 0; a < alive.length; a++) {
       for (let b = a + 1; b < alive.length; b++) {
@@ -409,6 +412,7 @@ export class BattleGame {
   private render(alpha: number, dt: number) {
     const se = this.session;
     this.world.life.update(this.clock);
+    this.world.people.update(this.clock, dt, this.karts.filter((k) => !k.remote).map((k) => k.state));
     if (se.phase === 'countdown') {
       const n = Math.ceil(se.countdown);
       if (n !== this.lastBeep) {

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { HARBOR, RAIL } from '@spidi/shared';
+import { FREIGHT_CARS, planesAt, HARBOR, SBAHN_CARS, TRAIN_SCALE, trainsAt } from '@spidi/shared';
+import { LIVERIES, planeGeometries } from './airportScenery';
 import { assetsReady, getModel } from './assets';
 
 /** A Kenney model centred on its footprint and scaled, or a coloured box without assets. */
@@ -20,30 +21,54 @@ function piece(name: string, scale: number, box: [number, number, number], color
   return holder;
 }
 
-interface Car {
-  obj: THREE.Object3D;
-  len: number;
-  /** distance from the train's head to the car's centre */
-  offset: number;
-  /** cab at the rear: turned around */
-  flip: boolean;
+let puff: THREE.Texture | null = null;
+
+/** A soft round white puff for steam (canvas, shared). */
+function puffTexture() {
+  if (puff) return puff;
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const g = c.getContext('2d')!;
+  const grad = g.createRadialGradient(32, 32, 2, 32, 32, 31);
+  grad.addColorStop(0, 'rgba(255,255,255,1)');
+  grad.addColorStop(0.5, 'rgba(250,250,252,0.7)');
+  grad.addColorStop(1, 'rgba(240,242,246,0)');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, 64, 64);
+  puff = new THREE.CanvasTexture(c);
+  return puff;
 }
 
-const TRAIN_SCALE = 3.2;
-const SPEED = 14;
-const ACCEL = 1;
-const DWELL = 15;
-const PAUSE = 8;
+interface TrainModel {
+  cars: { obj: THREE.Object3D; flip: boolean }[];
+}
 
 /**
- * Moving scenery of the practice town, driven by the game time: trains that stop at the station
- * and boats in the harbour basin. Purely visual – the track is fenced and the water out of reach.
+ * Moving scenery of the practice town, driven by the game time: the trains of the timetable (see
+ * townRail – their collisions are in the game) and boats in the harbour basin.
  */
 export class TownLife {
   readonly group = new THREE.Group();
-  private trains: Car[][] = [];
+  private trains: TrainModel[] = [];
   private boats: { obj: THREE.Object3D; path: (t: number) => [number, number, number] }[] = [];
   private rotors: THREE.Object3D[] = [];
+  /** the moving aircraft (see townPlane): departing and taxiing */
+  private planes: { obj: THREE.Group; livery: THREE.MeshLambertMaterial }[] = [];
+
+  private steam: { sprite: THREE.Sprite; x: number; z: number; top: number; r: number; phase: number }[] = [];
+
+  /**
+   * White steam rising out of a cooling tower (top at height `top`, opening radius r): soft puffs
+   * well up, grow, drift with the wind and fade.
+   */
+  addSteam(x: number, z: number, top: number, r: number) {
+    const N = 26;
+    for (let i = 0; i < N; i++) {
+      const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: puffTexture(), transparent: true, depthWrite: false, color: '#ffffff', fog: true }));
+      this.group.add(sprite);
+      this.steam.push({ sprite, x, z, top, r, phase: (i / N + Math.random() * 0.02) % 1 });
+    }
+  }
 
   /** A wind turbine whose 'blades' node turns. */
   addWindmill(name: string, scale: number, x: number, z: number, rot: number) {
@@ -56,22 +81,30 @@ export class TownLife {
   }
 
   constructor() {
-    const s = TRAIN_SCALE;
-    const make = (parts: [string, number, boolean][], color: string) => {
-      let offset = 0;
-      const cars: Car[] = parts.map(([name, len, flip]) => {
-        const obj = piece(name, s, [3.4, 4.5, len * s], color);
-        const car = { obj, len: len * s, offset: offset + (len * s) / 2, flip };
-        offset += len * s + 0.4;
+    const make = (parts: [string, boolean][], lens: number[], color: string) => {
+      const cars = parts.map(([name, flip], k) => {
+        const obj = piece(name, TRAIN_SCALE, [3.4, 4.5, lens[k]], color);
         obj.visible = false;
         this.group.add(obj);
-        return car;
+        return { obj, flip };
       });
-      this.trains.push(cars);
+      this.trains.push({ cars });
     };
-    make([['tr-train-electric-city-a', 2.4, false], ['tr-train-electric-city-c', 2.7, false], ['tr-train-electric-city-c', 2.7, false], ['tr-train-electric-city-a', 2.4, true]], '#d8d0b0');
+    // order and lengths as in the timetable (SBAHN_CARS / FREIGHT_CARS): the first car leads
+    make([['tr-train-electric-city-a', false], ['tr-train-electric-city-c', false], ['tr-train-electric-city-c', false], ['tr-train-electric-city-a', true]], SBAHN_CARS, '#d8d0b0');
     const boxes = ['tr-train-carriage-container-blue', 'tr-train-carriage-container-red', 'tr-train-carriage-container-green', 'tr-train-carriage-tank'];
-    make([['tr-train-locomotive-a', 2.6, false], ...boxes.map((b): [string, number, boolean] => [b, 2.7, false]), [boxes[1], 2.7, false]], '#8a5a3a');
+    make([['tr-train-locomotive-a', false], ...boxes.map((b): [string, boolean] => [b, false]), [boxes[1], false]], FREIGHT_CARS, '#8a5a3a');
+
+    const { body, livery } = planeGeometries();
+    const bodyMat = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
+    for (let k = 0; k < 2; k++) {
+      const mat = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
+      const obj = new THREE.Group();
+      obj.add(new THREE.Mesh(body, bodyMat), new THREE.Mesh(livery, mat));
+      obj.rotation.order = 'YXZ';
+      this.group.add(obj);
+      this.planes.push({ obj, livery: mat });
+    }
 
     const Q = HARBOR.quayZ, y = HARBOR.waterY - 0.4;
     const loop = (cx: number, cz: number, rx: number, rz: number, period: number, phase: number) => (t: number): [number, number, number] => {
@@ -92,6 +125,21 @@ export class TownLife {
 
   update(t: number) {
     this.updateTrain(t);
+    for (const s of this.steam) {
+      // one puff every few seconds, each lives 14 s: up 40 m, drifting 30 m with the wind
+      const age = (t / 14 + s.phase) % 1;
+      const wobble = Math.sin(t * 0.7 + s.phase * 40) * s.r * 0.15;
+      s.sprite.position.set(s.x + age * age * 30 + wobble, s.top + age * 40, s.z + age * 8 + wobble * 0.5);
+      s.sprite.scale.setScalar(s.r * (1.2 + age * 3.2));
+      s.sprite.material.opacity = 0.75 * Math.min(1, age * 6) * (1 - age);
+    }
+    // an aircraft pitches up around its main gear, about 18 m behind the nose
+    planesAt(t).forEach((p, k) => {
+      const { obj, livery } = this.planes[k];
+      obj.position.set(p.x, p.y + 18 * Math.sin(p.pitch), p.z);
+      obj.rotation.set(-p.pitch, p.heading, 0);
+      livery.color.set(LIVERIES[p.livery % LIVERIES.length]);
+    });
     for (const r of this.rotors) r.rotation.x = t * 1.4;
     for (const b of this.boats) {
       const [x, z, h] = b.path(t);
@@ -100,47 +148,15 @@ export class TownLife {
     }
   }
 
-  /** Trains take turns (S-Bahn / freight) and change direction every run. */
+  /** Both trains where the timetable puts them. */
   private updateTrain(t: number) {
-    const span = RAIL.north - RAIL.south;
-    const runs = this.trains.map((cars) => {
-      const len = cars[cars.length - 1].offset + cars[cars.length - 1].len / 2;
-      // head distance from the entry portal: stop with the train centred on the platform (z = 0)
-      const stopAt = span / 2 + len / 2;
-      const brake = (SPEED * SPEED) / (2 * ACCEL);
-      const tBrake = SPEED / ACCEL;
-      const t1 = (stopAt - brake) / SPEED;
-      const end = span + len;
-      const t4 = (end - stopAt - brake) / SPEED;
-      const total = t1 + tBrake + DWELL + tBrake + t4;
-      const pos = (u: number) => {
-        if (u < t1) return SPEED * u;
-        if (u < t1 + tBrake) { const v = u - t1; return SPEED * t1 + SPEED * v - (ACCEL * v * v) / 2; }
-        if (u < t1 + tBrake + DWELL) return stopAt;
-        const w = u - t1 - tBrake - DWELL;
-        if (w < tBrake) return stopAt + (ACCEL * w * w) / 2;
-        return stopAt + brake + SPEED * (w - tBrake);
-      };
-      return { cars, total: total + PAUSE, pos, runTime: total };
+    trainsAt(t).forEach((tr, k) => {
+      tr.cars.forEach((pose, i) => {
+        const m = this.trains[k].cars[i];
+        m.obj.visible = !pose.hidden;
+        m.obj.position.set(pose.x, 0.25, pose.z);
+        m.obj.rotation.y = pose.heading + (m.flip ? Math.PI : 0);
+      });
     });
-    const cycle = runs.reduce((s, r) => s + r.total, 0);
-    let u = t % cycle;
-    const turn = Math.floor(t / cycle);
-    for (let k = 0; k < runs.length; k++) {
-      const r = runs[k];
-      const active = u >= 0 && u < r.runTime;
-      // alternate direction: even runs southbound (from the north portal), odd runs northbound
-      const south = (turn + k) % 2 === 0;
-      const head = active ? r.pos(u) : -1e9;
-      for (const c of r.cars) {
-        const d = head - c.offset;
-        const z = south ? RAIL.north - d : RAIL.south + d;
-        // visible once it reaches out of a tunnel (the portal hides the rest)
-        c.obj.visible = active && z + c.len / 2 > RAIL.south && z - c.len / 2 < RAIL.north;
-        c.obj.position.set(RAIL.trackX, 0.25, z);
-        c.obj.rotation.y = (south ? Math.PI : 0) + (c.flip ? Math.PI : 0);
-      }
-      u -= r.total;
-    }
   }
 }

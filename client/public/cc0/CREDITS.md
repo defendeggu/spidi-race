@@ -16,6 +16,8 @@ Sie wurden mit `npm run assets` (scripts/fetch-assets.mjs) heruntergeladen. Dank
 - **Train Kit** von Kenney (www.kenney.nl), CC0 – https://kenney.nl/assets/train-kit → `train/`
 - **Graveyard Kit** von Kenney (www.kenney.nl), CC0 – https://kenney.nl/assets/graveyard-kit → `graveyard/`
 - **Blaster Kit** von Kenney (www.kenney.nl), CC0 – https://kenney.nl/assets/blaster-kit → `blaster/`
+- **Mini Characters** von Kenney (www.kenney.nl), CC0 – https://kenney.nl/assets/mini-characters → `people/`
+- **Cube Pets** von Kenney (www.kenney.nl), CC0 – https://kenney.nl/assets/cube-pets → `pets/`
 - **Asphalt031** von ambientCG (ambientcg.com), CC0 – https://ambientcg.com/view?id=Asphalt031 → `textures/asphalt.jpg`
 - **Grass004** von ambientCG (ambientcg.com), CC0 – https://ambientcg.com/view?id=Grass004 → `textures/grass.jpg`
 - **Rock064** von ambientCG (ambientcg.com), CC0 – https://ambientcg.com/view?id=Rock064 → `textures/rock.jpg`

@@ -145,6 +145,7 @@ export class Room {
         c.players = players.map((p, k) => ({
           name: String(p.name ?? '').replace(/[<>]/g, '').trim().slice(0, 16) || `Spieler ${k + 1}`,
           carId: CARS.some((car) => car.id === p.carId) ? p.carId : CARS[0].id,
+          ...(p.cheat === true ? { cheat: true } : {}),
         }));
         this.broadcastLobby();
         break;
@@ -386,7 +387,13 @@ export class Room {
     if (sendResults && this.race) {
       const results = this.race.results();
       // online races go to the permanent leaderboard directly from the server
-      const finished = results.filter((r) => !r.isAI && r.finished);
+      // drivers with a cheat stay out of it
+      const cheater = (id: string) => {
+        const slot = this.cars.find((k) => k.slot.id === id)?.slot;
+        const k = Number(id.split('-').pop()) - 1;
+        return !!slot && !!this.clients.get(slot.ownerId)?.players[k]?.cheat;
+      };
+      const finished = results.filter((r) => !r.isAI && r.finished && !cheater(r.id));
       const ranks = this.leaderboard.add(finished.map((r) => ({
         name: r.name, carId: r.carId, trackId: (this.items ? KART_PREFIX : '') + this.track!.def.id, laps: this.race!.laps, time: r.time, bestLap: r.bestLap, mode: 'online',
       })), { trusted: true });
