@@ -1,7 +1,7 @@
 import {
-  applyNetBattle, applyNetCar, BATTLE_BOT_NAMES, collideMoving, planeBoxes, planesAt, trainBoxes, ItemMirror, trainsAt, BattleBot, BattleSession, battleSpawn, collideCars,
+  applyNetBattle, applyNetCar, BATTLE_BOT_NAMES, FoulWatch, PEOPLE_STRIKES, type OutReason, collideMoving, planeBoxes, planesAt, trainBoxes, ItemMirror, trainsAt, BattleBot, BattleSession, battleSpawn, collideCars,
   createTownCar, forwardSpeed, getCar, HARBOR, idleCar, ItemWorld, lerp, lerpAngle, NO_INPUT, stepCarTown, stepKartWith,
-  SURFACE_PROPS, toNetCar, toNetKart, townArena,
+  toNetCar, toNetKart, townArena,
   type BattleRow, type CarInput, type CarSpec, type CarState, type ItemEvent, type ItemKind, type NetCar, type ServerMsg, type Slot,
 } from '@spidi/shared';
 import { audio, EngineVoice } from './audio';
@@ -71,6 +71,12 @@ interface Player {
   voice: EngineVoice | null;
   lastInput: CarInput;
   impactCooldown: number;
+  /** cemetery countdown and pedestrian warnings */
+  foul: FoulWatch;
+  /** why this kart is out early (cemetery, pedestrians), null otherwise */
+  outReason: OutReason | null;
+  /** a pedestrian warning shown big for a moment */
+  warning: { text: string; time: number } | null;
 }
 
 /** Kart battle in the practice town: three balloons each, items from boxes on the intersections. */
@@ -149,7 +155,7 @@ export class BattleGame {
           cam: new ChaseCamera(0, viewForSpec(spec, visual.height, true)),
           hud: new TownHud(holder, town, 'free', false, e.cfg.keymap, split, 'KART-BATTLE'),
           voice: audio.ctx ? new EngineVoice(split ? (pk === 0 ? -0.45 : 0.45) : 0, split ? 0.75 : 1, 1.35) : null,
-          lastInput: NO_INPUT, impactCooldown: 0,
+          lastInput: NO_INPUT, impactCooldown: 0, foul: new FoulWatch(), outReason: null, warning: null,
         };
         kart.player = player;
         this.players.push(player);
@@ -298,6 +304,13 @@ export class BattleGame {
         net.send({ type: 'state', cars: mine.map((k) => toNetCar(k.state)), karts: mine.map((k) => toNetKart(this.items.kart(k.id))) });
       }
     }
+    // the cemetery is no place for a joyride: 5 seconds to get out again
+    if (se.phase === 'running') {
+      for (const p of this.players) {
+        if (!se.alive(p.kart.id)) continue;
+        if (p.foul.step(town.inCemetery(p.kart.state.x, p.kart.state.z), dt)) this.forfeit(p, 'cemetery');
+      }
+    }
     // the trains on the open tracks and the departing aircraft push the own karts aside
     const movers = [...trainBoxes(trainsAt(this.clock)), ...planesAt(this.clock).flatMap(planeBoxes)];
     for (const k of this.karts) if (!k.remote) k.state.impact = Math.max(k.state.impact, collideMoving(k.state, k.spec, movers));
@@ -334,6 +347,15 @@ export class BattleGame {
       this.events.push(e);
     }
     this.items.events.length = 0;
+  }
+
+  /** An own kart is out early (cemetery, pedestrians): all balloons gone; online the server is told. */
+  private forfeit(p: Player, reason: OutReason) {
+    if (p.outReason) return;
+    p.outReason = reason;
+    audio.sweep(500, 140, 0.7, 0.15);
+    if (this.opts.net) this.opts.net.send({ type: 'forfeit', id: p.kart.id });
+    else this.session.eliminate(p.kart.id);
   }
 
   /** Interpolate the karts driven elsewhere (other devices, the server's bots). */
@@ -412,7 +434,18 @@ export class BattleGame {
   private render(alpha: number, dt: number) {
     const se = this.session;
     this.world.life.update(this.clock);
-    this.world.people.update(this.clock, dt, this.karts.filter((k) => !k.remote).map((k) => k.state));
+    // running into people: a warning, the third one puts the kart out
+    const hits = this.world.people.update(this.clock, dt, this.players.map((p) => p.kart.state));
+    for (const i of hits) {
+      const p = this.players[i];
+      if (se.phase !== 'running' || !se.alive(p.kart.id)) continue;
+      audio.crash(5);
+      if (p.foul.hit()) this.forfeit(p, 'people');
+      else {
+        p.warning = { text: `VERWARNUNG ${p.foul.strikes}/${PEOPLE_STRIKES}\nPass auf die Fussgänger auf!`, time: this.clock };
+        audio.beep(220, 0.35, 0.25);
+      }
+    }
     if (se.phase === 'countdown') {
       const n = Math.ceil(se.countdown);
       if (n !== this.lastBeep) {
@@ -433,7 +466,7 @@ export class BattleGame {
       k.renderHeading = lerpAngle(k.prev.heading, s.heading, alpha);
       k.visual.group.visible = se.alive(k.id) || s.y > HARBOR.waterY - 3;
       k.visual.update(lerp(k.prev.x, s.x, alpha), lerp(k.prev.y, s.y, alpha), lerp(k.prev.z, s.z, alpha), k.renderHeading, s, dt, UP,
-        SURFACE_PROPS[this.world.town.surfaceAt(s.x, s.z)].rough);
+        this.world.town.roughAt(s.x, s.z));
     }
     this.handleEvents();
     this.visuals.update(dt);
@@ -460,15 +493,26 @@ export class BattleGame {
       p.cam.update(p.kart.visual.group.position.clone(), p.kart.renderHeading, p.kart.visual.up, v, dt);
       views.push({ camera: p.cam.camera, rect: split ? [0, k * 0.5, 1, 0.5] : [0, 0, 1, 1] });
       const mine = se.balloons.get(p.kart.id) ?? 0;
-      let center = '';
+      let center = '', warn = false;
       if (se.phase === 'countdown') center = String(Math.ceil(se.countdown));
       else if (se.time < 1) center = 'LOS!';
       else if (se.phase === 'finished') center = winner === p.kart.id ? 'GEWONNEN!' : winner === null ? 'UNENTSCHIEDEN' : 'VORBEI!';
-      else if (!mine) center = 'AUSGESCHIEDEN';
+      else if (p.outReason) {
+        center = p.outReason === 'cemetery' ? 'AUS!\nPietätlos auf dem Friedhof' : 'AUS!\nZu viele Fussgänger angefahren';
+        warn = true;
+      } else if (!mine) center = 'AUSGESCHIEDEN';
+      else if (p.foul.cemetery > 0) {
+        center = `FRIEDHOF!\nDas ist pietätlos – sofort raus! ${Math.ceil(p.foul.cemeteryLeft)}`;
+        warn = true;
+      } else if (p.warning && this.clock - p.warning.time < 2.5) {
+        center = p.warning.text;
+        warn = true;
+      }
       const dots: TownDot[] = this.karts.filter((o) => se.alive(o.id)).map((o) => ({ x: o.state.x, z: o.state.z, color: o.color, kind: o === p.kart ? 'self' : 'player' }));
-      p.hud.update(v, s.gear, { count: mine ? '🎈'.repeat(mine) : '✗', time: clock, center }, null, 0, 0, p.lastInput, padKindAt(p.cfg.pad), dots, dt);
+      p.hud.update(v, s.gear, { count: mine ? '🎈'.repeat(mine) : '✗', time: clock, center, warn }, null, 0, 0, p.lastInput, padKindAt(p.cfg.pad), dots, dt);
       p.hud.updateBattle(this.items.kart(p.kart.id), rows.map((row, i) => ({ ...row, me: this.karts[i] === p.kart })), dt);
-      p.voice?.update(s.rpm, s.throttle, s.skid * Math.min(1, Math.abs(v) / 8), 0);
+      const rough = s.airborne ? 0 : this.world.town.roughAt(s.x, s.z);
+      p.voice?.update(s.rpm, s.throttle, s.skid * Math.min(1, Math.abs(v) / 8), rough * Math.min(1, Math.abs(v) / 25));
       p.impactCooldown -= dt;
       if (s.impact > 3 && p.impactCooldown <= 0) {
         audio.crash(s.impact, split ? (k === 0 ? -0.45 : 0.45) : 0);

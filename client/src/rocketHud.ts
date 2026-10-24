@@ -16,8 +16,9 @@ export function updateRocketHud(root: HTMLElement, spec: CarSpec, state: CarStat
   }
   const key = keys.rocket?.includes('KeyF') ? 'F' : 'Num 2 / Del';
   const cooldown = state.rocketCooldown ?? 0;
+  // it fires in mid-air as well: after a ramp the panel says READY until it has been used
   panel.textContent = (state.rocketBurn ?? 0) > 0 ? 'ROCKET · THRUST'
-    : state.airborne ? 'ROCKET · 360° ROLL / LANDING'
+    : state.airborne && cooldown > 0 ? 'ROCKET · 360° ROLL / LANDING'
       : cooldown > 0 ? `ROCKET · ${cooldown.toFixed(1)} s`
         : `ROCKET · ${key} / △ / TOUCH · READY`;
 }

@@ -1,5 +1,6 @@
 import { mulberry32 } from './math';
-import { BLOCK_HALF, BLOCK_INNER, GRID, SIDEWALK, type Block, type TownMap } from './town';
+import { BLOCK_HALF, BLOCK_INNER, GRID, ROAD_HW, SIDEWALK, type Block, type TownMap } from './town';
+import { TOWN_RAIL } from './townRail';
 
 /**
  * Pedestrians of the practice town: women, men and children walking in the parks, on the squares,
@@ -9,7 +10,7 @@ import { BLOCK_HALF, BLOCK_INNER, GRID, SIDEWALK, type Block, type TownMap } fro
  * stored or sent. They are scenery: cars do not hit them – the client lets them step aside.
  */
 
-export type PersonKind = 'adult' | 'child' | 'dog' | 'pram' | 'sitter';
+export type PersonKind = 'adult' | 'child' | 'dog' | 'pram' | 'sitter' | 'police';
 
 export interface PersonRoute {
   kind: PersonKind;
@@ -34,6 +35,8 @@ export interface PersonPose {
 }
 
 export const PEOPLE_MODEL_COUNT = 12;
+/** the policeman among the Kenney Mini Characters (male c); the others are the passers-by */
+export const POLICE_MODEL = 5;
 
 function length(pts: { x: number; z: number }[], loop: boolean) {
   let l = 0;
@@ -78,20 +81,29 @@ export function townPeople(town: TownMap, seed = 4242): PersonRoute[] {
   const out: PersonRoute[] = [];
   // (pointHit looks into one grid cell: probe around the point too, for obstacles across a cell border)
   const free = (x: number, z: number) => [[0, 0], [0.8, 0], [-0.8, 0], [0, 0.8], [0, -0.8]].every(([dx, dz]) => !town.pointHit(x + dx, z + dz, 0.8));
-  /** every metre of the way is clear of obstacles */
-  const clear = (pts: { x: number; z: number }[], loop: boolean) => {
+  /** room for one person (around lamp posts), probing the neighbouring grid cells too */
+  const slimFree = (x: number, z: number) =>
+    !town.pointHit(x, z, 0.6) && [[0.7, 0], [-0.7, 0], [0, 0.7], [0, -0.7]].every(([dx, dz]) => !town.pointHit(x + dx, z + dz, 0.3));
+  /** every half metre of the way is clear of obstacles (slim: a person squeezes past lamp posts at the corners) */
+  const clear = (pts: { x: number; z: number }[], loop: boolean, slim = false) => {
     const n = loop ? pts.length : pts.length - 1;
     for (let i = 0; i < n; i++) {
       const a = pts[i], b = pts[(i + 1) % pts.length];
       const l = Math.hypot(b.x - a.x, b.z - a.z);
-      for (let s = 0; s <= l; s += 0.5) if (!free(a.x + ((b.x - a.x) * s) / l, a.z + ((b.z - a.z) * s) / l)) return false;
+      for (let s = 0; s <= l; s += 0.5) {
+        const x = a.x + ((b.x - a.x) * s) / l, z = a.z + ((b.z - a.z) * s) / l;
+        if (slim ? !slimFree(x, z) : !free(x, z)) return false;
+      }
     }
     return true;
   };
-  const model = () => Math.floor(rnd() * PEOPLE_MODEL_COUNT);
+  const model = () => {
+    const m = Math.floor(rnd() * (PEOPLE_MODEL_COUNT - 1));
+    return m >= POLICE_MODEL ? m + 1 : m;
+  };
   const add = (kind: PersonKind, pts: { x: number; z: number }[], loop: boolean, extra: Partial<PersonRoute> = {}) => {
     const speed = kind === 'child' ? 1.6 + rnd() * 0.6 : kind === 'pram' ? 1.0 + rnd() * 0.2 : 1.1 + rnd() * 0.4;
-    out.push({ kind, model: model(), pts, loop, pause: 3 + rnd() * 5, speed, phase: rnd() * 1000, ...extra });
+    out.push({ kind, model: kind === 'police' ? POLICE_MODEL : model(), pts, loop, pause: 3 + rnd() * 5, speed, phase: rnd() * 1000, ...extra });
   };
   /** a loop of k random points inside the block (half size h around its centre), retried until clear */
   const wander = (b: Block, h: number, k: number) => {
@@ -105,6 +117,32 @@ export function townPeople(town: TownMap, seed = 4242): PersonRoute[] {
     }
     return null;
   };
+  /**
+   * From a point in one block to a point in the neighbouring block, across the street between them:
+   * out to the sidewalk, along it to the zebra crossing at the nearer intersection, over the zebra
+   * and on to the destination – pedestrians cross streets only at zebra crossings.
+   */
+  const viaZebra = (a: { x: number; z: number }, b: { x: number; z: number }) => {
+    const A = town.blockAt(a.x, a.z), B = town.blockAt(b.x, b.z);
+    if (!A || !B || A === B) return null;
+    // along the curb side of the sidewalk (the street lamps stand at its outer corners), zebra in the middle
+    const walk = ROAD_HW + 0.8, zebra = ROAD_HW + 2.5;
+    if (A.cz === B.cz && Math.abs(A.cx - B.cx) === GRID) {
+      // street along z between them: walk to the corner nearer to both points, cross in x
+      const lx = (A.cx + B.cx) / 2, sx = Math.sign(B.cx - A.cx);
+      const lz = A.cz + Math.sign((a.z + b.z) / 2 - A.cz || 1) * (GRID / 2);
+      const zz = lz + Math.sign(A.cz - lz) * zebra;
+      return [a, { x: lx - sx * walk, z: a.z }, { x: lx - sx * walk, z: zz }, { x: lx + sx * walk, z: zz }, { x: lx + sx * walk, z: b.z }, b];
+    }
+    if (A.cx === B.cx && Math.abs(A.cz - B.cz) === GRID) {
+      const lz = (A.cz + B.cz) / 2, sz = Math.sign(B.cz - A.cz);
+      const lx = A.cx + Math.sign((a.x + b.x) / 2 - A.cx || 1) * (GRID / 2);
+      const xx = lx + Math.sign(A.cx - lx) * zebra;
+      return [a, { x: a.x, z: lz - sz * walk }, { x: xx, z: lz - sz * walk }, { x: xx, z: lz + sz * walk }, { x: b.x, z: lz + sz * walk }, b];
+    }
+    return null;
+  };
+
   /** one side of a block along its sidewalk (side 0–3), the clear stretch of it around the middle */
   const sidewalk = (b: Block, side: number) => {
     const o = BLOCK_INNER + SIDEWALK / 2;
@@ -168,13 +206,37 @@ export function townPeople(town: TownMap, seed = 4242): PersonRoute[] {
     for (let tries = 0; tries < 40 && n < 5; tries++) {
       const bay = lot[Math.floor(rnd() * lot.length)];
       if (!bay) break;
-      // from a free bay (where the car would be) straight to the door
+      // from a free bay (where the car would be) over the zebra crossing to the door
       const start = { x: bay.x, z: bay.z };
-      const pts = [start, { x: door.x + (rnd() - 0.5) * 6, z: door.z + (rnd() - 0.5) * 6 }];
-      if (!free(start.x, start.z) || !clear(pts, false)) continue;
+      const pts = viaZebra(start, { x: door.x + (rnd() - 0.5) * 6, z: door.z + (rnd() - 0.5) * 6 });
+      if (!pts || !free(start.x, start.z) || !clear(pts, false, true)) continue;
       add(rnd() < 0.2 ? 'child' : 'adult', pts, false, { pause: 4 + rnd() * 8 });
       n++;
     }
+  }
+  // travellers between the airport station (south end of the platform) and the terminal entrance
+  const R = TOWN_RAIL;
+  let travellers = 0;
+  for (let tries = 0; tries < 60 && travellers < 8; tries++) {
+    const pts = [
+      { x: R.airportPlatform.x0 + 1 + rnd() * (R.airportPlatform.x1 - R.airportPlatform.x0 - 2), z: R.airportPlatform.z0 - 3 },
+      { x: R.terminalDoor.x + (rnd() - 0.5) * 3, z: R.terminalDoor.z + (rnd() - 0.5) * 16 },
+    ];
+    if (!clear(pts, false)) continue;
+    add(rnd() < 0.15 ? 'child' : 'adult', pts, false, { pause: 3 + rnd() * 10 });
+    travellers++;
+  }
+  // policemen at the police station: on patrol along the sidewalk, round the building, to the patrol cars
+  for (const p of town.buildings.filter((b) => b.model === 'policestation')) {
+    const front = p.z - p.d / 2, side = p.w / 2;
+    const routes: { pts: { x: number; z: number }[]; loop: boolean }[] = [
+      { pts: [{ x: p.x - 24, z: front - 11.5 }, { x: p.x + 24, z: front - 11.5 }], loop: false },
+      // round the building, in front of the patrol cars along the sidewalk
+      { pts: [{ x: p.x - side - 4, z: front - 11 }, { x: p.x - side - 4, z: p.z + p.d / 2 + 3 }, { x: p.x + side + 4, z: p.z + p.d / 2 + 3 }, { x: p.x + side + 4, z: front - 11 }], loop: true },
+      // from the door between the cars to the street and back
+      { pts: [{ x: p.x + 3.5, z: front - 2 }, { x: p.x + 3.5, z: front - 10 }], loop: false },
+    ];
+    for (const r of routes) if (clear(r.pts, r.loop)) add('police', r.pts, r.loop, { speed: 1.1, pause: 4 + rnd() * 6 });
   }
   // cemetery: along the path in the middle and inside the fence
   for (const b of blocks.filter((x) => x.kind === 'church')) {

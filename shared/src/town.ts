@@ -3,7 +3,7 @@ import { clamp, mulberry32, wrapAngle } from './math';
 import { CIRCLE_R, driveCar, newCarState, stepRocket, updateGearbox, updateVertical, type CarInput, type CarState, type DriveGround } from './physics';
 import { SURFACE_PROPS, type Surface } from './track';
 import { TOWN_FOOTPRINTS } from './townFootprints';
-import { railPath, TOWN_RAIL } from './townRail';
+import { onTrack, railPath, TOWN_RAIL } from './townRail';
 
 /**
  * The open practice town ("Spidi-Stadt"): 1 × 1 km, flat, a grid of two-lane streets every 100 m
@@ -674,6 +674,12 @@ export class TownMap {
     }
   }
 
+  /** Inside the cemetery fence behind the church (see churchYard). */
+  inCemetery(x: number, z: number) {
+    const b = this.blockAt(x, z);
+    return b?.kind === 'church' && x > b.cx - 38 && x < b.cx + 38 && z > b.cz - 40 && z < b.cz - 6;
+  }
+
   /** True over the harbour basin (beyond the quay edge). */
   inWater(x: number, z: number) {
     return z < HARBOR.quayZ - 0.2 && x > TOWN_BOUNDS.minX - 400 && x < TOWN_BOUNDS.maxX + 400;
@@ -733,6 +739,14 @@ export class TownMap {
       placed++;
     }
     this.starSpots.push({ x: 600, z: -384, heading: Math.PI / 2 }, { x: 486, z: -415, heading: 0 }, { x: 600, z: -446, heading: Math.PI / 2 });
+  }
+
+  /**
+   * How much the ground shakes a car (0..1): the surface's roughness, and full roughness on the
+   * ballast and sleepers of the railway tracks.
+   */
+  roughAt(x: number, z: number) {
+    return onTrack(x, z) ? 1 : SURFACE_PROPS[this.surfaceAt(x, z)].rough;
   }
 
   /** Distance from the centre line of the offroad loop. */
@@ -940,10 +954,10 @@ export class TownMap {
     // platforms are low edges (a car can jump onto them)
     const [p0, p1] = T.platform;
     this.boxes.push({ minX: p0, maxX: p1, minZ: -60, maxZ: 60, solid: true, top: 0.9 });
-    // airport station: terminus with platform, station building and forecourt north of the airport parking
+    // airport station: terminus between the landside parking and the terminal, platform on the terminal side
     const ap = T.airportPlatform, as = T.airportStation;
     this.boxes.push({ minX: ap.x0, maxX: ap.x1, minZ: ap.z0, maxZ: ap.z1, solid: true, top: 0.9 });
-    this.addBuilding(['tpl-retro-10x4x3', 10, 4, 3.3], 4, as.x, as.z, Math.PI / 2);
+    this.addBuilding(['tpl-retro-10x4x3', 10, 4, 3.3], 3, as.x, as.z, Math.PI / 2);
     this.starSpots.push({ x: 467, z: 340, heading: 0 }, { x: 0, z: T.northZ + 10, heading: Math.PI / 2 });
     // parking bays on the forecourt, facing the station
     const f = R.forecourt;

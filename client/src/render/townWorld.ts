@@ -221,7 +221,9 @@ export function getTownWorld(): TownWorld {
   // airport station: platform with canopy at the terminus, buffer stop at the end of the track
   const ap = TOWN_RAIL.airportPlatform, apz = (ap.z0 + ap.z1) / 2, apl = ap.z1 - ap.z0;
   quay.push(colored(new THREE.BoxGeometry(ap.x1 - ap.x0, 0.9, apl).translate((ap.x0 + ap.x1) / 2, 0.45, apz), '#c9c4ba'));
-  quay.push(colored(new THREE.BoxGeometry(0.3, 0.02, apl).translate(ap.x1 - 0.4, 0.91, apz), '#f0c420'));
+  // yellow line along the edge towards the track
+  const edge = Math.abs(ap.x0 - TOWN_RAIL.airportX) < Math.abs(ap.x1 - TOWN_RAIL.airportX) ? ap.x0 + 0.4 : ap.x1 - 0.4;
+  quay.push(colored(new THREE.BoxGeometry(0.3, 0.02, apl).translate(edge, 0.91, apz), '#f0c420'));
   quay.push(colored(new THREE.BoxGeometry(ap.x1 - ap.x0 + 1, 0.25, apl - 20).translate((ap.x0 + ap.x1) / 2, 4.6, apz), '#5d6670'));
   for (let z = ap.z0 + 12; z <= ap.z1 - 12; z += 12) quay.push(colored(new THREE.BoxGeometry(0.2, 3.7, 0.2).translate((ap.x0 + ap.x1) / 2 - 1, 2.75, z), '#5d6670'));
   const end = SBAHN_PATH.at(SBAHN_PATH.length);
@@ -305,6 +307,9 @@ export function getTownWorld(): TownWorld {
       }
     }
   }
+  // zebra crossing over the airport access lane, where the travellers walk between station and terminal
+  const ap2 = TOWN_RAIL.airportPlatform;
+  for (let z = 110.6; z < 129.5; z += 1.1) marks.add(ap2.x0 - 0.5, z, ap2.x1 + 0.5, z + 0.55, MY);
   // parking bays: separating lines and a line at the back of each bay
   for (const bay of town.bays) {
     // bays point along x or z; f = into the bay, r = across

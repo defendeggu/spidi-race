@@ -1,4 +1,4 @@
-import { formatTime, TOWN_BOARDS, TOWN_GOAL_COUNTS, TRACK_DEFS, type TownResult, type TownTask } from '@spidi/shared';
+import { formatTime, TOWN_BOARDS, TOWN_GOAL_COUNTS, TRACK_DEFS, type OutReason, type TownResult, type TownTask } from '@spidi/shared';
 import { KEYMAPS, SOLO_KEYMAP } from '../input';
 import { submitResults } from '../leaderboardApi';
 import { TownGame } from '../townGame';
@@ -68,18 +68,27 @@ export function showTownResults(app: App, game: TownGame, r: TownResult) {
   const names = game.opts.players.map((p) => p.name);
   const unit = r.task === 'stars' ? 'Sterne' : 'Parkfelder';
   const board = TOWN_BOARDS.find((b) => b.task === r.task)!;
-  const fellText = r.fell >= 0 ? `${names[r.fell]} ist ins Wasser gefallen.` : '';
-  const body = r.fell >= 0 && r.mode !== 'duel'
-    ? html`<h2>Platsch!</h2>
-      <p class="town-result">Ins Wasser gefallen – die Fahrt ist zu Ende.</p>
-      <p class="hint">${r.mode === 'solo' ? 'Diesmal gibt es keine Zeit für die Rangliste. ' : ''}Am Kai gibt es kein Geländer – also vorsichtig fahren!</p>`
+  const outIdx = r.out.findIndex(Boolean);
+  const anyOut = outIdx >= 0;
+  const OUT_TEXT: Record<OutReason, { title: string; line: string; hint: string }> = {
+    water: { title: 'Platsch!', line: 'Ins Wasser gefallen – die Fahrt ist zu Ende.', hint: 'Am Kai gibt es kein Geländer – also vorsichtig fahren!' },
+    cemetery: { title: 'Ausgeschieden', line: 'Zu lange auf dem Friedhof herumgefahren – das ist pietätlos.', hint: 'Auf dem Friedhof wird nicht gefahren. Wer hineingerät, hat 5 Sekunden, um wieder hinauszufahren.' },
+    people: { title: 'Ausgeschieden', line: 'Dreimal in Fussgänger gefahren – die Fahrt ist zu Ende.', hint: 'Auf Fussgänger, Hunde und Kinderwagen aufpassen: Nach der dritten Verwarnung ist Schluss.' },
+  };
+  const outLines = r.out.map((o, k) => (o ? `${names[k]}: ${OUT_TEXT[o].line}` : '')).filter(Boolean);
+  const body = anyOut && r.mode !== 'duel' && r.out.every(Boolean) && r.out.length === 1
+    ? html`<h2>${OUT_TEXT[r.out[0]!].title}</h2>
+      <p class="town-result">${OUT_TEXT[r.out[0]!].line}</p>
+      <p class="hint">${r.mode === 'solo' ? 'Diesmal gibt es keine Zeit für die Rangliste. ' : ''}${OUT_TEXT[r.out[0]!].hint}</p>`
     : r.mode === 'duel'
     ? html`<h2>${r.winner < 0 ? 'Unentschieden!' : `${names[r.winner]} gewinnt!`}</h2>
-      ${fellText ? html`<p class="hint">${fellText}</p>` : ''}
+      ${outLines.map((l) => html`<p class="hint">${l}</p>`)}
       <table class="results"><tr><th>Fahrer</th><th>${unit}</th><th>Schnellstes Ziel</th></tr>
-        ${[0, 1].map((k) => html`<tr class="${k === r.winner ? 'me' : ''}"><td>${names[k]}</td><td>${r.scores[k]}</td><td>${formatTime(r.fastest[k])}</td></tr>`)}
+        ${[0, 1].map((k) => html`<tr class="${k === r.winner ? 'me' : ''}"><td>${names[k]}${r.out[k] ? html` <small>ausgeschieden</small>` : ''}</td><td>${r.scores[k]}</td><td>${formatTime(r.fastest[k])}</td></tr>`)}
       </table>
-      ${r.fell >= 0 ? '' : html`<p class="hint">${r.scores[0]} : ${r.scores[1]} nach 3 Minuten</p>`}`
+      ${anyOut ? '' : html`<p class="hint">${r.scores[0]} : ${r.scores[1]} nach 3 Minuten</p>`}`
+    : anyOut
+    ? html`<h2>Fahrt beendet</h2>${outLines.map((l) => html`<p class="hint">${l}</p>`)}`
     : html`<h2>Geschafft!</h2>
       <p class="town-result">${r.scores[0]} ${unit} in <b>${formatTime(r.time)}</b></p>
       <p class="hint">Schnellstes Ziel: ${formatTime(r.fastest[0])}</p>
@@ -89,7 +98,7 @@ export function showTownResults(app: App, game: TownGame, r: TownResult) {
       ${body}
       <div class="row">
         <button class="go" data-a="again">Nochmal</button>
-        ${r.mode === 'solo' && r.fell < 0 ? html`<button data-a="board">Rangliste</button>` : ''}
+        ${r.mode === 'solo' && !anyOut ? html`<button data-a="board">Rangliste</button>` : ''}
         <button data-a="menu">Hauptmenü</button>
       </div>
     </div>`);
@@ -100,7 +109,8 @@ export function showTownResults(app: App, game: TownGame, r: TownResult) {
     board: () => app.showLeaderboard({ trackId: board.id, sort: 'time', laps: game.opts.goals }, back),
     menu: () => app.quitGame(),
   });
-  if (r.mode !== 'solo' || r.fell >= 0 || game.cheated || submitted.has(r)) return;
+  // runs that ended early do not count
+  if (r.mode !== 'solo' || anyOut || game.cheated || submitted.has(r)) return;
   submitted.add(r);
   const p = game.opts.players[0];
   submitResults([{ name: p.name, carId: p.carId, trackId: board.id, laps: game.opts.goals, time: r.time, bestLap: r.fastest[0], mode: 'solo' }])

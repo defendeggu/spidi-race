@@ -258,4 +258,24 @@ describe('room', () => {
     expect(inner.phase).toBe('lobby');
     expect(a.sent.filter((m) => m.type === 'bsnap').length).toBeGreaterThan(50);
   });
+
+  it('battle: a client may give up its own kart (cemetery, pedestrians), the others play on', () => {
+    const { inner, join } = setup();
+    const a = join('Anna'), b = join('Ben'), c = join('Cleo');
+    a.msg({ type: 'settings', settings: { trackId: 'speedway', laps: 1, aiCount: 0, aiSkill: 0.93, kart: true, battle: true } });
+    a.msg({ type: 'start' });
+    clearInterval(inner.timer!);
+    const start = a.sent.find((m) => m.type === 'start') as Extract<ServerMsg, { type: 'start' }>;
+    const [anna, ben] = start.slots;
+    const battle = inner.battle!;
+    battle.session.step(5);
+    // nobody can give up someone else's kart
+    b.msg({ type: 'forfeit', id: anna.id });
+    expect(battle.session.alive(anna.id)).toBe(true);
+    b.msg({ type: 'forfeit', id: ben.id });
+    expect(battle.session.alive(ben.id)).toBe(false);
+    // two are left: the battle goes on
+    expect(battle.session.phase).toBe('running');
+    void c;
+  });
 });

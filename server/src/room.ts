@@ -223,6 +223,12 @@ export class Room {
         }
         break;
       }
+      case 'forfeit': {
+        // the client judges the cemetery and the pedestrians (they live in its game time); only its own karts
+        const car = this.cars.find((k) => k.slot.id === msg.id && k.slot.ownerId === c.id);
+        if (car && this.battle) this.battle.leave(car.slot.id);
+        break;
+      }
       case 'item': {
         const car = this.cars.find((k) => k.slot.id === msg.id && k.slot.ownerId === c.id);
         if (!car) return;

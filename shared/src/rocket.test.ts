@@ -31,7 +31,24 @@ describe('camper rocket hop', () => {
     expect(c.airborne).toBe(true);
   });
 
-  it('does not allow midair retriggers or launches during cooldown', () => {
+  it('fires in mid-air too, for example after a jump over a ramp', () => {
+    const c = newCarState('camper', 0, 0, 0, 0);
+    // thrown up by a ramp, already falling again
+    Object.assign(c, { airborne: true, y: 3, vy: -2 });
+    stepRocket(c, camper, fire, dt);
+    expect(c.vy).toBeGreaterThan(7);
+    expect(c.rocketBurn).toBeGreaterThan(0);
+    let maxHeight = 0;
+    for (let i = 0; i < 4 / dt; i++) {
+      stepRocket(c, camper, NO_INPUT, dt);
+      updateVertical(c, 0, dt, true);
+      maxHeight = Math.max(maxHeight, c.y);
+    }
+    expect(maxHeight).toBeGreaterThan(5);
+    expect(c.airborne).toBe(false);
+  });
+
+  it('does not allow retriggers during the cooldown, on the ground or in the air', () => {
     const c = newCarState('camper', 0, 0, 0, 0);
     stepRocket(c, camper, fire, dt);
     for (let i = 0; i < 180; i++) {
