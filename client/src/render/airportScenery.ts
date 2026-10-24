@@ -227,11 +227,14 @@ export function stretched(model: string, x: number, z: number, w: number, d: num
   const src = getModel(model)!;
   const box = new THREE.Box3().setFromObject(src);
   const size = box.getSize(new THREE.Vector3());
+  // the model's origin is not always the middle of its footprint (the cargo hall's is 0.23 u off):
+  // centre it, or the stretched hall stands metres away from its collision box
+  const centre = new THREE.Matrix4().makeTranslation(-(box.min.x + box.max.x) / 2, 0, -(box.min.z + box.max.z) / 2);
   return new THREE.Matrix4().compose(
     new THREE.Vector3(x, y, z),
     new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rot),
     new THREE.Vector3(w / size.x, h / size.y, d / size.z),
-  );
+  ).multiply(centre);
 }
 
 const WALLS = ['#e8e4dc', '#d8dde4', '#f0e6d2', '#c9d4dc'];

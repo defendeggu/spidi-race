@@ -78,6 +78,11 @@ export type TextureName = (typeof TEXTURES)[number];
 
 const models = new Map<string, THREE.Group>();
 const textures = new Map<TextureName, THREE.Texture>();
+/** animation clips of the animated models (pedestrians, dog) */
+const clips = new Map<string, THREE.AnimationClip[]>();
+
+/** Kenney Mini Characters: six women and six men with walk / sit animations (prefix 'pp-'). */
+export const PEOPLE_MODELS = ['a', 'b', 'c', 'd', 'e', 'f'].flatMap((k) => [`character-female-${k}`, `character-male-${k}`]);
 let colormaps: { cars: HTMLImageElement | null } = { cars: null };
 let ready = false;
 
@@ -88,6 +93,10 @@ export function assetsReady() {
 
 export function getModel(name: string): THREE.Group | undefined {
   return models.get(name);
+}
+
+export function getClips(name: string): THREE.AnimationClip[] {
+  return clips.get(name) ?? [];
 }
 
 export function getTexture(name: TextureName): THREE.Texture | undefined {
@@ -119,6 +128,7 @@ export async function loadAssets(onProgress: (done: number, total: number) => vo
         if (o instanceof THREE.Mesh) o.geometry.userData.shared = true;
       });
       models.set(prefix + name, gltf.scene);
+      if (gltf.animations.length) clips.set(prefix + name, gltf.animations);
     });
   CAR_MODELS.forEach((m) => addModel('cars', m));
   NATURE_MODELS.forEach((m) => addModel('nature', m));
@@ -133,6 +143,8 @@ export async function loadAssets(onProgress: (done: number, total: number) => vo
   GRAVEYARD_MODELS.forEach((m) => addModel('graveyard', m, 'gy-'));
   BLASTER_MODELS.forEach((m) => addModel('blaster', m, 'bl-'));
   FOOD_MODELS.forEach((m) => addModel('food', m));
+  PEOPLE_MODELS.forEach((m) => addModel('people', m, 'pp-'));
+  addModel('pets', 'animal-dog', 'pet-');
   for (const t of TEXTURES)
     jobs.push(async () => {
       const tex = await texLoader.loadAsync(`${BASE}textures/${t}.jpg`);

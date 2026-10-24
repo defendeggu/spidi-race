@@ -5,6 +5,9 @@ import type { TownMap } from './town';
 export type TownTask = 'free' | 'stars' | 'parking';
 
 export const STAR_RADIUS = 4;
+/** the next star is at least this far away (m, where possible) and at most STAR_FAR (solo) */
+const STAR_NEAR = 220;
+const STAR_FAR = 800;
 /** parking: allowed offset across / along the bay, angle (either direction) and time standing still */
 export const PARK_TOLERANCE = { across: 0.9, along: 1.5, angle: 0.35, hold: 1 };
 
@@ -40,14 +43,16 @@ export class TaskTracker {
     }
     const busy = (x: number, z: number) => taken.some((t) => t && Math.hypot(t.x - x, t.z - z) < 1);
     if (this.task === 'stars') {
-      // not too close, not too far: 80–350 m away
-      const spots = this.town.starSpots.filter((s) => {
-        const d = Math.hypot(s.x - c.x, s.z - c.z);
-        return d > 80 && d < 350 && !busy(s.x, s.z);
-      });
-      const pool = spots.length > 0 ? spots : this.town.starSpots;
-      const s = pool[Math.floor(this.rnd() * pool.length)];
-      this.target = { x: s.x, z: s.z, heading: s.heading, bay: -1 };
+      // a real drive across town: 220–800 m away, farther spots more likely
+      const near = (lo: number) => this.town.starSpots
+        .map((s) => ({ s, d: Math.hypot(s.x - c.x, s.z - c.z) }))
+        .filter(({ s, d }) => d > lo && d < STAR_FAR && !busy(s.x, s.z));
+      let pool = near(STAR_NEAR);
+      if (pool.length < 3) pool = near(80);
+      if (pool.length === 0) pool = this.town.starSpots.map((s) => ({ s, d: 1 }));
+      let r = this.rnd() * pool.reduce((sum, p) => sum + p.d, 0);
+      const pick = pool.find((p) => (r -= p.d) <= 0) ?? pool[pool.length - 1];
+      this.target = { x: pick.s.x, z: pick.s.z, heading: pick.s.heading, bay: -1 };
       return;
     }
     const free = this.town.bays.map((b, i) => ({ b, i })).filter(({ b }) => b.parked < 0 && !busy(b.x, b.z));
@@ -163,8 +168,11 @@ export class TownSession {
         const da = street(a.x, a.z, c.x, c.z), db = street(b.x, b.z, c.x, c.z);
         return { c, da, db, cost: Math.abs(da - db) };
       })
-      .filter((s) => Math.min(s.da, s.db) > 80);
-    const pool = (scored.length ? scored : cands.map((c) => ({ c, cost: 0 }))).sort((x, y) => x.cost - y.cost).slice(0, 6);
+      // both have a real drive ahead: stars at least 220 m by street away, longer drives preferred
+      .map((s) => ({ ...s, cost: s.cost - 0.15 * Math.min(s.da, s.db) }));
+    const far = scored.filter((s) => Math.min(s.da, s.db) > STAR_NEAR);
+    const ok = far.length >= 3 ? far : scored.filter((s) => Math.min(s.da, s.db) > 80);
+    const pool = (ok.length ? ok : cands.map((c) => ({ c, cost: 0 }))).sort((x, y) => x.cost - y.cost).slice(0, 6);
     const pick = pool[Math.floor(this.rnd() * pool.length)].c;
     for (const t of this.trackers) {
       t.target = { ...pick };

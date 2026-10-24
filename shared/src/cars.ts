@@ -93,7 +93,8 @@ export const CARS: CarSpec[] = [
     class: 'road',
     suspension: 0.06,
     name: 'Sturmvogel RS',
-    description: 'Futuristischer Prototyp – höchste Endgeschwindigkeit',
+    description: 'Futuristischer Prototyp – höchste Endgeschwindigkeit, mit Raketensprung (F)',
+    rocket: true,
     topSpeed: 94,
     accel: 8.8,
     brake: 17,
@@ -263,8 +264,8 @@ export const CARS: CarSpec[] = [
 
 const HILUX: CarSpec = {
   id: 'hilux', class: 'offroad', name: 'Steinbock DC',
-  description: 'Weisser Doppelkabinen-Pickup mit offener Ladefläche und Geländereifen',
-  model: 'toyota-hilux', color: '#f2f1e9', accent: '#15191c',
+  description: 'Weisser Doppelkabinen-Pickup mit Geländereifen und Raketensprung (F)',
+  model: 'toyota-hilux', rocket: true, color: '#f2f1e9', accent: '#15191c',
   suspension: 0.20, topSpeed: 63, accel: 7.6, brake: 13, grip: 13.5,
   steer: 0.60, wheelbase: 3.15, gears: 6, mass: 2150,
   shape: { length: 5.45, width: 2.08, height: 1.35, roof: 2.05, cabinShift: 0.25, spoiler: false },
@@ -301,7 +302,8 @@ export const TOWN_CARS: CarSpec[] = [
     ...CALIFORNIA,
     id: 'california-town',
     class: 'town',
-    topSpeed: 20,
+    // really reaches 80 km/h (the nominal top speed is never quite reached against the drag)
+    topSpeed: 24,
     accel: 4.2,
     brake: 10,
   },
@@ -374,7 +376,36 @@ export const TOWN_CARS: CarSpec[] = [
 
 TOWN_CARS.push({ ...HILUX, id: 'hilux-town', class: 'town', topSpeed: 21, accel: 4.7, brake: 10 });
 TOWN_CARS.push({ ...AVENTADOR, id: 'aventador-town', class: 'town', topSpeed: 21, accel: 5.4, brake: 13 });
+
+/**
+ * Every other road, offroad and micro car drives in the town too, tamed to town speeds: the fastest
+ * race cars reach about 85 km/h, the slowest about 65 km/h.
+ */
+const TOWN_VERSIONS: Record<string, string> = { california: 'california-town', kaito: 'kaito-stadt', hilux: 'hilux-town', aventador: 'aventador-town' };
+const TOWN_SPEED = { road: 0.25, offroad: 0.33, micro: 0.36 } as Partial<Record<CarClass, number>>;
+for (const c of CARS) {
+  const k = TOWN_SPEED[c.class];
+  if (!k || TOWN_VERSIONS[c.id]) continue;
+  TOWN_VERSIONS[c.id] = `${c.id}-town`;
+  TOWN_CARS.push({
+    ...c, id: `${c.id}-town`, class: 'town',
+    topSpeed: Math.round(Math.max(18, Math.min(24, c.topSpeed * k)) * 10) / 10,
+    accel: Math.round(Math.max(4.2, Math.min(5.6, c.accel * 0.55)) * 10) / 10,
+    brake: Math.max(9, Math.min(13, Math.round(c.brake * 0.75))),
+    grip: Math.min(c.grip, 13.5),
+  });
+}
 CARS.push(...TOWN_CARS);
+
+/** The town version of a race car (its own id if it has none). */
+export function townVersion(id: string) {
+  return TOWN_VERSIONS[id] ?? id;
+}
+
+/** The race car a town car is made from (its own id if it is a pure town car). */
+export function raceVersion(townId: string) {
+  return Object.keys(TOWN_VERSIONS).find((k) => TOWN_VERSIONS[k] === townId) ?? townId;
+}
 
 // ---------------------------------------------------------------- karts (kart races with items)
 const KART_BASE = {
@@ -401,6 +432,8 @@ CARS.push(...KART_CARS);
 
 /** Parked and passing cars in the town (visual only). */
 export const TRAFFIC_MODELS = ['sedan', 'hatchback-sports', 'suv', 'van', 'delivery', 'taxi', 'sedan-sports'];
+/** Parked vehicles: the traffic models plus the fire engines and patrol cars at the stations. */
+export const PARKED_MODELS = [...TRAFFIC_MODELS, 'firetruck', 'police'];
 
 export function carsForClass(cls: CarClass) {
   return CARS.filter((c) => c.class === cls);

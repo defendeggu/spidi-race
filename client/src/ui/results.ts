@@ -52,7 +52,7 @@ export function showResults(app: App, results: ResultRow[], ranks?: Record<strin
 
   // record my finished drivers in the permanent leaderboard (online: the server already did)
   const mine = results.filter((r) => myIds.has(r.id) && r.finished);
-  if (mine.length === 0) return;
+  if (mine.length === 0 || game?.cheated) return;
   const show = (rk: number[]) => {
     const el = document.getElementById('lb-info');
     if (!el) return;

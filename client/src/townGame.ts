@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { updateRocketHud } from './rocketHud';
 import {
   collideCars, createTownCar, formatTime, forwardSpeed, getCar, HARBOR, idleCar, lerp, lerpAngle, NO_INPUT, PARKING_BAY, SURFACE_PROPS,
-  stepCarTown, TownSession, Traffic,
+  collideMoving, planeBoxes, planesAt, trainBoxes, stepCarTown, TownSession, Traffic, trainsAt,
   type CarInput, type CarSpec, type CarState, type TaskTracker, type TownMap, type TownResult, type TownTask, type TrafficCar,
 } from '@spidi/shared';
 import { audio, EngineVoice } from './audio';
@@ -80,6 +80,14 @@ interface TrafficVisual {
   prev: Prev;
 }
 
+/** A tall light beam over a goal, seen from far away across the town (stars and parking bays). */
+function lightBeam(color: string) {
+  return new THREE.Mesh(
+    new THREE.CylinderGeometry(0.7, 0.7, 70, 12, 1, true).translate(0, 35, 0),
+    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.3, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending }),
+  );
+}
+
 /** A star on a light beam that can be seen from far away. */
 function starGoal(color: string) {
   const shape = new THREE.Shape();
@@ -96,15 +104,11 @@ function starGoal(color: string) {
   );
   star.position.y = 2.4;
   star.name = 'spin';
-  const beam = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.7, 0.7, 70, 12, 1, true).translate(0, 35, 0),
-    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.3, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending }),
-  );
-  g.add(star, beam);
+  g.add(star, lightBeam(color));
   return g;
 }
 
-/** A glowing frame around the target parking bay. */
+/** A glowing frame around the target parking bay, with the same light beam as a star. */
 function parkingGoal(color: string) {
   const g = new THREE.Group();
   const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.85 });
@@ -117,11 +121,7 @@ function parkingGoal(color: string) {
   const fill = new THREE.Mesh(new THREE.PlaneGeometry(2 * hw, 2 * hl).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.18, depthWrite: false }));
   fill.position.y = 0.04;
   fill.name = 'pulse';
-  const beam = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.4, 0.4, 14, 10, 1, true).translate(0, 7, 0),
-    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.3, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending }),
-  );
-  g.add(fill, beam);
+  g.add(fill, lightBeam(color));
   return g;
 }
 
@@ -153,6 +153,8 @@ export class TownGame {
   onFinish: ((result: TownResult) => void) | null = null;
 
   constructor(hudLayer: HTMLElement, readonly opts: TownOptions) {
+    // development only (screenshots, manual tests): the running game in the console
+    if (import.meta.env.DEV) (window as unknown as { townGame?: TownGame }).townGame = this;
     this.world = getTownWorld();
     const town = this.world.town;
     const split = opts.players.length > 1;
@@ -298,6 +300,9 @@ export class TownGame {
       for (let j = i + 1; j < this.players.length; j++) collideCars(a.state, this.players[j].state, a.spec.mass, this.players[j].spec.mass);
       for (const t of this.traffic.cars) collideCars(a.state, t.state, a.spec.mass, Infinity);
     }
+    // the trains run on open tracks, the departing aircraft rolls along the runway: they push cars aside
+    const movers = [...trainBoxes(trainsAt(this.clock)), ...planesAt(this.clock).flatMap(planeBoxes)];
+    for (const p of this.players) p.state.impact = Math.max(p.state.impact, collideMoving(p.state, p.spec, movers));
     const wasRunning = this.session.phase === 'running';
     const scored = this.session.step(dt, this.players.map((p) => p.state));
     for (const k of scored) {
@@ -361,6 +366,7 @@ export class TownGame {
   private render(alpha: number, dt: number) {
     const town = this.world.town;
     this.world.life.update(this.clock);
+    this.world.people.update(this.clock, dt, this.players.map((p) => p.state));
     this.particles.update(dt);
     // countdown beeps like at the start of a race
     const se = this.session;

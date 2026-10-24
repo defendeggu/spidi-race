@@ -1,6 +1,6 @@
-import { carsForClass, getTrack, type CarClass, type LobbyClient, type LobbyPlayer, type LobbySettings, type ResultRow } from '@spidi/shared';
+import { carsForClass, getCar, getTrack, type CarClass, type LobbyClient, type LobbyPlayer, type LobbySettings, type ResultRow } from '@spidi/shared';
 import { audio } from '../audio';
-import { typeCheat } from '../cheats';
+import { raceSpec, typeCheat } from '../cheats';
 import { Game } from '../game';
 import { input } from '../input';
 import { isTouchDevice, TouchControls } from '../touch';
@@ -100,7 +100,10 @@ export class App {
   }
 
   lobbyPlayers(cls: CarClass): LobbyPlayer[] {
-    return this.prefs.players.slice(0, this.prefs.onlineLocal).map((p, k) => ({ name: p.name, carId: this.carOf(k, cls) }));
+    return this.prefs.players.slice(0, this.prefs.onlineLocal).map((p, k) => {
+      const carId = this.carOf(k, cls);
+      return { name: p.name, carId, ...(raceSpec(getCar(carId)) !== getCar(carId) ? { cheat: true } : {}) };
+    });
   }
 
   // ---------------------------------------------------------------- running a game

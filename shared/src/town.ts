@@ -1,8 +1,9 @@
-import type { CarSpec } from './cars';
+import { PARKED_MODELS, type CarSpec } from './cars';
 import { clamp, mulberry32, wrapAngle } from './math';
 import { CIRCLE_R, driveCar, newCarState, stepRocket, updateGearbox, updateVertical, type CarInput, type CarState, type DriveGround } from './physics';
 import { SURFACE_PROPS, type Surface } from './track';
 import { TOWN_FOOTPRINTS } from './townFootprints';
+import { railPath, TOWN_RAIL } from './townRail';
 
 /**
  * The open practice town ("Spidi-Stadt"): 1 × 1 km, flat, a grid of two-lane streets every 100 m
@@ -38,9 +39,10 @@ export const OUTER = LINES[LINE_COUNT - 1] + ROAD_HW + SIDEWALK;
  */
 export const TOWN_BOUNDS = { minX: -570, maxX: 760, minZ: -540, maxZ: TOWN_HALF };
 export const HARBOR = { quayZ: TOWN_BOUNDS.minZ, waterY: -1.6 };
-/** railway along the east strip: track, fence towards the town, platform and station forecourt */
+/** railway along the east strip: tracks (see TOWN_RAIL, open to cars), platform and station forecourt */
 export const RAIL = {
-  trackX: -522,
+  trackX: TOWN_RAIL.trackX,
+  /** east edge of the station area (the old fence line) */
   fenceX: -507,
   /** the track runs between two tunnel portals */
   north: 486,
@@ -85,8 +87,7 @@ export const TOWN_AIRPORT = {
     { x: 585, z: 175, heading: -Math.PI / 2, livery: 3 },
     { x: 585, z: 240, heading: -Math.PI / 2, livery: 0 },
     { x: 548, z: -300, heading: -Math.PI / 2, livery: 2 },
-    { x: 665, z: 200, heading: Math.PI, livery: 1 },
-    { x: 720, z: -410, heading: 0, livery: 3 },
+    // (the aircraft on the taxiway and the departing one on the runway move: see townPlane)
   ] as TownPlane[],
 };
 
@@ -132,7 +133,7 @@ export function rampHeight(r: Ramp, x: number, z: number) {
 
 export type BlockKind =
   | 'tower' | 'shop' | 'house' | 'park' | 'parking' | 'practice'
-  | 'brick' | 'oldtown' | 'industry' | 'power' | 'supermarket' | 'plaza' | 'towerplaza' | 'skate' | 'church';
+  | 'brick' | 'oldtown' | 'industry' | 'power' | 'supermarket' | 'plaza' | 'towerplaza' | 'skate' | 'church' | 'emergency';
 
 export interface Block {
   i: number;
@@ -283,22 +284,23 @@ const BLOCK_PLAN = [
   'AAsTTTshh',
   'AFsTZTsph',
   'CPsTTTsRh',
-  'hsssssMPh',
+  'hssssEMPh',
   'hhphPIsII',
   'hhhhIIIIK',
 ];
 const PLAN_KIND: Record<string, BlockKind> = {
   h: 'house', s: 'shop', T: 'tower', p: 'park', P: 'parking', X: 'practice',
-  B: 'brick', A: 'oldtown', I: 'industry', K: 'power', M: 'supermarket', F: 'plaza', Z: 'towerplaza',
+  B: 'brick', A: 'oldtown', I: 'industry', K: 'power', M: 'supermarket', F: 'plaza', Z: 'towerplaza', E: 'emergency',
   S: 'skate', R: 'skate', C: 'church',
 };
 /**
  * Blocks that replaced older ones (plan letter → the old kind): the skate park instead of a park, a
- * second skate park beside the parking lot of the second supermarket and the church instead of houses.
+ * second skate park beside the parking lot of the second supermarket, the church instead of houses and
+ * the fire and police station instead of shops beside the northern supermarket.
  * They first run the old generator and throw its result away, so the random numbers of all other
  * blocks – and with them the familiar town – stay exactly the same.
  */
-const REPLACED: Record<string, BlockKind> = { S: 'park', R: 'house', C: 'house' };
+const REPLACED: Record<string, BlockKind> = { S: 'park', R: 'house', C: 'house', E: 'shop' };
 
 export class TownMap {
   readonly blocks: Block[] = [];
@@ -363,6 +365,8 @@ export class TownMap {
       const z = side === 0 ? inset : side === 1 ? -inset : along;
       // the south (harbour), east (railway) and west (airfield) strips are laid out separately
       if (side !== 0) continue;
+      // the S-Bahn runs along the north strip
+      if (Math.abs(z - TOWN_RAIL.northZ) < 6) continue;
       if (this.circles.some((c) => c.kind === 'tree' && Math.hypot(c.x - x, c.z - z) < 7)) continue;
       this.circles.push({ x, z, r: 0.6, kind: 'tree' });
     }
@@ -372,9 +376,11 @@ export class TownMap {
     for (const b of later) {
       if (b.kind === 'skate') this.skatePark(b, xr);
       else if (b.kind === 'church') this.churchYard(b, xr);
+      else if (b.kind === 'emergency') this.emergencyBlock(b, xr);
     }
     this.harbour(xr);
     this.railway(xr);
+    this.offroadPark(mulberry32(seed + 131));
     this.airfield(mulberry32(seed + 99));
 
     for (const o of this.boxes) this.insert(o.minX, o.maxX, o.minZ, o.maxZ, (c) => c.boxes.push(o));
@@ -487,7 +493,7 @@ export class TownMap {
    * Buildings side by side along the four block edges, fronts facing the street, with gaps to drive
    * through. East/west rows stop short of the corners so they do not collide with north/south rows.
    */
-  private blockEdges(b: Block, rnd: () => number) {
+  private blockEdges(b: Block, rnd: () => number, only?: number[]) {
     const st = EDGE_STYLE[b.kind as keyof typeof EDGE_STYLE];
     const I = BLOCK_INNER;
     const maxDepth = Math.max(...st.models.map((m) => m[2])) * st.scale;
@@ -497,7 +503,8 @@ export class TownMap {
       { rot: Math.PI / 2, fx: 1, fz: 0 },
       { rot: -Math.PI / 2, fx: -1, fz: 0 },
     ];
-    for (const s of sides) {
+    for (const [k, s] of sides.entries()) {
+      if (only && !only.includes(k)) continue;
       const end = I - (s.fx !== 0 ? st.setback + maxDepth + st.gap[0] : 0);
       let cursor = -end + rnd() * 3;
       for (let guard = 0; guard < 20; guard++) {
@@ -707,6 +714,80 @@ export class TownMap {
     this.starSpots.push({ x: cx - 10, z: cz, heading: 0 }, { x: cx - 30, z: cz - 6, heading: 0 }, { x: cx + 28, z: cz, heading: Math.PI / 2 });
   }
 
+  /** The offroad park: jumps on the loop, rocks, cacti and log stacks in the infield and around it. */
+  private offroadPark(rnd: () => number) {
+    const O = OFFROAD_PARK, a = O.area;
+    // top straight (heading +x): kicker, gap, table-top landing; right side (heading -z): a table-top
+    this.addRamp({ x: 512, z: -384, rot: Math.PI / 2, width: O.width, height: 1.7, up: 6, top: 0, down: 0, curve: 'kicker' });
+    this.addRamp({ x: 530, z: -384, rot: Math.PI / 2, width: O.width, height: 1.7, up: 4, top: 5, down: 9, curve: 'straight' });
+    this.addRamp({ x: 632, z: -396, rot: Math.PI, width: O.width, height: 1.3, up: 5, top: 6, down: 6, curve: 'straight' });
+    // canyon scenery off the course: red rocks, cacti, logs
+    const deco: [string, number, number][] = [['rock_largeA', 5, 2.4], ['rock_largeB', 5, 2.4], ['rock_largeC', 5, 2.2], ['rock_tallA', 5, 1.6], ['cactus_tall', 4, 0.5], ['cactus_short', 4, 0.5], ['log_stack', 4, 1.6]];
+    let placed = 0;
+    for (let k = 0; k < 120 && placed < 26; k++) {
+      const x = a.x0 + 4 + rnd() * (a.x1 - a.x0 - 8), z = a.z0 + 4 + rnd() * (a.z1 - a.z0 - 8);
+      if (this.offroadDistance(x, z) < O.width / 2 + 4 || Math.hypot(x - O.water.x, z - O.water.z) < O.water.r + 4) continue;
+      const [model, scale, r] = deco[Math.floor(rnd() * deco.length)];
+      if (!this.propsFree(x, z, r + 2) || this.circles.some((c) => Math.hypot(c.x - x, c.z - z) < r + 3)) continue;
+      this.addProp(model, scale, x, z, rnd() * Math.PI * 2, 'circle', r);
+      placed++;
+    }
+    this.starSpots.push({ x: 600, z: -384, heading: Math.PI / 2 }, { x: 486, z: -415, heading: 0 }, { x: 600, z: -446, heading: Math.PI / 2 });
+  }
+
+  /** Distance from the centre line of the offroad loop. */
+  private offroadDistance(x: number, z: number) {
+    let best = Infinity;
+    for (let i = 0; i < OFFROAD_LOOP.points.length; i += 2) {
+      const p = OFFROAD_LOOP.points[i];
+      best = Math.min(best, (p.x - x) ** 2 + (p.z - z) ** 2);
+    }
+    return Math.sqrt(best);
+  }
+
+  /** Surface in the offroad park (null outside): water hole, sand and mud stretches, dirt elsewhere. */
+  offroadSurface(x: number, z: number): Surface | null {
+    const O = OFFROAD_PARK, a = O.area;
+    if (x < a.x0 || x > a.x1 || z < a.z0 || z > a.z1) return null;
+    if (Math.hypot(x - O.water.x, z - O.water.z) < O.water.r) return 'water';
+    let best = Infinity, at = 0;
+    for (let i = 0; i < OFFROAD_LOOP.points.length; i++) {
+      const p = OFFROAD_LOOP.points[i], d = (p.x - x) ** 2 + (p.z - z) ** 2;
+      if (d < best) [best, at] = [d, i];
+    }
+    if (Math.sqrt(best) > O.width / 2 + 1) return 'dirt';
+    for (const [s0, s1, surface] of O.surfaces) if (at >= s0 && at <= s1) return surface;
+    return 'dirt';
+  }
+
+  /**
+   * Fire station (north side) and police station (south side), each with its vehicles parked on the
+   * apron in front; the shops on the east and west side stay, a lawn with trees in the middle.
+   */
+  private emergencyBlock(b: Block, rnd: () => number) {
+    const { cx, cz } = b;
+    const I = BLOCK_INNER;
+    this.blockEdges({ ...b, kind: 'shop' }, rnd, [2, 3]);
+    const park = (x: number, z: number, heading: number, model: number, hx: number, hz: number) => {
+      this.bays.push({ x, z, heading, parked: model });
+      this.boxes.push({ minX: x - hx, maxX: x + hx, minZ: z - hz, maxZ: z + hz, solid: false, top: PARKED_CAR_TOP });
+    };
+    // fire station: hall with three doors towards the street (+z), fire engines on the apron
+    const F = EMERGENCY.fire;
+    this.addBuilding(['firestation', F.w, F.d, F.h], 1, cx, cz + I - F.apron - F.d / 2, 0);
+    for (const dx of [-9, 0, 9]) park(cx + dx, cz + I - F.apron / 2, 0, PARKED_MODELS.indexOf('firetruck'), 1.3, 3.2);
+    // police station towards the south street, patrol cars in front
+    const P = EMERGENCY.police;
+    this.addBuilding(['policestation', P.w, P.d, P.h], 1, cx, cz - I + P.apron + P.d / 2, Math.PI);
+    for (const dx of [-7, 0, 7]) park(cx + dx, cz - I + P.apron / 2, Math.PI, PARKED_MODELS.indexOf('police'), 1.1, 2.5);
+    // trees on the lawn in between
+    for (let k = 0; k < 10; k++) {
+      const x = cx + (rnd() * 2 - 1) * 24, z = cz + (rnd() * 2 - 1) * (EMERGENCY_LAWN - 3);
+      if (this.propsFree(x, z, 3) && !this.circles.some((c) => c.kind === 'tree' && Math.hypot(c.x - x, c.z - z) < 7)) this.circles.push({ x, z, r: 0.6, kind: 'tree' });
+    }
+    this.starSpots.push({ x: cx + 18, z: cz + I - 6, heading: Math.PI / 2 }, { x: cx - 18, z: cz - I + 6, heading: Math.PI / 2 });
+  }
+
   /**
    * Church with its tower towards the street and a quiet cemetery behind it: iron fence with two
    * gates, rows of graves, crypts, pines, lanterns and benches.
@@ -848,17 +929,22 @@ export class TownMap {
    */
   private railway(rnd: () => number) {
     const R = RAIL, { minX, maxZ } = TOWN_BOUNDS;
-    const st = R.station;
-    // station building closes the fence between forecourt and platform
+    const st = R.station, T = TOWN_RAIL;
+    // station building between forecourt and platform; no fences: the tracks are open to cars
     this.addBuilding(['tpl-retro-10x4x3', 10, 4, 3.3], 4, st.x, st.z, Math.PI / 2);
-    const fence = (z0: number, z1: number) => this.addProp('fence', 1, R.fenceX, (z0 + z1) / 2, Math.PI / 2, 'box', 0, [z1 - z0, 0.3, 2.2]);
-    fence(R.south, st.z - st.d / 2);
-    fence(st.z + st.d / 2, R.north);
-    // tunnel portals close the track corridor at both ends
-    const portal = (z0: number, z1: number) =>
-      this.addProp('tunnel-portal', 1, (minX + R.fenceX) / 2, (z0 + z1) / 2, 0, 'box', 0, [R.fenceX - minX, z1 - z0, 9]);
-    portal(R.north, maxZ);
-    portal(R.south - 16, R.south);
+    // tunnel portals: both tracks into the south one, the freight track into the north one
+    const portal = (x0: number, x1: number, z0: number, z1: number) =>
+      this.addProp('tunnel-portal', 1, (x0 + x1) / 2, (z0 + z1) / 2, 0, 'box', 0, [x1 - x0, z1 - z0, 9]);
+    portal(minX, R.fenceX, R.south - 16, R.south);
+    portal(minX, T.trackX - 5, R.north, maxZ);
+    // platforms are low edges (a car can jump onto them)
+    const [p0, p1] = T.platform;
+    this.boxes.push({ minX: p0, maxX: p1, minZ: -60, maxZ: 60, solid: true, top: 0.9 });
+    // airport station: terminus with platform, station building and forecourt north of the airport parking
+    const ap = T.airportPlatform, as = T.airportStation;
+    this.boxes.push({ minX: ap.x0, maxX: ap.x1, minZ: ap.z0, maxZ: ap.z1, solid: true, top: 0.9 });
+    this.addBuilding(['tpl-retro-10x4x3', 10, 4, 3.3], 4, as.x, as.z, Math.PI / 2);
+    this.starSpots.push({ x: 467, z: 340, heading: 0 }, { x: 0, z: T.northZ + 10, heading: Math.PI / 2 });
     // parking bays on the forecourt, facing the station
     const f = R.forecourt;
     for (let z = f.z0 + 6; z <= f.z1 - 6; z += PARKING_BAY.width) {
@@ -874,6 +960,9 @@ export class TownMap {
       const x = behind ? minX + 4 + rnd() * (R.trackX - 10 - minX - 4) : R.fenceX + 4 + rnd() * (-OUTER - 4 - R.fenceX - 4);
       const z = R.south + rnd() * (R.north - R.south);
       if (!behind && z > f.z0 - 6 && z < f.z1 + 6) continue;
+      // not on the tracks
+      if (Math.abs(x - TOWN_RAIL.freightX) < 6 || (z > TOWN_RAIL.northZ - 40 && x > TOWN_RAIL.trackX - 6)) continue;
+      if (this.starSpots.some((s) => Math.hypot(s.x - x, s.z - z) < 4)) continue;
       if (this.circles.some((c) => c.kind === 'tree' && Math.hypot(c.x - x, c.z - z) < 8)) continue;
       this.circles.push({ x, z, r: 0.6, kind: 'tree' });
     }
@@ -1002,9 +1091,15 @@ export class TownMap {
     if (z < -OUTER) return 'asphalt';
     const f = RAIL.forecourt;
     if (x < -OUTER) return x >= f.x0 && z >= f.z0 && z <= f.z1 ? 'asphalt' : 'dirt';
+    const op = this.offroadSurface(x, z);
+    if (op) return op;
+    const af = TOWN_RAIL.airportForecourt;
+    if (x >= af.x0 && x <= af.x1 && z >= af.z0 && z <= af.z1) return 'asphalt';
     if (x > OUTER && z <= OUTER) return this.onAirfieldPaving(x, z) ? 'asphalt' : 'dirt';
     if (Math.abs(x) > OUTER || Math.abs(z) > OUTER) return 'dirt';
     const b = this.blockAt(x, z);
+    // fire and police station: lawn between the two aprons
+    if (b?.kind === 'emergency') return Math.abs(z - b.cz) < EMERGENCY_LAWN ? 'dirt' : 'asphalt';
     if (b?.kind === 'church') return Math.abs(x - b.cx) < 4 || z > b.cz + 33 ? 'asphalt' : 'dirt';
     // lawns in parks and gardens
     return b && (b.kind === 'park' || b.kind === 'house') ? 'dirt' : 'asphalt';
@@ -1139,6 +1234,30 @@ export class TownMap {
 }
 
 export const PARKING_BAY = { width: 3.6, length: 6 };
+
+/** fire and police station: building size and the apron in front for the vehicles */
+export const EMERGENCY = {
+  fire: { w: 30, d: 16, h: 8, apron: 12 },
+  police: { w: 24, d: 14, h: 9, apron: 10 },
+};
+const EMERGENCY_LAWN = 12;
+
+/**
+ * Offroad park on the grass between the south end of the airfield and the harbour: a dirt loop with
+ * a kicker and table-top jumps, sand, a mud stretch, a water hole and a chicane – built from the
+ * elements of the Canyon Run (red rocks, cacti, desert dirt). Laid out like a track: corners of the
+ * loop and the surface of each stretch.
+ */
+export const OFFROAD_PARK = {
+  area: { x0: 472, x1: 646, z0: -456, z1: -372 },
+  /** the loop (closed): along the top heading +x, down the right side, back along the bottom with a chicane */
+  loop: [[560, -384], [632, -384], [632, -446], [575, -446], [560, -418], [545, -446], [486, -446], [486, -384], [560, -384]] as [number, number][],
+  width: 9,
+  /** surface by stretch: [from, to] along the loop (m) */
+  surfaces: [[95, 150, 'sand'], [175, 215, 'mud'], [260, 330, 'sand']] as [number, number, Surface][],
+  water: { x: 610, z: -446, r: 7 },
+};
+const OFFROAD_LOOP = railPath(OFFROAD_PARK.loop, 10);
 
 let town: TownMap | null = null;
 

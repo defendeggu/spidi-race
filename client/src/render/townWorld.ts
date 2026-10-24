@@ -2,10 +2,11 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import {
   BLOCK_HALF, BLOCK_INNER, getTown, HARBOR, LINE_COUNT, LINES, mulberry32, PARKING_BAY, RAIL, rampHeight, ROAD_HW, SIDEWALK,
-  TOWN_BOUNDS, TOWN_HALF, TRAFFIC_MODELS,
-  type Ramp, type TownMap,
+  FREIGHT_PATH, OFFROAD_PARK, PARKED_MODELS, railPath, SBAHN_PATH, TOWN_BOUNDS, TOWN_HALF, TOWN_RAIL,
+  type RailPath, type Ramp, type TownMap,
 } from '@spidi/shared';
-import { assetsReady, getTexture, type TextureName } from './assets';
+import { assetsReady, getModel, getTexture, type TextureName } from './assets';
+import { TownPeople } from './townPeople';
 import { buildingMeshes, variantColors, type BuildingInstance } from './buildingKit';
 import { colored, fallback, instanced, towerGeo, type Variant } from './scenery';
 import { buildTownAirport, TOWN_AIRPORT_MODELS } from './townAirport';
@@ -19,6 +20,8 @@ export interface TownWorld {
   dynamic: THREE.Group;
   /** moving trains and boats (purely visual), updated with the game time */
   life: TownLife;
+  /** pedestrians, updated with the game time and the players' cars */
+  people: TownPeople;
 }
 
 /**
@@ -60,6 +63,18 @@ export class Quads {
     this.uv.push(x0, z0, x0, z1, x1, z0, x1, z0, x0, z1, x1, z1);
   }
 
+  /** A band of half width hw along a sampled line (curves included); uv in world metres like add(). */
+  strip(pts: { x: number; z: number; heading: number }[], hw: number, y = 0) {
+    for (let i = 1; i < pts.length; i++) {
+      const p = pts[i - 1], q = pts[i];
+      const side = (o: { x: number; z: number; heading: number }, k: number): [number, number] => [o.x + Math.cos(o.heading) * hw * k, o.z - Math.sin(o.heading) * hw * k];
+      const [ax, az] = side(p, 1), [bx, bz] = side(p, -1), [cx, cz] = side(q, 1), [dx, dz] = side(q, -1);
+      // counter-clockwise seen from above (the faces point up)
+      this.pos.push(ax, y, az, bx, y, bz, cx, y, cz, bx, y, bz, dx, y, dz, cx, y, cz);
+      this.uv.push(ax, az, bx, bz, cx, cz, bx, bz, dx, dz, cx, cz);
+    }
+  }
+
   mesh(mat: THREE.Material) {
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(this.pos, 3));
@@ -70,6 +85,16 @@ export class Quads {
 }
 
 /** Lambert material with a CC0 texture repeating every `metres` (or a plain colour without assets). */
+/** Points along a track every metre, extended straight beyond its ends (into the tunnels). */
+function railPoints(path: RailPath, before: number, after: number) {
+  const out: { x: number; z: number; heading: number }[] = [];
+  for (let s = before; s <= path.length + after; s += 1) {
+    const c = Math.max(0, Math.min(path.length, s)), p = path.at(c), d = s - c;
+    out.push({ x: p.x + Math.sin(p.heading) * d, z: p.z + Math.cos(p.heading) * d, heading: p.heading });
+  }
+  return out;
+}
+
 export function ground(tex: TextureName, metres: number, tint: string, plain: string) {
   const src = getTexture(tex);
   let map: THREE.Texture | null = null;
@@ -134,6 +159,13 @@ export function getTownWorld(): TownWorld {
     walk.add(cx - H, cz + I, cx + H, cz + H);
     walk.add(cx - H, cz - I, cx - I, cz + I);
     walk.add(cx + I, cz - I, cx + H, cz + I);
+    if (b.kind === 'emergency') {
+      // aprons in front of the fire and the police station, a lawn in between
+      lot.add(cx - I, cz + 12, cx + I, cz + I);
+      lot.add(cx - I, cz - I, cx + I, cz - 12);
+      grass.add(cx - I, cz - 12, cx + I, cz + 12);
+      continue;
+    }
     if (b.kind === 'church') {
       // lawn with a paved path to the gates and a forecourt in front of the church
       grass.add(cx - I, cz - I, cx - 4, cz + 33);
@@ -169,7 +201,10 @@ export function getTownWorld(): TownWorld {
   const over = new Quads(), ballast = new Quads();
   const f = RAIL.forecourt;
   over.add(f.x0, f.z0, f.x1, f.z1, 0.01);
-  ballast.add(RAIL.trackX - 3, RAIL.south - 16, RAIL.trackX + 3, RAIL.north + 14, 0.01);
+  const af = TOWN_RAIL.airportForecourt;
+  over.add(af.x0, af.z0, af.x1, af.z1, 0.01);
+  const tracks = [railPoints(SBAHN_PATH, -16, 0), railPoints(FREIGHT_PATH, -16, 14)];
+  for (const pts of tracks) ballast.strip(pts, 3, 0.012);
   const overlay = (m: THREE.MeshLambertMaterial) => {
     m.polygonOffset = true;
     m.polygonOffsetFactor = -1;
@@ -183,22 +218,68 @@ export function getTownWorld(): TownWorld {
   quay.push(colored(new THREE.BoxGeometry(0.3, 0.02, 2 * pz).translate(p0 + 0.4, 0.91, 0), '#f0c420'));
   quay.push(colored(new THREE.BoxGeometry(p1 - p0 + 1, 0.25, 2 * pz - 20).translate((p0 + p1) / 2, 4.6, 0), '#5d6670'));
   for (let z = -pz + 12; z <= pz - 12; z += 12) quay.push(colored(new THREE.BoxGeometry(0.2, 3.7, 0.2).translate((p0 + p1) / 2 + 1, 2.75, z), '#5d6670'));
-  // rails and sleepers
-  for (const dx of [-0.8, 0.8]) quay.push(colored(new THREE.BoxGeometry(0.12, 0.16, RAIL.north - RAIL.south + 30).translate(RAIL.trackX + dx, 0.2, (RAIL.north + RAIL.south) / 2), '#7a7d82'));
+  // airport station: platform with canopy at the terminus, buffer stop at the end of the track
+  const ap = TOWN_RAIL.airportPlatform, apz = (ap.z0 + ap.z1) / 2, apl = ap.z1 - ap.z0;
+  quay.push(colored(new THREE.BoxGeometry(ap.x1 - ap.x0, 0.9, apl).translate((ap.x0 + ap.x1) / 2, 0.45, apz), '#c9c4ba'));
+  quay.push(colored(new THREE.BoxGeometry(0.3, 0.02, apl).translate(ap.x1 - 0.4, 0.91, apz), '#f0c420'));
+  quay.push(colored(new THREE.BoxGeometry(ap.x1 - ap.x0 + 1, 0.25, apl - 20).translate((ap.x0 + ap.x1) / 2, 4.6, apz), '#5d6670'));
+  for (let z = ap.z0 + 12; z <= ap.z1 - 12; z += 12) quay.push(colored(new THREE.BoxGeometry(0.2, 3.7, 0.2).translate((ap.x0 + ap.x1) / 2 - 1, 2.75, z), '#5d6670'));
+  const end = SBAHN_PATH.at(SBAHN_PATH.length);
+  quay.push(colored(new THREE.BoxGeometry(3.2, 1.2, 0.8).translate(end.x, 0.6, end.z - 0.6), '#c23a2a'));
+  quay.push(colored(new THREE.BoxGeometry(3.4, 0.25, 0.3).translate(end.x, 1.0, end.z - 0.1), '#f0f0f0'));
+  // rails (short straight pieces along the curves) and sleepers
   const sleeper = colored(new THREE.BoxGeometry(2.6, 0.12, 0.35).translate(0, 0.08, 0), '#6b5642');
   const sleepers: THREE.Matrix4[] = [];
-  for (let z = RAIL.south - 14; z <= RAIL.north + 12; z += 1.2) sleepers.push(new THREE.Matrix4().makeTranslation(RAIL.trackX, 0, z));
+  const up = new THREE.Vector3(0, 1, 0), one = new THREE.Vector3(1, 1, 1);
+  for (const pts of tracks) {
+    for (let i = 0; i + 3 < pts.length; i += 3) {
+      const a = pts[i], b = pts[i + 3], len = Math.hypot(b.x - a.x, b.z - a.z), h = Math.atan2(b.x - a.x, b.z - a.z);
+      for (const dx of [-0.8, 0.8]) {
+        const mx = (a.x + b.x) / 2 + Math.cos(h) * dx, mz = (a.z + b.z) / 2 - Math.sin(h) * dx;
+        quay.push(colored(new THREE.BoxGeometry(0.12, 0.16, len + 0.05).rotateY(h).translate(mx, 0.2, mz), '#7a7d82'));
+      }
+    }
+    for (let i = 0; i < pts.length; i += 1.2) {
+      const p = pts[Math.floor(i)];
+      sleepers.push(new THREE.Matrix4().compose(new THREE.Vector3(p.x, 0, p.z), new THREE.Quaternion().setFromAxisAngle(up, p.heading), one));
+    }
+  }
   instanced({ geo: () => sleeper, scale: 1 }, sleepers).forEach((m) => scene.add(m));
-  // dark tunnel openings in the portals
-  for (const [z, dir] of [[RAIL.north, -1], [RAIL.south, 1]] as const) {
-    quay.push(colored(new THREE.BoxGeometry(5.2, 6, 0.2).translate(RAIL.trackX, 3, z + dir * 0.15), '#121212'));
+  // dark tunnel openings in the portals: both tracks in the south, the freight track in the north
+  for (const [x, z, dir] of [[TOWN_RAIL.trackX, RAIL.south, 1], [TOWN_RAIL.freightX, RAIL.south, 1], [TOWN_RAIL.freightX, RAIL.north, -1]] as const) {
+    quay.push(colored(new THREE.BoxGeometry(5.2, 6, 0.2).translate(x, 3, z + dir * 0.15), '#121212'));
   }
   scene.add(new THREE.Mesh(mergeGeometries(quay)!, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true })));
-  // skate park ramps
-  if (town.ramps.length) {
-    const rampMat = new THREE.MeshLambertMaterial({ color: '#c9c6bf', flatShading: true });
-    scene.add(new THREE.Mesh(mergeGeometries(town.ramps.map(rampGeometry))!, rampMat));
+  // skate park ramps (concrete) and the jumps of the offroad park (earth)
+  const inPark = (r: Ramp) => r.x > OFFROAD_PARK.area.x0 - 10;
+  for (const [ramps, color] of [[town.ramps.filter((r) => !inPark(r)), '#c9c6bf'], [town.ramps.filter(inPark), '#9a6a44']] as const) {
+    if (ramps.length) scene.add(new THREE.Mesh(mergeGeometries(ramps.map(rampGeometry))!, new THREE.MeshLambertMaterial({ color, flatShading: true })));
   }
+  // offroad park: the loop in desert dirt with sand and mud stretches, a water hole
+  const course = railPoints(railPath(OFFROAD_PARK.loop, 10), 0, 0);
+  const stretch = (surface: string) => course.filter((_, i) => OFFROAD_PARK.surfaces.some(([a, b, s]) => s === surface && i >= a && i <= b + 1));
+  const dirtTrack = new Quads(), sandTrack = new Quads(), mudTrack = new Quads();
+  dirtTrack.strip(course, OFFROAD_PARK.width / 2, 0.014);
+  for (const [q, surface] of [[sandTrack, 'sand'], [mudTrack, 'mud']] as const) {
+    // a stretch is a run of consecutive points; draw them slightly above the dirt
+    const pts = stretch(surface);
+    let run: typeof pts = [];
+    for (let i = 0; i < pts.length; i++) {
+      run.push(pts[i]);
+      const next = pts[i + 1];
+      if (!next || Math.hypot(next.x - pts[i].x, next.z - pts[i].z) > 1.5) {
+        q.strip(run, OFFROAD_PARK.width / 2, 0.016);
+        run = [];
+      }
+    }
+  }
+  scene.add(dirtTrack.mesh(overlay(ground('desertdirt', 6, '#c89a70', '#9a6e4a'))));
+  scene.add(sandTrack.mesh(overlay(ground('sand', 5, '#e2c896', '#c8a870'))));
+  scene.add(mudTrack.mesh(overlay(ground('mud', 4, '#7a6048', '#4a3a2a'))));
+  const W = OFFROAD_PARK.water;
+  const pond = new THREE.Mesh(new THREE.CircleGeometry(W.r, 28).rotateX(-Math.PI / 2).translate(W.x, 0.03, W.z),
+    new THREE.MeshPhongMaterial({ color: '#4a7a8c', shininess: 80, specular: '#9fd3ff', transparent: true, opacity: 0.9, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 }));
+  scene.add(pond);
 
   // ---------------------------------------------------------------- markings
   const marks = new Quads(), yellow = new Quads();
@@ -364,7 +445,7 @@ export function getTownWorld(): TownWorld {
   instanced({ geo: () => pole, scale: 1 }, lamps).forEach((m) => city.add(m));
   instanced({ geo: () => cone, scale: 1 }, cones).forEach((m) => city.add(m));
   instanced({ geo: () => bollard, scale: 1 }, bollards).forEach((m) => city.add(m));
-  const parkedVariants: Variant[] = TRAFFIC_MODELS.map((m) => ({
+  const parkedVariants: Variant[] = PARKED_MODELS.map((m) => ({
     model: m,
     geo: () => mergeGeometries([
       colored(new THREE.BoxGeometry(2, 0.8, 4.4).translate(0, 0.65, 0), ['#c8102e', '#2f6fd0', '#e0e0e0', '#3f8a3a'][m.length % 4]),
@@ -388,6 +469,14 @@ export function getTownWorld(): TownWorld {
   const life = new TownLife();
   scene.add(life.group);
   for (const w of windmills) life.addWindmill(w.model, w.scale, w.x, w.z, w.rot);
-  cached = { town, scene, dynamic, life };
+  // steam from the cooling towers of the power plant
+  const tower = assetsReady() ? getModel('ind-chimney-large') : undefined;
+  const towerSize = tower ? new THREE.Box3().setFromObject(tower).getSize(new THREE.Vector3()) : new THREE.Vector3(1, 3.6, 1);
+  for (const p of town.props.filter((x) => x.model === 'ind-chimney-large')) {
+    life.addSteam(p.x, p.z, towerSize.y * p.scale, (Math.max(towerSize.x, towerSize.z) * p.scale) / 2);
+  }
+  const people = new TownPeople(town);
+  scene.add(people.group);
+  cached = { town, scene, dynamic, life, people };
   return cached;
 }

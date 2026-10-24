@@ -184,6 +184,25 @@ const KENNEY = [
       'Textures/colormap.png',
     ],
   },
+  {
+    name: 'Mini Characters',
+    page: 'https://kenney.nl/assets/mini-characters',
+    url: 'https://kenney.nl/media/pages/assets/mini-characters/bfc7e272b4-1774770718/kenney_mini-characters.zip',
+    dir: 'Models/GLB format/',
+    out: 'people',
+    files: [
+      ...['a', 'b', 'c', 'd', 'e', 'f'].flatMap((k) => [`character-female-${k}.glb`, `character-male-${k}.glb`]),
+      'Textures/colormap.png',
+    ],
+  },
+  {
+    name: 'Cube Pets',
+    page: 'https://kenney.nl/assets/cube-pets',
+    url: 'https://kenney.nl/media/pages/assets/cube-pets/44e58e945f-1774520254/kenney_cube-pets_1.0.zip',
+    dir: 'Models/GLB format/',
+    out: 'pets',
+    files: ['animal-dog.glb', 'Textures/colormap.png'],
+  },
 ];
 
 const AMBIENTCG = [

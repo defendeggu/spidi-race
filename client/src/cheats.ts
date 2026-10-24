@@ -1,4 +1,4 @@
-import { getCar, type CarSpec } from '@spidi/shared';
+import { getCar, raceVersion, type CarSpec } from '@spidi/shared';
 
 /** Codes typed in the main menu, like in the old days. Active until the page is reloaded. */
 export const cheats = { pioneer: false };
@@ -21,8 +21,20 @@ export function typeCheat(key: string): keyof typeof cheats | null {
   return null;
 }
 
-/** The town version of the formula car gets its full race top speed. */
+/** The pioneer cars: Kaito, Weltenbummler, Toro Fulmine and Sturmvogel. */
+const PIONEER_CARS = new Set(['kaito', 'california', 'aventador', 'sturmvogel']);
+/** with the pioneer cheat the pioneer cars are this much faster in races */
+export const PIONEER_BOOST = 1.15;
+
+/** In the town the pioneer cars get the full top speed of their race version. */
 export function townSpec(spec: CarSpec): CarSpec {
-  if (cheats.pioneer && spec.id === 'kaito-stadt') return { ...spec, topSpeed: getCar('kaito').topSpeed };
+  const race = raceVersion(spec.id);
+  if (cheats.pioneer && spec.class === 'town' && PIONEER_CARS.has(race)) return { ...spec, topSpeed: getCar(race).topSpeed };
+  return spec;
+}
+
+/** In races (and kart-free online races) the pioneer cars are 15 % faster and pull harder. */
+export function raceSpec(spec: CarSpec): CarSpec {
+  if (cheats.pioneer && PIONEER_CARS.has(spec.id)) return { ...spec, topSpeed: spec.topSpeed * PIONEER_BOOST, accel: spec.accel * PIONEER_BOOST };
   return spec;
 }

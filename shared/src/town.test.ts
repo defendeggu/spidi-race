@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { carsForClass, getCar } from './cars';
+import { CARS, carsForClass, getCar, PARKED_MODELS, townVersion } from './cars';
 import { forwardSpeed, NO_INPUT, type CarInput } from './physics';
-import { BLOCK_INNER, HARBOR, OUTER, RAIL, TOWN_AIRPORT, TOWN_BOUNDS, createTownCar, getTown, stepCarTown, TOWN_HALF } from './town';
+import { BLOCK_INNER, GRID as GRID_STEP, HARBOR, OFFROAD_PARK, OUTER, TOWN_AIRPORT, TOWN_BOUNDS, createTownCar, getTown, stepCarTown, TOWN_HALF } from './town';
 import { DUEL_SECONDS, TaskTracker, TownSession } from './townTasks';
+import { DEPARTURE_CYCLE, departureAt, planeBoxes } from './townPlane';
+import { personAt, townPeople } from './townPeople';
+import { collideTrains, FREIGHT_PATH, SBAHN_PATH, TOWN_RAIL, TRAIN_HALF_WIDTH, trainsAt } from './townRail';
 import { sanitizeSubmission } from './leaderboard';
 import { TRACK_DEFS } from './tracks';
 import { Traffic } from './traffic';
@@ -23,7 +26,14 @@ const FULL: CarInput = { throttle: 1, brake: 0, steer: 0, handbrake: false };
 
 describe('practice town', () => {
   it('has the town cars and no race track uses them', () => {
-    expect(carsForClass('town').map((c) => c.id)).toEqual(['california-town', 'familie', 'taxi', 'polizei', 'feuerwehr', 'kaito-stadt', 'hilux-town', 'aventador-town']);
+    const ids = carsForClass('town').map((c) => c.id);
+    expect(ids.slice(0, 8)).toEqual(['california-town', 'familie', 'taxi', 'polizei', 'feuerwehr', 'kaito-stadt', 'hilux-town', 'aventador-town']);
+    // every road, offroad and micro car has a town version, the karts do not
+    for (const c of CARS.filter((x) => x.class === 'road' || x.class === 'offroad' || x.class === 'micro')) {
+      expect(ids, c.id).toContain(townVersion(c.id));
+      expect(getCar(townVersion(c.id)).model).toBe(c.model);
+    }
+    expect(ids.some((id) => id.startsWith('kart'))).toBe(false);
     expect(TRACK_DEFS.some((d) => d.class === 'town')).toBe(false);
   });
 
@@ -159,13 +169,15 @@ describe('practice town', () => {
     }
   });
 
-  it('town cars are gentle: about 70 km/h at most (the formula car a bit more)', () => {
+  it('town cars are gentle: about 85 km/h at most (the formula car a bit more)', () => {
     for (const spec of carsForClass('town')) {
       const c = createTownCar('t', { x: -450, z: -450, heading: 0 });
       for (let i = 0; i < 60 * 25; i++) stepCarTown(c, spec, FULL, town, DT);
       const kmh = forwardSpeed(c) * 3.6;
       expect(kmh).toBeGreaterThan(50);
-      expect(kmh).toBeLessThan(spec.id === 'kaito-stadt' ? 100 : 75);
+      expect(kmh).toBeLessThan(spec.id === 'kaito-stadt' ? 100 : 88);
+      // the camper does 80 km/h
+      if (spec.id === 'california-town') expect(kmh).toBeGreaterThan(76);
     }
   });
 
@@ -426,11 +438,56 @@ describe('town extensions', () => {
     expect(boxes.some((b) => (b.y ?? 0) > 5)).toBe(true);
   });
 
-  it('the railway fence keeps cars off the track', () => {
-    for (const z of [-200, 0, 200, 400]) {
-      const { c } = drive(-462, z, -Math.PI / 2, 8);
-      expect(c.x, `z=${z}`).toBeGreaterThan(RAIL.fenceX);
+  it('the tracks are open: a car drives across both of them', () => {
+    for (let z = -400; z <= 400; z += 37) {
+      if (Math.abs(z) < 75) continue; // the station platform
+      // start just before the S-Bahn track (the grass towards the town has trees)
+      const { c } = drive(TOWN_RAIL.trackX + 8, z, -Math.PI / 2, 4);
+      expect(c.x, `z=${z}`).toBeLessThan(TOWN_RAIL.freightX - 3);
     }
+  });
+
+  it('the tracks are free of obstacles (except the platforms beside them)', () => {
+    for (const path of [SBAHN_PATH, FREIGHT_PATH]) {
+      // (the ends lie in the tunnel portals)
+      for (let s = 4; s <= path.length - (path === FREIGHT_PATH ? 4 : 0); s += 2) {
+        const p = path.at(s);
+        expect(town.isFree(p.x, p.z, 1.5), `${p.x.toFixed(0)},${p.z.toFixed(0)}`).toBe(true);
+      }
+    }
+    // the S-Bahn reaches the airport station
+    const end = SBAHN_PATH.at(SBAHN_PATH.length);
+    expect(end.x).toBeCloseTo(TOWN_RAIL.airportX, 0);
+    expect(end.z).toBeCloseTo(TOWN_RAIL.airportEnd, 0);
+  });
+
+  it('a train is always moving, the S-Bahn stops at both stations', () => {
+    let stopsEast = 0, stopsAirport = 0, wasMoving = true, unseen = 0;
+    for (let t = 0; t < 1200; t += 0.25) {
+      const trains = trainsAt(t);
+      expect(trains.some((tr) => tr.moving), `t=${t}`).toBe(true);
+      // only for a moment, when the freight train turns inside a tunnel, is no train to be seen
+      if (!trains.some((tr) => tr.moving && tr.cars.some((c) => !c.hidden))) unseen++;
+      const sb = trains[0];
+      if (wasMoving && !sb.moving && sb.cars.every((c) => !c.hidden)) {
+        const mid = sb.cars[1];
+        if (Math.abs(mid.z) < 30 && mid.x < -500) stopsEast++;
+        if (mid.x > 480) stopsAirport++;
+      }
+      wasMoving = sb.moving;
+    }
+    expect(unseen).toBeLessThan(1200 / 70 + 2);
+    expect(stopsEast).toBeGreaterThan(2);
+    expect(stopsAirport).toBeGreaterThan(1);
+  });
+
+  it('a train pushes a car off the track', () => {
+    const spec = carsForClass('town')[0];
+    const trains = trainsAt(30);
+    const car = trains.flatMap((tr) => tr.cars).find((c) => !c.hidden)!;
+    const c = createTownCar('t', { x: car.x, z: car.z, heading: 0 });
+    for (let i = 0; i < 5; i++) collideTrains(c, spec, trains);
+    expect(Math.hypot(c.x - car.x, c.z - car.z)).toBeGreaterThan(TRAIN_HALF_WIDTH);
   });
 
   it('new star spots and parking bays exist in harbour, station and skate park', () => {
@@ -469,7 +526,8 @@ describe('town extensions', () => {
     const market = town.blocks.filter((b) => b.kind === 'supermarket')[1];
     const lot = town.blocks.find((b) => b.kind === 'parking' && Math.abs(b.i - market.i) + Math.abs(b.j - market.j) === 1)!;
     expect(parks.some((p) => Math.abs(p.i - lot.i) + Math.abs(p.j - lot.j) === 1)).toBe(true);
-    expect(town.ramps).toHaveLength(12);
+    // 6 ramps per skate park (the offroad park adds its jumps after them)
+    expect(town.ramps.filter((r) => r.x < OFFROAD_PARK.area.x0 - 10)).toHaveLength(12);
     const [a, b] = parks;
     for (let k = 0; k < 6; k++) {
       expect(town.ramps[k + 6].x - b.cx).toBeCloseTo(town.ramps[k].x - a.cx);
@@ -584,14 +642,14 @@ describe('airfield in the west', () => {
     expect(town.surfaceAt(690, 100)).toBe('dirt');
   });
 
-  it('terminal, cargo hall, tower, containers and several aircraft; one is lined up on the runway', () => {
+  it('terminal, cargo hall, tower, containers and several parked aircraft; the runway is kept free for departures', () => {
     const models = town.buildings.map((b) => b.model).concat(town.props.map((p) => p.model));
     expect(models).toContain('airport-terminal');
     expect(models).toContain('airport-cargo');
     expect(models).toContain('airport-tower');
     expect(town.props.filter((p) => p.model === 'plane').length).toBeGreaterThanOrEqual(6);
     const lined = A.planes.filter((p) => Math.abs(p.x - A.runway.x) < 1 && p.z < A.runway.z0 + 60);
-    expect(lined).toHaveLength(1);
+    expect(lined).toHaveLength(0);
     const containers = town.props.filter((p) => p.model === 'container' && p.x > OUTER && p.z > -OUTER);
     expect(containers.length).toBeGreaterThan(2);
     expect(containers.length).toBeLessThan(12);
@@ -609,7 +667,79 @@ describe('airfield in the west', () => {
   });
 
   it('the old town stays the same: no buildings moved by the new strip', () => {
-    expect(town.buildings.filter((b) => b.x > OUTER).map((b) => b.model).sort()).toEqual(['airport-cargo', 'airport-terminal']);
+    expect(town.buildings.filter((b) => b.x > OUTER).map((b) => b.model).sort()).toEqual(['airport-cargo', 'airport-terminal', 'tpl-retro-10x4x3']);
+  });
+
+  it('the departing aircraft lifts off at about two thirds of the runway, then the next one comes', () => {
+    const r = TOWN_AIRPORT.runway;
+    let liftZ = NaN, liveries = new Set<number>(), was = true;
+    for (let t = 0; t < DEPARTURE_CYCLE * 3; t += 0.1) {
+      const p = departureAt(t);
+      liveries.add(p.livery);
+      if (was && !p.onGround) liftZ = p.z;
+      was = p.onGround;
+      // on the ground it blocks cars, in the air it does not
+      expect(planeBoxes(p).length).toBe(p.onGround ? 1 : 0);
+    }
+    const frac = (liftZ - r.z0) / (r.z1 - r.z0);
+    expect(frac).toBeGreaterThan(0.6);
+    expect(frac).toBeLessThan(0.75);
+    expect(liveries.size).toBe(3);
+  });
+
+  it('pedestrians of all kinds walk where nothing stands in their way', () => {
+    const people = townPeople(town);
+    const kinds = new Map<string, number>();
+    for (const p of people) kinds.set(p.kind, (kinds.get(p.kind) ?? 0) + 1);
+    expect(people.length).toBeGreaterThan(60);
+    expect(kinds.get('adult')).toBeGreaterThan(20);
+    expect(kinds.get('child')).toBeGreaterThan(5);
+    expect(kinds.get('dog')).toBeGreaterThan(4);
+    expect(kinds.get('pram')).toBeGreaterThan(4);
+    // in the parks, on the squares, at the supermarket and in the cemetery
+    const near = (kind: string) => people.filter((p) => p.kind !== 'sitter' && town.blocks.some((b) => b.kind === kind && Math.abs(p.pts[0].x - b.cx) < 50 && Math.abs(p.pts[0].z - b.cz) < 50)).length;
+    for (const kind of ['park', 'plaza', 'towerplaza', 'church']) expect(near(kind), kind).toBeGreaterThan(1);
+    const supermarket = town.buildings.find((b) => b.model === 'supermarket')!;
+    expect(people.filter((p) => !p.loop && p.pts.some((q) => Math.hypot(q.x - supermarket.x, q.z - supermarket.z) < 30)).length).toBeGreaterThan(2);
+    // nobody walks through an obstacle
+    for (const p of people.filter((q) => q.kind !== 'sitter')) {
+      for (let t = 0; t < 120; t += 7) {
+        const at = personAt(p, t);
+        expect(town.pointHit(at.x, at.z, 0.5), `${p.kind} ${at.x.toFixed(1)},${at.z.toFixed(1)}`).toBeNull();
+      }
+    }
+  });
+
+  it('offroad park: dirt loop with sand, mud and a water hole, and a kicker to jump from', () => {
+    const O = OFFROAD_PARK;
+    expect(town.surfaceAt(O.water.x, O.water.z)).toBe('water');
+    const surfaces = new Set<string>();
+    for (const [x, z] of O.loop) surfaces.add(town.surfaceAt(x, z));
+    for (let x = O.area.x0 + 2; x < O.area.x1; x += 3) for (let z = O.area.z0 + 2; z < O.area.z1; z += 3) surfaces.add(town.surfaceAt(x, z));
+    expect([...surfaces].sort()).toEqual(['dirt', 'mud', 'sand', 'water']);
+    // full throttle along the top straight: over the kicker into the air
+    const c = createTownCar('t', { x: 492, z: -384, heading: Math.PI / 2 });
+    let flew = 0;
+    for (let i = 0; i < 60 * 5; i++) {
+      stepCarTown(c, getCar('hilux-town'), FULL, town, DT);
+      if (c.airborne) flew += DT;
+    }
+    expect(flew).toBeGreaterThan(0.3);
+    // the park is open: rocks and cacti stand off the course
+    for (const [x, z] of O.loop) expect(town.isFree(x, z, 2)).toBe(true);
+  });
+
+  it('fire and police station with their vehicles beside the northern supermarket', () => {
+    const fire = town.buildings.find((b) => b.model === 'firestation')!, police = town.buildings.find((b) => b.model === 'policestation')!;
+    const market = town.buildings.filter((b) => b.model === 'supermarket').sort((a, b) => b.z - a.z)[0];
+    for (const b of [fire, police]) {
+      expect(Math.abs(b.x - (market.x - GRID_STEP))).toBeLessThan(60);
+      expect(Math.abs(b.z - market.z)).toBeLessThan(50);
+    }
+    const parked = (model: string) => town.bays.filter((b) => b.parked === PARKED_MODELS.indexOf(model)).length;
+    expect(parked('firetruck')).toBe(3);
+    expect(parked('police')).toBe(3);
+    // shops still line the block on two sides
+    expect(town.buildings.filter((b) => Math.abs(b.x - fire.x) < 46 && Math.abs(b.z - (fire.z + police.z) / 2) < 46).length).toBeGreaterThan(4);
   });
 });
-
