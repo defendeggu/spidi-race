@@ -5,7 +5,7 @@
 ![Lizenz Assets](https://img.shields.io/badge/assets-CC0-green)
 ![Docker](https://img.shields.io/badge/docker-ready-2496ED)
 
-Ein Arcade-Rennspiel im Browser im Geist von *Need for Speed II: Special Edition*: Alpenpässe, Küstenstrassen, Stadtkurs, Superspeedway, Offroad-Pisten mit Sprüngen und ein Frühstückstisch im Micro-Machines-Stil, Splitscreen am selben Rechner und Rennen im Heimnetz. Dazu kommt eine offene Übungsstadt, in der Kinder ohne Rennstress das Fahren mit Tastatur oder Gamepad lernen. Gerendert wird mit Three.js, Modelle und Texturen stammen aus CC0-Paketen von Kenney und ambientCG.
+Ein Arcade-Rennspiel im Browser im Geist von 90er-Jahren Arcade Racing Games: Alpenpässe, Küstenstrassen, Stadtkurs, Superspeedway, Offroad-Pisten mit Sprüngen und ein Frühstückstisch im Micro-Machines-Stil, Splitscreen am selben Rechner und Rennen im Heimnetz. Dazu kommt eine offene Übungsstadt, in der Kinder ohne Rennstress das Fahren mit Tastatur oder Gamepad lernen. Gerendert wird mit Three.js, Modelle und Texturen stammen aus CC0-Paketen von Kenney und ambientCG.
 
 ![Hauptmenü](docs/menu.jpg)
 
