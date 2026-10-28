@@ -68,7 +68,7 @@ Ein Arcade-Rennspiel im Browser im Geist von 90er-Jahren Arcade Racing Games: Al
   | Baron V8 | Offroad | Luxus-SUV | schnell, schwer |
   | Sahara Raider | Offroad | Pickup | Beschleunigung |
   | Steinbock DC | Offroad | Doppelkabinen-Pickup | robust, viel Grip, Raketensprung |
-  | Roki | Offroad | Höhergelegter Geländewagen, rot mit weissem Dach, Schnorchel, schwarzen Felgen und schwarzem Reserverad am Heck | unverwüstlich, viel Grip und Federweg |
+  | Roki | Offroad | Höhergelegter Geländewagen, rot mit weissem Hochdach, Schnorchel, Frontbügel mit Seilwinde, schwarzen Felgen und schwarzem Reserverad am Heck | unverwüstlich, viel Grip und Federweg |
   | Mini-Blitz | Micro | Spielzeug-Rennwagen | Höchstgeschwindigkeit |
   | Taschen-Flitzer | Micro | Spielzeug-Hatchback | wendig, Beschleunigung |
   | Zwergrakete | Micro | Spielzeug-Prototyp | ausgewogen |

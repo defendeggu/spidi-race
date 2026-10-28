@@ -5,7 +5,7 @@ Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog]
 ## [Unreleased]
 
 ### Hinzugefügt
-- **Roki** (Offroad): höhergelegter roter Geländewagen mit weissem Dach, Schnorchel, runden Scheinwerfern, drei Heckfenstern, schwarzen Felgen und schwarzem Reserverad an der Hecktür; auch in der Übungsstadt wählbar
+- **Roki** (Offroad): höhergelegter roter Geländewagen nach dem Vorbild von rotekiste.ch: weisses Hochdach mit Markise, Schnorchel, Frontbügel mit Zusatzscheinwerfern und Seilwinde, Lampengitter, Riffelblech auf Motorhaube und Kotflügeln, Sandbleche, Heckleiter, drei Heckfenster, schwarze Felgen und schwarzes Reserverad an der Hecktür; auch in der Übungsstadt wählbar
 
 ## [1.7.0] – 2026-10-24
 
