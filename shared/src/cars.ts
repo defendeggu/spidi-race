@@ -282,11 +282,11 @@ const AVENTADOR: CarSpec = {
 
 const ROKI: CarSpec = {
   id: 'roki', class: 'offroad', name: 'Roki',
-  description: 'Roter Geländewagen mit weissem Dach und schwarzem Reserverad am Heck – unverwüstlich',
+  description: 'Höhergelegter roter Geländewagen mit weissem Dach, Schnorchel und schwarzem Reserverad – unverwüstlich',
   model: 'roki', color: '#b5141c', accent: '#f3f3ee',
-  suspension: 0.24, topSpeed: 61, accel: 7.9, brake: 13.5, grip: 14.2,
+  suspension: 0.28, topSpeed: 61, accel: 7.9, brake: 13.5, grip: 14.2,
   steer: 0.62, wheelbase: 2.8, gears: 5, mass: 2200,
-  shape: { length: 4.8, width: 1.98, height: 1.24, roof: 2.0, cabinShift: -0.6, spoiler: false },
+  shape: { length: 4.8, width: 1.98, height: 1.36, roof: 2.12, cabinShift: -0.6, spoiler: false },
 };
 
 CARS.push(CALIFORNIA, HILUX, AVENTADOR, ROKI);
