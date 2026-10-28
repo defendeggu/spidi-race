@@ -168,26 +168,26 @@ export function buildRoki(color: string, tail: THREE.Material) {
   }
 
   // White high roof: rounded front, flat top, a skylight, lettering on the sides and back.
-  const HIGH = 0.46, roofFront = pillarZ(CAB_FRONT, TOP) + 0.05, roofHW = TOP_HW + 0.05;
+  // Its front continues the windscreen line at the same angle (the profile is inset by the bevel).
+  const HIGH = 0.23, BEVEL = 0.05, roofHW = TOP_HW + 0.05, roofFront = pillarZ(CAB_FRONT, TOP);
   const high = new THREE.Shape();
-  high.moveTo(REAR - 0.03, TOP - 0.02); high.lineTo(roofFront, TOP - 0.02);
-  high.quadraticCurveTo(roofFront + 0.02, TOP + HIGH, roofFront - 0.34, TOP + HIGH);
-  high.lineTo(REAR + 0.03, TOP + HIGH); high.quadraticCurveTo(REAR - 0.03, TOP + HIGH, REAR - 0.03, TOP + HIGH - 0.06);
+  high.moveTo(REAR + BEVEL - 0.03, TOP - 0.02); high.lineTo(pillarZ(CAB_FRONT - BEVEL, TOP - 0.02), TOP - 0.02);
+  high.lineTo(pillarZ(CAB_FRONT - BEVEL, TOP + HIGH - BEVEL), TOP + HIGH - BEVEL); high.lineTo(REAR + BEVEL - 0.03, TOP + HIGH - BEVEL);
   high.closePath();
-  mesh('high-roof', across(high, roofHW * 2 - 0.1, roofHW - 0.05, 0.05), roof);
-  box('skylight', 0.6, 0.03, 0.42, 0, TOP + HIGH + 0.05, roofFront - 0.62, glass, 0.01);
+  mesh('high-roof', across(high, roofHW * 2 - 2 * BEVEL, roofHW - BEVEL, BEVEL), roof);
+  box('skylight', 0.6, 0.03, 0.42, 0, TOP + HIGH, roofFront - 0.75, glass, 0.01);
   box('roof-trim', roofHW * 2 + 0.02, 0.025, roofFront - REAR + 0.1, 0, TOP - 0.01, (roofFront + REAR) / 2, black, 0.01);
   const label = (x: number, z: number, ry: number) => {
-    const m = mesh('lettering', new THREE.PlaneGeometry(0.95, 0.18), lettering, x, TOP + 0.14, z);
+    const m = mesh('lettering', new THREE.PlaneGeometry(0.7, 0.13), lettering, x, TOP + 0.145, z);
     m.rotation.y = ry;
   };
   label(roofHW + 0.006, -0.25, Math.PI / 2);
   label(-roofHW - 0.006, -0.25, -Math.PI / 2);
-  const rearFace = REAR - 0.03 - 0.051;
-  const rl = mesh('lettering', new THREE.PlaneGeometry(0.75, 0.14), lettering, -0.4, TOP + 0.12, rearFace);
+  const rearFace = REAR - 0.03 - 0.006;
+  const rl = mesh('lettering', new THREE.PlaneGeometry(0.65, 0.12), lettering, -0.4, TOP + 0.09, rearFace);
   rl.rotation.y = Math.PI;
   // Rolled-up awning along the left-hand side, sand ladders over the left rear side window.
-  mesh('awning', new THREE.CylinderGeometry(0.075, 0.075, 2.6, 16).rotateX(Math.PI / 2), roof, roofHW + 0.07, TOP + 0.02, -0.65);
+  mesh('awning', new THREE.CylinderGeometry(0.075, 0.075, 2.6, 16).rotateX(Math.PI / 2), roof, roofHW + 0.07, TOP, -0.65);
   for (const y of [1.52, 1.72]) {
     box('sand-ladder', 0.03, 0.17, 0.98, sideX(y) + 0.03, y, -1.55, silver, 0.01);
     for (let i = 0; i < 8; i++) box('sand-ladder-stud', 0.02, 0.1, 0.05, sideX(y) + 0.05, y, -1.98 + i * 0.123, darkRim, 0.008);
@@ -218,7 +218,7 @@ export function buildRoki(color: string, tail: THREE.Material) {
     box('tow-eye', 0.06, 0.06, 0.1, s * 0.6, 0.48, FRONT + 0.27, black, 0.01);
   }
 
-  // Rear: three windows, ladder on the left, small round lamps low in the corners, black spare wheel.
+  // Rear: three windows, ladder on the left up to the roof edge, small round lamps low in the corners, black spare wheel.
   const rearPane = (name: string, x0: number, x1: number, y0: number, y1: number) =>
     quad(name, [[x1, y0, REAR - 0.035], [x0, y0, REAR - 0.035], [x0, y1, REAR - 0.035], [x1, y1, REAR - 0.035]]);
   rearPane('rear-window', -0.4, 0.4, 1.4, 1.82);
@@ -229,8 +229,8 @@ export function buildRoki(color: string, tail: THREE.Material) {
     disc(s > 0 ? 'rear-fog-lamp' : 'reverse-lamp', 0.045, 0.04, s > 0 ? tail : lamp, s * 0.74, 0.75, REAR - 0.02);
     box('door-hinge', 0.04, 0.1, 0.05, -0.8, s > 0 ? 1.55 : 0.85, REAR - 0.02, black, 0.01);
   }
-  for (const x of [0.62, 0.82]) tube('ladder-rail', [[x, 0.62, REAR - 0.02], [x, 0.66, REAR - 0.12], [x, TOP + HIGH - 0.06, REAR - 0.12], [x, TOP + HIGH + 0.02, REAR - 0.06]], 0.018);
-  for (let y = 0.8; y < TOP + HIGH - 0.1; y += 0.24) mesh('ladder-rung', new THREE.CylinderGeometry(0.014, 0.014, 0.2, 8).rotateZ(Math.PI / 2), black, 0.72, y, REAR - 0.12);
+  for (const x of [0.62, 0.82]) tube('ladder-rail', [[x, 0.62, REAR - 0.02], [x, 0.66, REAR - 0.12], [x, TOP - 0.14, REAR - 0.12], [x, TOP - 0.08, REAR - 0.02]], 0.018);
+  for (let y = 0.8; y < TOP - 0.16; y += 0.24) mesh('ladder-rung', new THREE.CylinderGeometry(0.014, 0.014, 0.2, 8).rotateZ(Math.PI / 2), black, 0.72, y, REAR - 0.12);
   box('rear-door-handle', 0.14, 0.04, 0.03, 0.45, 1.3, REAR - 0.03, black, 0.01);
   box('rear-crossmember', 1.86, 0.2, 0.2, 0, 0.47, REAR - 0.07, black, 0.02);
   box('tow-hitch', 0.14, 0.12, 0.26, 0, 0.36, REAR - 0.22, black, 0.02);
@@ -279,5 +279,5 @@ export function buildRoki(color: string, tail: THREE.Material) {
     const wheel = new THREE.Group(); holder.add(wheel); wheels.push(holder);
     buildWheel(wheel, Math.sign(x) * 0.14);
   }
-  return { body, materials, wheels, height: TOP + HIGH + LIFT + 0.05, wheelRadius: R };
+  return { body, materials, wheels, height: TOP + HIGH + LIFT, wheelRadius: R };
 }

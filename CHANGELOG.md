@@ -5,7 +5,10 @@ Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog]
 ## [Unreleased]
 
 ### Hinzugefügt
-- **Roki** (Offroad): höhergelegter roter Geländewagen nach dem Vorbild von rotekiste.ch: weisses Hochdach mit Markise, Schnorchel, Frontbügel mit Zusatzscheinwerfern und Seilwinde, Lampengitter, Riffelblech auf Motorhaube und Kotflügeln, Sandbleche, Heckleiter, drei Heckfenster, schwarze Felgen und schwarzes Reserverad an der Hecktür; auch in der Übungsstadt wählbar
+- **Roki** (Offroad): höhergelegter roter Geländewagen nach dem Vorbild von rotekiste.ch: weisses Hochdach mit Markise, Schnorchel, Frontbügel mit Zusatzscheinwerfern und Seilwinde, Lampengitter, Riffelblech auf Motorhaube und Kotflügeln, Sandbleche, Heckleiter, drei Heckfenster, schwarze Felgen und schwarzes Reserverad an der Hecktür; fährt wie der Sahara Raider, mit Raketensprung; in Offroad-Rennen und in der Übungsstadt wählbar
+
+### Geändert
+- Die Micro-Spielzeugautos fahren nicht mehr in der Übungsstadt, sie bleiben auf dem Frühstückstisch
 
 ## [1.7.0] – 2026-10-24
 

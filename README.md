@@ -68,7 +68,7 @@ Ein Arcade-Rennspiel im Browser im Geist von 90er-Jahren Arcade Racing Games: Al
   | Baron V8 | Offroad | Luxus-SUV | schnell, schwer |
   | Sahara Raider | Offroad | Pickup | Beschleunigung |
   | Steinbock DC | Offroad | Doppelkabinen-Pickup | robust, viel Grip, Raketensprung |
-  | Roki | Offroad | Höhergelegter Geländewagen, rot mit weissem Hochdach, Schnorchel, Frontbügel mit Seilwinde, schwarzen Felgen und schwarzem Reserverad am Heck | unverwüstlich, viel Grip und Federweg |
+  | Roki | Offroad | Höhergelegter Geländewagen, rot mit weissem Hochdach, Schnorchel, Frontbügel mit Seilwinde, schwarzen Felgen und schwarzem Reserverad am Heck | Beschleunigung (wie Sahara Raider), Raketensprung |
   | Mini-Blitz | Micro | Spielzeug-Rennwagen | Höchstgeschwindigkeit |
   | Taschen-Flitzer | Micro | Spielzeug-Hatchback | wendig, Beschleunigung |
   | Zwergrakete | Micro | Spielzeug-Prototyp | ausgewogen |
@@ -77,7 +77,7 @@ Ein Arcade-Rennspiel im Browser im Geist von 90er-Jahren Arcade Racing Games: Al
   | Polizeiauto | Stadt | Streifenwagen | gemütlich, Originallackierung |
   | Feuerwehr | Stadt | Feuerwehrauto | gross, etwas langsamer |
   | Kaito ZX | Stadt | Formelwagen | schneller, für Fortgeschrittene |
-  | alle Strassen-, Offroad- und Micro-Autos | Stadt | Stadt-Varianten | gezähmt auf ca. 65–85 km/h; Weltenbummler (80 km/h), Sturmvogel und Steinbock mit Raketensprung |
+  | alle Strassen- und Offroad-Autos | Stadt | Stadt-Varianten | gezähmt auf ca. 65–85 km/h; Weltenbummler (80 km/h), Sturmvogel, Steinbock und Roki mit Raketensprung |
   | Oobi, Oodi, Ooli, Oopi, Oozi | Kart | Karts mit Alien-Fahrern | Allrounder, Beschleunigung, Kurven, Spitze, Gewicht |
 
 - **Kart-Rennen mit Items** auf allen Strassen- und Offroad-Strecken (auf dem Flughafen mit eigener Kartstrecke) und **Kart-Battle** in der Übungsstadt (3 Ballons, Bots): ?-Boxen, Blaster, Zielsucher, Minen, Turbo und Schild, Drift-Boost, KI-Karts mit Items, siehe [unten](#kart-rennen-mit-items)
