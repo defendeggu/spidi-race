@@ -2,6 +2,11 @@
 
 Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [Unreleased]
+
+### Hinzugefügt
+- **Roki** (Offroad): roter, kastiger Geländewagen mit weissem Dach, runden Scheinwerfern und schwarzem Reserverad an der Hecktür; auch in der Übungsstadt wählbar
+
 ## [1.7.0] – 2026-10-24
 
 ### Hinzugefügt

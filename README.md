@@ -54,7 +54,7 @@ Ein Arcade-Rennspiel im Browser im Geist von 90er-Jahren Arcade Racing Games: Al
   | Flughafen | Strasse | nur Auto | 5,2 km | Nach dem Luftbild des Zürcher Flughafens: lange Gerade auf der Schräg-Piste 14/32, Rollweg über die Querpiste, Haken ins Vorfeld vor den Docks, Schleife über die Hauptpiste, Parallelrollweg, Haarnadel am Pistenende; startende Flugzeuge |
   | Flughafen Kart | Strasse | nur Kart | 3,4 km | Kurze Pistengerade, dann Rollwege und Vorfeld: schneller Bogen, Schikane, S-Kurven, Haarnadel am Tower, Hangars |
 
-- **23 Fahrzeuge** mit eigenen Fahrwerten, je nach Streckenklasse bzw. Modus:
+- **24 Fahrzeuge** mit eigenen Fahrwerten, je nach Streckenklasse bzw. Modus:
 
   | Auto | Klasse | Modell | Stärke |
   |---|---|---|---|
@@ -68,6 +68,7 @@ Ein Arcade-Rennspiel im Browser im Geist von 90er-Jahren Arcade Racing Games: Al
   | Baron V8 | Offroad | Luxus-SUV | schnell, schwer |
   | Sahara Raider | Offroad | Pickup | Beschleunigung |
   | Steinbock DC | Offroad | Doppelkabinen-Pickup | robust, viel Grip, Raketensprung |
+  | Roki | Offroad | Kastiger Geländewagen, rot mit weissem Dach und schwarzem Reserverad am Heck | unverwüstlich, viel Grip und Federweg |
   | Mini-Blitz | Micro | Spielzeug-Rennwagen | Höchstgeschwindigkeit |
   | Taschen-Flitzer | Micro | Spielzeug-Hatchback | wendig, Beschleunigung |
   | Zwergrakete | Micro | Spielzeug-Prototyp | ausgewogen |
