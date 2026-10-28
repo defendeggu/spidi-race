@@ -286,7 +286,7 @@ const ROKI: CarSpec = {
   model: 'roki', color: '#b5141c', accent: '#f3f3ee',
   suspension: 0.28, topSpeed: 61, accel: 7.9, brake: 13.5, grip: 14.2,
   steer: 0.62, wheelbase: 2.8, gears: 5, mass: 2200,
-  shape: { length: 4.8, width: 1.98, height: 1.36, roof: 2.12, cabinShift: -0.6, spoiler: false },
+  shape: { length: 4.8, width: 1.98, height: 1.42, roof: 2.18, cabinShift: -0.6, spoiler: false },
 };
 
 CARS.push(CALIFORNIA, HILUX, AVENTADOR, ROKI);
