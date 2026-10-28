@@ -143,6 +143,10 @@ describe('offroad', () => {
     expect(carsForClass('road').length).toBe(6);
     expect(carsForClass('offroad').length).toBe(5);
     expect(carsForClass('micro').length).toBe(3);
+    // Roki drives like the Sahara Raider and has the rocket hop
+    const roki = getCar('roki'), raider = getCar('raider');
+    for (const k of ['topSpeed', 'accel', 'brake', 'grip', 'steer', 'wheelbase', 'gears', 'mass'] as const) expect(roki[k], k).toBe(raider[k]);
+    expect(roki.rocket).toBe(true);
     expect(TRACK_DEFS.filter((d) => d.class === 'offroad').map((d) => d.id)).toEqual(['canyon', 'waldtrail']);
     expect(TRACK_DEFS.filter((d) => d.class === 'micro').map((d) => d.id)).toEqual(['fruehstueck']);
   });
