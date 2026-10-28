@@ -8,7 +8,7 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 export function buildRoki(color: string, tail: THREE.Material) {
   const body = new THREE.Group();
   // Raised suspension: the whole shell sits higher above the axles.
-  const LIFT = 0.12;
+  const LIFT = 0.18;
   const shell = new THREE.Group(); shell.position.y = LIFT; body.add(shell);
   const paint = new THREE.MeshPhongMaterial({ color, shininess: 80, specular: '#d8c8c8' });
   const roof = new THREE.MeshPhongMaterial({ color: '#f3f3ee', shininess: 70, specular: '#ffffff' });
@@ -40,7 +40,10 @@ export function buildRoki(color: string, tail: THREE.Material) {
     return geo.rotateY(-Math.PI / 2).translate(x, 0, 0);
   };
 
-  const FRONT_AXLE = 1.25, REAR_AXLE = -1.55, ARCH = 0.5, SILL = 0.5;
+  const FRONT_AXLE = 1.25, REAR_AXLE = -1.55, ARCH = 0.54, SILL = 0.5;
+  /** windscreen raked back by 8° */
+  const RAKE = Math.tan(8 * Math.PI / 180);
+  const pillarZ = (z: number, y: number) => z - (y - 1.24) * RAKE;
   const FRONT = 2.05, REAR = -2.2, WAIST = 1.24, HW = 0.86;
   // Lower body: one slab from the flat front panel to the rear door, with square-topped wheel openings.
   const lower = new THREE.Shape();
@@ -51,7 +54,7 @@ export function buildRoki(color: string, tail: THREE.Material) {
   lower.lineTo(FRONT, SILL); lower.lineTo(FRONT, WAIST); lower.lineTo(REAR, WAIST); lower.closePath();
   mesh('lower-body', across(lower, HW * 2, HW), paint);
   for (const z of [FRONT_AXLE, REAR_AXLE]) {
-    box('wheel-well', 1.24, 0.42, ARCH * 1.8, 0, 0.78, z, black);
+    box('wheel-well', 1.2, 0.44, ARCH * 1.8, 0, 0.8, z, black);
     // Wide, flat black arch extensions.
     const flare = new THREE.Shape();
     flare.absarc(z, SILL, ARCH + 0.1, Math.PI, 0, true);
@@ -71,43 +74,49 @@ export function buildRoki(color: string, tail: THREE.Material) {
   // Snorkel on the right wing, up the windscreen pillar to an intake above the roof line.
   const snorkel = new THREE.CatmullRomCurve3([
     new THREE.Vector3(-HW + 0.02, 1.08, 1.3), new THREE.Vector3(-HW - 0.07, 1.1, 1.18), new THREE.Vector3(-HW - 0.08, 1.2, 1.04),
-    new THREE.Vector3(-HW - 0.06, 1.6, 0.99), new THREE.Vector3(-HW - 0.04, 2.02, 0.97),
+    new THREE.Vector3(-HW - 0.06, 1.6, pillarZ(0.99, 1.6)), new THREE.Vector3(-HW - 0.04, 2.02, pillarZ(0.97, 2.02)),
   ], false, 'catmullrom', 0.2);
   mesh('snorkel', new THREE.TubeGeometry(snorkel, 32, 0.05, 12, false), black);
-  box('snorkel-head', 0.13, 0.13, 0.2, -HW - 0.04, 2.06, 1.0, black, 0.04);
-  box('snorkel-intake', 0.1, 0.08, 0.02, -HW - 0.04, 2.06, 1.105, darkRim, 0.01);
-  for (const y of [1.45, 1.8]) box('snorkel-bracket', 0.08, 0.03, 0.05, -HW - 0.01, y, 0.96, black, 0.01);
+  box('snorkel-head', 0.13, 0.13, 0.2, -HW - 0.04, 2.06, pillarZ(1.0, 2.02), black, 0.04);
+  box('snorkel-intake', 0.1, 0.08, 0.02, -HW - 0.04, 2.06, pillarZ(1.105, 2.02), darkRim, 0.01);
+  for (const y of [1.45, 1.8]) box('snorkel-bracket', 0.08, 0.03, 0.05, -HW - 0.01, y, pillarZ(0.96, y), black, 0.01);
   box('wing-vent', 0.02, 0.14, 0.3, HW + 0.025, 1.1, 1.62, black, 0.01);
 
-  // Cabin: slightly drawn-in sides up to the roof, flat vertical windscreen.
+  // Cabin: slightly drawn-in sides up to the roof, flat raked windscreen.
   const TOP = 1.9, TOP_HW = 0.79, CAB_FRONT = 0.95;
   const section = new THREE.Shape();
   section.moveTo(-HW, WAIST); section.lineTo(HW, WAIST); section.lineTo(TOP_HW, TOP); section.lineTo(-TOP_HW, TOP); section.closePath();
   const cabin = new THREE.ExtrudeGeometry(section, { depth: CAB_FRONT - REAR - 0.04, bevelEnabled: true, bevelSize: 0.02, bevelThickness: 0.02, bevelSegments: 2 });
-  mesh('cabin', cabin.translate(0, 0, REAR + 0.02), paint);
+  cabin.translate(0, 0, REAR + 0.02);
+  const cp = cabin.attributes.position;
+  for (let i = 0; i < cp.count; i++) if (cp.getZ(i) > CAB_FRONT - 0.1) cp.setZ(i, pillarZ(cp.getZ(i), cp.getY(i)));
+  cabin.computeVertexNormals();
+  mesh('cabin', cabin, paint);
   const sideX = (y: number) => HW - (y - WAIST) * (HW - TOP_HW) / (TOP - WAIST) + 0.028;
   for (const s of [-1, 1]) {
     const p = (z: number, y: number) => [s * sideX(y), y, z];
-    quad('front-door-window', [p(0.02, 1.4), p(0.84, 1.4), p(0.84, 1.82), p(0.02, 1.82)]);
+    quad('front-door-window', [p(0.02, 1.4), p(pillarZ(0.84, 1.4), 1.4), p(pillarZ(0.84, 1.82), 1.82), p(0.02, 1.82)]);
     quad('rear-door-window', [p(-0.84, 1.4), p(-0.14, 1.4), p(-0.14, 1.82), p(-0.84, 1.82)]);
     quad('rear-side-window', [p(-2.06, 1.4), p(-1.05, 1.4), p(-1.05, 1.82), p(-2.06, 1.82)]);
     const seam = (z: number, y0: number, y1: number) =>
       quad('door-seam', [[s * (HW + 0.03), y0, z - 0.006], [s * (HW + 0.03), y0, z + 0.006], [s * (HW + 0.03), y1, z + 0.006], [s * (HW + 0.03), y1, z - 0.006]], black);
-    seam(0.62, 0.56, WAIST);
+    seam(0.58, 0.56, WAIST);
     for (const z of [-0.06, -0.92]) {
       seam(z, 0.56, WAIST);
       quad('door-seam', [p(z - 0.006, WAIST), p(z + 0.006, WAIST), p(z + 0.006, TOP - 0.02), p(z - 0.006, TOP - 0.02)], black);
     }
     for (const z of [0.0, -0.86]) box('door-handle', 0.03, 0.04, 0.16, s * (sideX(1.32) + 0.005), 1.32, z + 0.06, silver, 0.012);
   }
-  quad('windscreen', [[-0.74, 1.33, CAB_FRONT + 0.03], [0.74, 1.33, CAB_FRONT + 0.03], [0.7, 1.83, CAB_FRONT + 0.03], [-0.7, 1.83, CAB_FRONT + 0.03]]);
-  box('windscreen-centre-bar', 0.04, 0.5, 0.02, 0, 1.58, CAB_FRONT + 0.035, black, 0.01);
+  const screen = (y: number) => pillarZ(CAB_FRONT + 0.03, y);
+  quad('windscreen', [[-0.74, 1.33, screen(1.33)], [0.74, 1.33, screen(1.33)], [0.7, 1.83, screen(1.83)], [-0.7, 1.83, screen(1.83)]]);
+  box('windscreen-centre-bar', 0.04, 0.5, 0.02, 0, 1.58, screen(1.58) + 0.005, black, 0.01).rotation.x = -Math.atan(RAKE);
   for (const s of [-1, 1]) {
-    const wiper = mesh('wiper', new THREE.BoxGeometry(0.55, 0.018, 0.02), black, s * 0.32, 1.38, CAB_FRONT + 0.05);
+    const wiper = mesh('wiper', new THREE.BoxGeometry(0.55, 0.018, 0.02), black, s * 0.32, 1.38, screen(1.38) + 0.02);
     wiper.rotation.z = s * 0.25;
   }
   // White roof with the little roof-edge windows at the back.
-  box('roof', TOP_HW * 2 + 0.1, 0.1, CAB_FRONT - REAR + 0.08, 0, TOP + 0.04, (CAB_FRONT + REAR) / 2, roof, 0.04);
+  const roofFront = pillarZ(CAB_FRONT, TOP) + 0.04;
+  box('roof', TOP_HW * 2 + 0.1, 0.1, roofFront - REAR + 0.04, 0, TOP + 0.04, (roofFront + REAR - 0.04) / 2, roof, 0.04);
   for (const s of [-1, 1]) {
     for (const z of [-0.6, -1.35]) {
       const pane = box('roof-edge-window', 0.02, 0.07, 0.6, s * (TOP_HW + 0.045), TOP + 0.03, z, glass, 0.008);
@@ -144,9 +153,9 @@ export function buildRoki(color: string, tail: THREE.Material) {
   box('rear-bumper', 1.7, 0.14, 0.18, 0, 0.5, REAR - 0.06, black, 0.02);
   box('tow-hitch', 0.1, 0.1, 0.22, 0, 0.44, REAR - 0.2, black, 0.02);
   box('spare-bracket', 0.3, 0.3, 0.1, 0, 1.0, REAR - 0.05, black, 0.02);
-  const spare = new THREE.Group(); spare.name = 'spare-wheel'; spare.position.set(0, 1.0, REAR - 0.22); shell.add(spare);
-  mesh('spare-tyre', new THREE.TorusGeometry(0.28, 0.11, 14, 40), rubber, 0, 0, 0, spare);
-  mesh('spare-rim', new THREE.CylinderGeometry(0.2, 0.2, 0.12, 32).rotateX(Math.PI / 2), darkRim, 0, 0, 0, spare);
+  const spare = new THREE.Group(); spare.name = 'spare-wheel'; spare.position.set(0, 0.98, REAR - 0.23); shell.add(spare);
+  mesh('spare-tyre', new THREE.TorusGeometry(0.29, 0.12, 14, 40), rubber, 0, 0, 0, spare);
+  mesh('spare-rim', new THREE.CylinderGeometry(0.21, 0.21, 0.13, 32).rotateX(Math.PI / 2), darkRim, 0, 0, 0, spare);
   mesh('spare-hub', new THREE.CylinderGeometry(0.07, 0.07, 0.15, 20).rotateX(Math.PI / 2), black, 0, 0, -0.01, spare);
   for (let i = 0; i < 5; i++) {
     const a = i * Math.PI * 2 / 5;
@@ -154,12 +163,12 @@ export function buildRoki(color: string, tail: THREE.Material) {
   }
   for (let i = 0; i < 30; i++) {
     const a = i * Math.PI / 15;
-    const lug = mesh('spare-tread', new THREE.BoxGeometry(0.04, 0.03, 0.17), rubber, Math.cos(a) * 0.39, Math.sin(a) * 0.39, 0, spare);
+    const lug = mesh('spare-tread', new THREE.BoxGeometry(0.04, 0.03, 0.19), rubber, Math.cos(a) * 0.405, Math.sin(a) * 0.405, 0, spare);
     lug.rotation.z = a;
   }
 
   // Chunky all-terrain tyres on black steel wheels, with the solid axles showing under the lifted body.
-  const R = 0.4;
+  const R = 0.47;
   for (const z of [FRONT_AXLE, REAR_AXLE]) {
     mesh('axle', new THREE.CylinderGeometry(0.05, 0.05, 1.4, 12).rotateZ(Math.PI / 2), black, 0, R, z, body);
     mesh('differential', new THREE.SphereGeometry(0.15, 16, 12), black, 0.12, R, z, body).scale.set(1, 0.9, 0.8);
@@ -170,21 +179,21 @@ export function buildRoki(color: string, tail: THREE.Material) {
     }
   }
   const wheels: THREE.Group[] = [];
-  for (const [x, z] of [[0.8, FRONT_AXLE], [-0.8, FRONT_AXLE], [0.8, REAR_AXLE], [-0.8, REAR_AXLE]]) {
+  for (const [x, z] of [[0.82, FRONT_AXLE], [-0.82, FRONT_AXLE], [0.82, REAR_AXLE], [-0.82, REAR_AXLE]]) {
     const holder = new THREE.Group(); holder.position.set(x, R, z);
     const wheel = new THREE.Group(); holder.add(wheel); wheels.push(holder);
-    const tyre = mesh('all-terrain-tyre', new THREE.TorusGeometry(0.28, 0.115, 16, 48), rubber, 0, 0, 0, wheel);
+    const tyre = mesh('all-terrain-tyre', new THREE.TorusGeometry(0.33, 0.135, 16, 48), rubber, 0, 0, 0, wheel);
     tyre.rotation.y = Math.PI / 2;
     for (let i = 0; i < 36; i++) {
       const a = i * Math.PI / 18;
-      const tread = mesh('tread-block', new THREE.BoxGeometry(0.22, 0.03, 0.045), rubber, 0, Math.cos(a) * (R - 0.01), Math.sin(a) * (R - 0.01), wheel);
+      const tread = mesh('tread-block', new THREE.BoxGeometry(0.26, 0.035, 0.05), rubber, 0, Math.cos(a) * (R - 0.01), Math.sin(a) * (R - 0.01), wheel);
       tread.rotation.x = a;
     }
-    const outside = Math.sign(x) * 0.12;
-    mesh('steel-wheel', new THREE.CylinderGeometry(0.21, 0.21, 0.04, 36).rotateZ(Math.PI / 2), rim, outside, 0, 0, wheel);
+    const outside = Math.sign(x) * 0.14;
+    mesh('steel-wheel', new THREE.CylinderGeometry(0.24, 0.24, 0.04, 36).rotateZ(Math.PI / 2), rim, outside, 0, 0, wheel);
     for (let i = 0; i < 5; i++) {
       const a = i * Math.PI * 2 / 5 + 0.3;
-      mesh('rim-hole', new THREE.CylinderGeometry(0.03, 0.03, 0.01, 12).rotateZ(Math.PI / 2), rubber, outside * 1.2, Math.cos(a) * 0.15, Math.sin(a) * 0.15, wheel);
+      mesh('rim-hole', new THREE.CylinderGeometry(0.03, 0.03, 0.01, 12).rotateZ(Math.PI / 2), rubber, outside * 1.2, Math.cos(a) * 0.17, Math.sin(a) * 0.17, wheel);
     }
     mesh('hub', new THREE.CylinderGeometry(0.075, 0.075, 0.07, 20).rotateZ(Math.PI / 2), darkRim, outside * 1.2, 0, 0, wheel);
     for (let i = 0; i < 5; i++) {
