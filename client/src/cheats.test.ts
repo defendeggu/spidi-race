@@ -25,4 +25,14 @@ describe('cheats', () => {
     expect(raceSpec(getCar('kaito')).accel).toBeCloseTo(getCar('kaito').accel * PIONEER_BOOST);
     expect(raceSpec(getCar('falcone'))).toBe(getCar('falcone'));
   });
+
+  it('Roki drives like the Kaito', () => {
+    const like = (a: ReturnType<typeof getCar>, b: ReturnType<typeof getCar>) => {
+      for (const k of ['topSpeed', 'accel', 'brake', 'grip', 'steer', 'wheelbase', 'gears', 'mass'] as const) expect(a[k], k).toBe(b[k]);
+    };
+    like(raceSpec(getCar('roki')), raceSpec(getCar('kaito')));
+    like(townSpec(getCar('roki-town')), townSpec(getCar('kaito-stadt')));
+    expect(raceSpec(getCar('roki')).model).toBe('roki');
+    expect(raceSpec(getCar('roki')).rocket).toBe(true);
+  });
 });
