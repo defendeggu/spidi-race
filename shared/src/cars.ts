@@ -280,7 +280,16 @@ const AVENTADOR: CarSpec = {
   shape: { length: 4.95, width: 2.08, height: 0.80, roof: 1.20, cabinShift: -0.3, spoiler: false },
 };
 
-CARS.push(CALIFORNIA, HILUX, AVENTADOR);
+/** Roki drives like the Sahara Raider, with the rocket hop of the other big off-roaders. */
+const RAIDER = CARS.find((c) => c.id === 'raider')!;
+const ROKI: CarSpec = {
+  ...RAIDER, id: 'roki', name: 'Roki',
+  description: 'Höhergelegter roter Geländewagen mit weissem Hochdach, Schnorchel, Seilwinde und Raketensprung (F)',
+  model: 'roki', rocket: true, color: '#b5141c', accent: '#f3f3ee',
+  shape: { length: 4.8, width: 1.98, height: 1.42, roof: 2.32, cabinShift: -0.6, spoiler: false },
+};
+
+CARS.push(CALIFORNIA, HILUX, AVENTADOR, ROKI);
 
 // ---------------------------------------------------------------- practice town: gentle everyday cars
 const TOWN_BASE = {
@@ -378,11 +387,11 @@ TOWN_CARS.push({ ...HILUX, id: 'hilux-town', class: 'town', topSpeed: 21, accel:
 TOWN_CARS.push({ ...AVENTADOR, id: 'aventador-town', class: 'town', topSpeed: 21, accel: 5.4, brake: 13 });
 
 /**
- * Every other road, offroad and micro car drives in the town too, tamed to town speeds: the fastest
- * race cars reach about 85 km/h, the slowest about 65 km/h.
+ * Every other road and offroad car drives in the town too, tamed to town speeds: the fastest race
+ * cars reach about 85 km/h, the slowest about 65 km/h. The micro toy cars stay on their table.
  */
 const TOWN_VERSIONS: Record<string, string> = { california: 'california-town', kaito: 'kaito-stadt', hilux: 'hilux-town', aventador: 'aventador-town' };
-const TOWN_SPEED = { road: 0.25, offroad: 0.33, micro: 0.36 } as Partial<Record<CarClass, number>>;
+const TOWN_SPEED = { road: 0.25, offroad: 0.33 } as Partial<Record<CarClass, number>>;
 for (const c of CARS) {
   const k = TOWN_SPEED[c.class];
   if (!k || TOWN_VERSIONS[c.id]) continue;

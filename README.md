@@ -54,7 +54,7 @@ Ein Arcade-Rennspiel im Browser im Geist von 90er-Jahren Arcade Racing Games: Al
   | Flughafen | Strasse | nur Auto | 5,2 km | Nach dem Luftbild des Zürcher Flughafens: lange Gerade auf der Schräg-Piste 14/32, Rollweg über die Querpiste, Haken ins Vorfeld vor den Docks, Schleife über die Hauptpiste, Parallelrollweg, Haarnadel am Pistenende; startende Flugzeuge |
   | Flughafen Kart | Strasse | nur Kart | 3,4 km | Kurze Pistengerade, dann Rollwege und Vorfeld: schneller Bogen, Schikane, S-Kurven, Haarnadel am Tower, Hangars |
 
-- **23 Fahrzeuge** mit eigenen Fahrwerten, je nach Streckenklasse bzw. Modus:
+- **24 Fahrzeuge** mit eigenen Fahrwerten, je nach Streckenklasse bzw. Modus:
 
   | Auto | Klasse | Modell | Stärke |
   |---|---|---|---|
@@ -68,6 +68,7 @@ Ein Arcade-Rennspiel im Browser im Geist von 90er-Jahren Arcade Racing Games: Al
   | Baron V8 | Offroad | Luxus-SUV | schnell, schwer |
   | Sahara Raider | Offroad | Pickup | Beschleunigung |
   | Steinbock DC | Offroad | Doppelkabinen-Pickup | robust, viel Grip, Raketensprung |
+  | Roki | Offroad | Höhergelegter Geländewagen, rot mit weissem Hochdach, Schnorchel, Frontbügel mit Seilwinde, schwarzen Felgen und schwarzem Reserverad am Heck | Beschleunigung (wie Sahara Raider), Raketensprung |
   | Mini-Blitz | Micro | Spielzeug-Rennwagen | Höchstgeschwindigkeit |
   | Taschen-Flitzer | Micro | Spielzeug-Hatchback | wendig, Beschleunigung |
   | Zwergrakete | Micro | Spielzeug-Prototyp | ausgewogen |
@@ -76,7 +77,7 @@ Ein Arcade-Rennspiel im Browser im Geist von 90er-Jahren Arcade Racing Games: Al
   | Polizeiauto | Stadt | Streifenwagen | gemütlich, Originallackierung |
   | Feuerwehr | Stadt | Feuerwehrauto | gross, etwas langsamer |
   | Kaito ZX | Stadt | Formelwagen | schneller, für Fortgeschrittene |
-  | alle Strassen-, Offroad- und Micro-Autos | Stadt | Stadt-Varianten | gezähmt auf ca. 65–85 km/h; Weltenbummler (80 km/h), Sturmvogel und Steinbock mit Raketensprung |
+  | alle Strassen- und Offroad-Autos | Stadt | Stadt-Varianten | gezähmt auf ca. 65–85 km/h; Weltenbummler (80 km/h), Sturmvogel, Steinbock und Roki mit Raketensprung |
   | Oobi, Oodi, Ooli, Oopi, Oozi | Kart | Karts mit Alien-Fahrern | Allrounder, Beschleunigung, Kurven, Spitze, Gewicht |
 
 - **Kart-Rennen mit Items** auf allen Strassen- und Offroad-Strecken (auf dem Flughafen mit eigener Kartstrecke) und **Kart-Battle** in der Übungsstadt (3 Ballons, Bots): ?-Boxen, Blaster, Zielsucher, Minen, Turbo und Schild, Drift-Boost, KI-Karts mit Items, siehe [unten](#kart-rennen-mit-items)

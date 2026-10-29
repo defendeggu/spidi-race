@@ -28,12 +28,13 @@ describe('practice town', () => {
   it('has the town cars and no race track uses them', () => {
     const ids = carsForClass('town').map((c) => c.id);
     expect(ids.slice(0, 8)).toEqual(['california-town', 'familie', 'taxi', 'polizei', 'feuerwehr', 'kaito-stadt', 'hilux-town', 'aventador-town']);
-    // every road, offroad and micro car has a town version, the karts do not
-    for (const c of CARS.filter((x) => x.class === 'road' || x.class === 'offroad' || x.class === 'micro')) {
+    // every road and offroad car has a town version, the micro toy cars and the karts do not
+    for (const c of CARS.filter((x) => x.class === 'road' || x.class === 'offroad')) {
       expect(ids, c.id).toContain(townVersion(c.id));
       expect(getCar(townVersion(c.id)).model).toBe(c.model);
     }
     expect(ids.some((id) => id.startsWith('kart'))).toBe(false);
+    for (const c of carsForClass('micro')) expect(ids).not.toContain(`${c.id}-town`);
     expect(TRACK_DEFS.some((d) => d.class === 'town')).toBe(false);
   });
 

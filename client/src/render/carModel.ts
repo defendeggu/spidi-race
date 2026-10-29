@@ -5,6 +5,7 @@ import { blobShadowTexture } from './textures';
 import { buildCamper } from './camper';
 import { buildPickup } from './pickup';
 import { buildAventador } from './aventador';
+import { buildRoki } from './roki';
 import { rocketRollAngle } from './rocketRoll';
 
 interface Section {
@@ -270,8 +271,9 @@ export class CarVisual {
     this.height = spec.shape.roof;
     const color = carColor(spec, variant);
     const model = assetsReady() ? getModel(spec.model) : undefined;
-    if (spec.model === 'toyota-hilux' || spec.model === 'lamborghini-aventador') {
-      const pickup = spec.model === 'toyota-hilux' ? buildPickup(color, this.tailMat) : buildAventador(color, this.tailMat);
+    const builder = { 'toyota-hilux': buildPickup, 'lamborghini-aventador': buildAventador, roki: buildRoki }[spec.model];
+    if (builder) {
+      const pickup = builder(color, this.tailMat);
       this.body.add(pickup.body);
       this.ownedMaterials.push(...pickup.materials);
       this.height = pickup.height;
