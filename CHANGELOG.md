@@ -4,6 +4,15 @@ Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog]
 
 ## [Unreleased]
 
+## [1.9.0] – 2026-10-31
+
+### Hinzugefügt
+- **Windows-App** mit Installer (`Spidi-Race-Setup-<Version>.exe`, Electron): Spiel und Server in einem eigenen Fenster, ohne Docker und Browser; Startmenü- und Desktop-Verknüpfung, `F11` für Vollbild, Rangliste und Einstellungen unter `%APPDATA%\Spidi Race`. Die App ist zugleich der Server fürs Netzwerkspiel; ist Port 8090 belegt, nimmt sie einen freien Port
+- GitHub Actions baut den Installer bei jedem Versions-Tag auf Windows und hängt ihn an das GitHub-Release (mit den Änderungen aus diesem Changelog)
+
+### Geändert
+- Lobby und Netzwerkspiel-Seite zeigen in der Windows-App die Adresse im Heimnetz statt `127.0.0.1`
+
 ## [1.8.0] – 2026-10-31
 
 ### Hinzugefügt
@@ -413,7 +422,8 @@ Erste stabile Version: Das Spiel ist auf echter Hardware getestet.
 - HUD mit Minimap, synthetischer Sound, 3 Kameras
 - Docker-Image und docker-compose (Port 8090)
 
-[Unreleased]: https://github.com/defendeggu/spidi-race/compare/v1.8.0...HEAD
+[Unreleased]: https://github.com/defendeggu/spidi-race/compare/v1.9.0...HEAD
+[1.9.0]: https://github.com/defendeggu/spidi-race/compare/v1.8.0...v1.9.0
 [1.8.0]: https://github.com/defendeggu/spidi-race/compare/v1.7.0...v1.8.0
 [1.7.0]: https://github.com/defendeggu/spidi-race/compare/v1.4.1...v1.7.0
 [1.4.1]: https://github.com/defendeggu/spidi-race/compare/v1.4.0...v1.4.1

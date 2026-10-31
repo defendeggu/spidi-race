@@ -1,11 +1,12 @@
 # Spidi Race 🏁
 
-![Version](https://img.shields.io/badge/version-1.8.0-ffcc00)
+![Version](https://img.shields.io/badge/version-1.9.0-ffcc00)
 ![Lizenz Code](https://img.shields.io/badge/code-MIT-blue)
 ![Lizenz Assets](https://img.shields.io/badge/assets-CC0-green)
 ![Docker](https://img.shields.io/badge/docker-ready-2496ED)
+![Windows](https://img.shields.io/badge/windows-app-0078D4)
 
-Ein Arcade-Rennspiel im Browser im Geist von 90er-Jahren Arcade Racing Games: Alpenpässe, Küstenstrassen, Stadtkurs, Superspeedway, Offroad-Pisten mit Sprüngen und ein Frühstückstisch im Micro-Machines-Stil, Splitscreen am selben Rechner und Rennen im Heimnetz. Dazu kommt eine offene Übungsstadt, in der Kinder ohne Rennstress das Fahren mit Tastatur oder Gamepad lernen. Gerendert wird mit Three.js, Modelle und Texturen stammen aus CC0-Paketen von Kenney und ambientCG.
+Ein Arcade-Rennspiel für den Browser oder als Windows-App im Geist von 90er-Jahren Arcade Racing Games: Alpenpässe, Küstenstrassen, Stadtkurs, Superspeedway, Offroad-Pisten mit Sprüngen und ein Frühstückstisch im Micro-Machines-Stil, Splitscreen am selben Rechner und Rennen im Heimnetz. Dazu kommt eine offene Übungsstadt, in der Kinder ohne Rennstress das Fahren mit Tastatur oder Gamepad lernen. Gerendert wird mit Three.js, Modelle und Texturen stammen aus CC0-Paketen von Kenney und ambientCG.
 
 ![Hauptmenü](docs/menu.jpg)
 
@@ -26,6 +27,7 @@ Ein Arcade-Rennspiel im Browser im Geist von 90er-Jahren Arcade Racing Games: Al
 ## Inhalt
 
 - [Features](#features)
+- [Windows-App](#windows-app)
 - [Schnellstart mit Docker](#schnellstart-mit-docker)
 - [Steuerung](#steuerung)
 - [Kart-Rennen mit Items](#kart-rennen-mit-items)
@@ -92,6 +94,21 @@ Ein Arcade-Rennspiel im Browser im Geist von 90er-Jahren Arcade Racing Games: Al
 - **Arcade-Fahrphysik** mit Drift, Handbremse, Automatikgetriebe, Steigungen und Abprall an Leitplanken
 - **Sound**: Motor, Reifenquietschen und Crash werden live mit WebAudio erzeugt
 - **4 Kameras**: Verfolger, Verfolger weit, Stossstange und Vogelperspektive (auf Micro-Strecken voreingestellt)
+
+## Windows-App
+
+Für Windows gibt es Spidi Race auch als normale App mit Installer: Spiel und Server laufen in einem eigenen Fenster, ohne Docker und ohne Browser.
+
+1. Bei den [Releases](https://github.com/defendeggu/spidi-race/releases) die Datei `Spidi-Race-Setup-<Version>.exe` herunterladen und starten.
+2. Windows SmartScreen meldet beim ersten Mal „Der Computer wurde durch Windows geschützt“, weil der Installer nicht kostenpflichtig signiert ist: **Weitere Informationen → Trotzdem ausführen**.
+3. Installationsordner wählen, fertig. Spidi Race steht danach im Startmenü und auf dem Desktop.
+
+- `F11` schaltet den Vollbildmodus ein und aus. Gamepads funktionieren wie im Browser.
+- **Netzwerkspiel:** Die App ist gleich auch der Server. Beim ersten Start fragt die Windows-Firewall, ob Spidi Race im Netzwerk erreichbar sein darf – für das Heimnetz (privates Netzwerk) zulassen. Die Lobby zeigt die Adresse, die die Mitspieler im Browser öffnen (oder sie starten die App selbst und öffnen die Adresse über den Browser). Ist Port 8090 schon belegt, nimmt die App einen freien Port.
+- Die **Rangliste** und die Einstellungen liegen unter `%APPDATA%\Spidi Race` und bleiben bei Updates und beim Deinstallieren erhalten.
+- Ein Update ist einfach die neue Setup-Datei: drüber installieren.
+
+Gebaut wird der Installer automatisch von GitHub Actions auf einem Windows-Rechner, sobald eine neue Version getaggt wird. Selbst bauen und lokal ausprobieren: siehe [Entwicklung](#entwicklung).
 
 ## Schnellstart mit Docker
 
@@ -207,8 +224,8 @@ Hauptmenü → **Übungsfahrt in der Stadt**. Gedacht für Kinder und alle, die 
 
 ## Netzwerkspiel
 
-1. Den Server starten (Docker oder `npm start`).
-2. Alle Mitspieler öffnen `http://<IP-des-Servers>:8090` und wählen **Netzwerkspiel**.
+1. Den Server starten: Docker, `npm start` oder einfach die [Windows-App](#windows-app) öffnen (sie ist gleich auch der Server).
+2. Alle Mitspieler öffnen `http://<IP-des-Servers>:8090` und wählen **Netzwerkspiel**. Die genaue Adresse zeigt die Seite **Netzwerkspiel** bzw. die Lobby an.
 3. Pro Gerät meldet man 1 oder 2 Spieler mit Namen an. Bei 2 Spielern fahren beide im Splitscreen. Ein Fahrzeug wählt man hier noch nicht.
 4. Wer zuerst in der Lobby ist, ist **Host**. Er stellt die Rennart ein (**Autorennen**, **Kart-Rennen mit Items** oder **Kart-Battle in der Stadt**), dazu Strecke, Runden und KI-Gegner.
 5. In der Lobby wählt jeder sein Fahrzeug, und zwar immer aus der Klasse, die gerade eingestellt ist (Strasse, Offroad, Micro oder Kart). Wechselt der Host die Rennart, wechselt das Fahrzeug automatisch mit.
@@ -240,7 +257,8 @@ Jedes beendete Rennen eines menschlichen Fahrers landet in der permanenten Rangl
 - Kart-Rennen haben pro Strecke eigene Listen (`kart:<strecke>`), nur mit Karts; wegen der Boosts liegt die Untergrenze 35 % unter der Höchstgeschwindigkeit.
 - Der Server speichert alles in `data/leaderboard.json`. Diese Datei ist **git-ignoriert**. Im Repo liegt nur die leere Vorlage `data/leaderboard.template.json`, mit der ein neuer Server startet.
 - Mit Docker wird `./data` in den Container eingebunden. Die Rangliste übersteht Neustarts und Image-Updates und lässt sich einfach sichern.
-- Zurücksetzen: `data/leaderboard.json` löschen und den Server neu starten.
+- In der Windows-App liegt die Rangliste in `%APPDATA%\Spidi Race\leaderboard.json`.
+- Zurücksetzen: `data/leaderboard.json` (bzw. die Datei der Windows-App) löschen und den Server neu starten.
 - Die API ist `GET /api/leaderboard?track=<id>` (ohne `track`: die Top 50 jeder Wertung) und `POST /api/leaderboard` mit `{ entries: [...] }`.
 - Unplausible Zeiten werden abgewiesen: Keine Runde darf schneller sein, als das gewählte Auto die Strecke mit Höchstgeschwindigkeit durchfahren könnte, und das Auto muss zur Streckenklasse passen. Netzwerkrennen trägt nur der Server selbst ein, per HTTP gehen nur Einzel- und Splitscreen-Zeiten. Pro IP sind 10 Einträge pro Minute erlaubt. Einzel- und Splitscreen-Zeiten werden im Browser gemessen und lassen sich deshalb nicht völlig fälschungssicher prüfen.
 
@@ -257,6 +275,19 @@ npm run build        # Produktionsbuild: client/dist + server/dist/index.cjs
 npm start            # Produktionsserver auf :8090 (liefert auch den Client aus)
 npm run assets       # CC0-Assets neu herunterladen (siehe unten)
 ```
+
+**Windows-App** (`desktop/`, eigenes `package.json`, damit Docker und CI kein Electron laden):
+
+```bash
+npm run build -w client   # die App liefert client/dist aus
+cd desktop
+npm install
+npm start                 # App lokal starten (auch unter Linux und macOS)
+npm run typecheck
+npm run dist              # Installer bauen – nur unter Windows (unter Linux bräuchte es Wine)
+```
+
+Den Installer baut im Normalfall GitHub Actions (siehe [Versionierung](#versionierung)).
 
 **Neue Strecke anlegen:**
 1. In `shared/src/tracks.ts` eine Liste von Kontrollpunkten `[x, z, höhe, breite?]` hinzufügen. Dazu ein Theme wählen (`alpine`, `coast`, `city`, `speedway`, `desert`, `forest`, `table`, `airport`). Mit `modes: ['race']` bzw. `modes: ['kart']` erscheint eine Strecke nur im Autorennen bzw. nur im Kart-Rennen (ohne Angabe: alle im Autorennen, alle ausser Micro im Kart-Rennen). Optional kommen dazu: Galerien/Unterführungen, eine Kurvenüberhöhung (`banking`) für Micro `class: 'micro'` (mit `camera: 'topdown'`) und für Offroad `class: 'offroad'`, Untergründe (`surface`, `surfaces`) sowie Sprünge (`jumps`).
@@ -309,7 +340,9 @@ client/   Vite + Three.js
   src/render/townAirport.ts      Flugplatz der Übungsstadt (Piste, Rollweg, Vorfeld, Terminal, Fracht, Tower, Flugzeuge)
 scripts/footprints.mjs      misst die Grundflächen der Stadtgebäude (Kollision ohne Vordächer) → shared/src/townFootprints.ts
 server/   Node + ws: app.ts (HTTP, Statik, API, WebSocket-Upgrade), room.ts (Lobby, Rennstatus, KI), leaderboard.ts
-.github/  CI: Typecheck, Tests und Build bei jedem Push
+desktop/  Windows-App (Electron, eigenes package.json, kein Workspace): main.ts startet den Server im App-Prozess
+          und öffnet das Spielfenster; preload.ts reicht nur die LAN-Adresse für die Lobby ans Spiel weiter
+.github/  CI: Typecheck, Tests und Build bei jedem Push · Windows-App: Installer bei jedem Versions-Tag · Dependabot
 scripts/  Asset-Download
 ```
 
@@ -319,7 +352,9 @@ scripts/  Asset-Download
 
 ## Versionierung
 
-Das Projekt folgt [Semantic Versioning](https://semver.org/lang/de/). Die aktuelle Version ist **1.8.0**. Änderungen stehen im [CHANGELOG](CHANGELOG.md), Releases sind als Git-Tags `vX.Y.Z` markiert. Die Version steht auch unten rechts im Hauptmenü.
+Das Projekt folgt [Semantic Versioning](https://semver.org/lang/de/). Die aktuelle Version ist **1.9.0**. Änderungen stehen im [CHANGELOG](CHANGELOG.md), Releases sind als Git-Tags `vX.Y.Z` markiert. Die Version steht auch unten rechts im Hauptmenü.
+
+Die Version steht in allen `package.json` (Root, `shared`, `client`, `server`, `desktop`). Jeder gepushte Tag `vX.Y.Z` startet den Workflow **Windows-App**: Er baut auf Windows den Installer und legt das GitHub-Release mit dem passenden CHANGELOG-Abschnitt und `Spidi-Race-Setup-X.Y.Z.exe` an.
 
 ## Lizenz und Credits
 

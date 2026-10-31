@@ -1,0 +1,54 @@
+{
+  "name": "spidi-race-desktop",
+  "productName": "Spidi Race",
+  "version": "1.9.0",
+  "private": true,
+  "description": "Spidi Race als Windows-App (Electron): Spiel und Server in einem Fenster",
+  "author": "Adi S.",
+  "license": "MIT",
+  "main": "dist/main.cjs",
+  "scripts": {
+    "build": "esbuild src/main.ts --bundle --platform=node --target=node22 --format=cjs --outfile=dist/main.cjs --external:electron --external:bufferutil --external:utf-8-validate && esbuild src/preload.ts --bundle --platform=node --format=cjs --outfile=dist/preload.cjs --external:electron",
+    "typecheck": "tsc --noEmit",
+    "start": "npm run build && electron .",
+    "dist": "npm run build && electron-builder --win --x64 --publish never"
+  },
+  "devDependencies": {
+    "electron": "44.8.0",
+    "electron-builder": "26.17.0",
+    "esbuild": "0.25.12",
+    "typescript": "5.9.3"
+  },
+  "build": {
+    "appId": "io.github.defendeggu.spidirace",
+    "productName": "Spidi Race",
+    "copyright": "© 2026 Adi S. – MIT-Lizenz, Grafiken CC0",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**"
+    ],
+    "extraResources": [
+      {
+        "from": "../client/dist",
+        "to": "client"
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.png",
+      "artifactName": "Spidi-Race-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Spidi Race",
+      "deleteAppDataOnUninstall": false
+    }
+  }
+}

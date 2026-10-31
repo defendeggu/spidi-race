@@ -2,6 +2,7 @@ import { BATTLE_BOT_NAMES, BATTLE_MAX_KARTS, getCar, KART_TRACKS, MAX_CARS, RACE
 import { BattleGame } from '../battleGame';
 import { Game, type LocalPlayerCfg } from '../game';
 import { KEYMAPS, SOLO_KEYMAP } from '../input';
+import { shareHost } from '../desktop';
 import { Net } from '../net';
 import type { App } from './app';
 import { html } from './html';
@@ -27,7 +28,7 @@ export function showOnlineSetup(app: App, error = '') {
   app.setScreen('onlineSetup', html`
     <div class="menu panel">
       <h2>Netzwerkspiel</h2>
-      <p class="hint">Alle Mitspieler öffnen im Browser die Adresse dieses Servers: <b>${location.host}</b>.
+      <p class="hint">Alle Mitspieler öffnen im Browser die Adresse dieses Servers: <b>${shareHost()}</b>.
       Wer zuerst in der Lobby ist, ist <b>Host</b>: Er stellt Strecke und Rennart ein und startet das Rennen, sobald alle da sind.
       Dein Fahrzeug wählst du in der Lobby – passend zur Rennart.</p>
       ${error ? html`<div class="error">${error}</div>` : ''}
@@ -157,7 +158,7 @@ export function showLobby(app: App) {
   app.setScreen('lobby', html`
     <div class="menu panel wide">
       <h2>Lobby <small class="kind">${kindLabel}</small></h2>
-      <p class="hint">Mitspieler öffnen <b>${location.host}</b> und wählen <b>Netzwerkspiel</b>.</p>
+      <p class="hint">Mitspieler öffnen <b>${shareHost()}</b> und wählen <b>Netzwerkspiel</b>.</p>
       <div class="lobby">
         <div>
           <h3>Fahrer (${humans})</h3>

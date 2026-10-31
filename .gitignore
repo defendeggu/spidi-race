@@ -5,3 +5,6 @@ dist
 # permanente Rangliste (Vorlage: data/leaderboard.template.json)
 data/*
 !data/leaderboard.template.json
+
+# Windows-App: Build-Ergebnisse
+desktop/release
