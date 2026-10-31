@@ -9,10 +9,10 @@
   },
   "dependencies": {
     "@spidi/shared": "*",
-    "three": "^0.170.0"
+    "three": "^0.186.1"
   },
   "devDependencies": {
-    "@types/three": "^0.170.0",
+    "@types/three": "^0.186.0",
     "vite": "^6.0.0"
   }
 }
