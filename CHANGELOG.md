@@ -4,11 +4,19 @@ Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog]
 
 ## [Unreleased]
 
+## [1.8.0] – 2026-10-31
+
 ### Hinzugefügt
 - **Roki** (Offroad): höhergelegter roter Geländewagen nach dem Vorbild von rotekiste.ch: weisses Hochdach mit Markise, Schnorchel, Frontbügel mit Zusatzscheinwerfern und Seilwinde, Lampengitter, Riffelblech auf Motorhaube und Kotflügeln, Sandbleche, Heckleiter, drei Heckfenster, schwarze Felgen und schwarzes Reserverad an der Hecktür; fährt wie der Sahara Raider, mit Raketensprung; in Offroad-Rennen und in der Übungsstadt wählbar
 
 ### Geändert
 - Die Micro-Spielzeugautos fahren nicht mehr in der Übungsstadt, sie bleiben auf dem Frühstückstisch
+- Git-Historie bereinigt: Commits und Tags tragen keine persönlichen Mailadressen mehr (nur noch GitHub-Noreply), Mitwirkende mit abgekürztem Nachnamen
+- Vite auf 6.4.5 aktualisiert (behebt eine Lücke im Dev-Server, das ausgelieferte Spiel war nicht betroffen)
+
+### Hinzugefügt (Projekt)
+- `SECURITY.md`: Sicherheitslücken vertraulich über GitHub melden, Hinweis auf den Einsatz im Heimnetz
+- Dependabot: wöchentliche Update-Vorschläge für npm, GitHub Actions und das Docker-Basisimage
 
 ## [1.7.0] – 2026-10-24
 
@@ -405,6 +413,9 @@ Erste stabile Version: Das Spiel ist auf echter Hardware getestet.
 - HUD mit Minimap, synthetischer Sound, 3 Kameras
 - Docker-Image und docker-compose (Port 8090)
 
+[Unreleased]: https://github.com/defendeggu/spidi-race/compare/v1.8.0...HEAD
+[1.8.0]: https://github.com/defendeggu/spidi-race/compare/v1.7.0...v1.8.0
+[1.7.0]: https://github.com/defendeggu/spidi-race/compare/v1.4.1...v1.7.0
 [1.4.1]: https://github.com/defendeggu/spidi-race/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/defendeggu/spidi-race/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/defendeggu/spidi-race/compare/v1.2.0...v1.3.0
