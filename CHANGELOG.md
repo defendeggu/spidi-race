@@ -4,6 +4,11 @@ Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog]
 
 ## [Unreleased]
 
+## [1.9.2] – 2026-10-31
+
+### Behoben
+- Der Windows-Build von 1.9.1 brach ab, weil der Test für die Rennuhr des Servers auf dem Windows-Rechner von GitHub zu knapp war (Windows-Timer feuern nur etwa alle 15,6 ms). Der Test läuft jetzt mit simulierter Zeit: gleich streng (höchstens ein Simulationsschritt Abweichung, nie zu schnell), aber unabhängig vom Betriebssystem. Am Spiel selbst ändert sich nichts; 1.9.2 enthält alle Änderungen von 1.9.1
+
 ## [1.9.1] – 2026-10-31
 
 ### Geändert
@@ -430,7 +435,8 @@ Erste stabile Version: Das Spiel ist auf echter Hardware getestet.
 - HUD mit Minimap, synthetischer Sound, 3 Kameras
 - Docker-Image und docker-compose (Port 8090)
 
-[Unreleased]: https://github.com/defendeggu/spidi-race/compare/v1.9.1...HEAD
+[Unreleased]: https://github.com/defendeggu/spidi-race/compare/v1.9.2...HEAD
+[1.9.2]: https://github.com/defendeggu/spidi-race/compare/v1.9.1...v1.9.2
 [1.9.1]: https://github.com/defendeggu/spidi-race/compare/v1.9.0...v1.9.1
 [1.9.0]: https://github.com/defendeggu/spidi-race/compare/v1.8.0...v1.9.0
 [1.8.0]: https://github.com/defendeggu/spidi-race/compare/v1.7.0...v1.8.0

@@ -2,7 +2,7 @@ import { EventEmitter } from 'node:events';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { WebSocket } from 'ws';
 import { getCar, HARBOR, type BattleSession, type CarState, type ItemWorld, type Race, type ServerMsg, type Slot } from '@spidi/shared';
 import { Leaderboard } from './leaderboard';
@@ -134,16 +134,22 @@ describe('room', () => {
     expect(other.state.x).toBe(ox);
   });
 
-  it('the race clock runs at real time (F-1)', async () => {
-    const { inner, join } = setup();
-    const a = join('Anna');
-    a.msg({ type: 'start' });
-    const c0 = inner.race!.countdown, t0 = performance.now();
-    await new Promise((r) => setTimeout(r, 1500));
-    const real = (performance.now() - t0) / 1000;
-    const sim = c0 - inner.race!.countdown;
-    expect(sim / real).toBeGreaterThan(0.98);
-    expect(sim / real).toBeLessThan(1.02);
+  it('the race clock runs at real time (F-1)', () => {
+    // simulated time: real timers fire only every ~15.6 ms on Windows, which made this test flaky there
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'setTimeout', 'clearTimeout', 'performance'] });
+    try {
+      const { inner, join } = setup();
+      const a = join('Anna');
+      a.msg({ type: 'start' });
+      const c0 = inner.race!.countdown;
+      vi.advanceTimersByTime(1500);
+      // at most one simulation step behind real time, never ahead (the old bug ran 3 % fast: +45 ms here)
+      const sim = c0 - inner.race!.countdown;
+      expect(sim).toBeGreaterThan(1.5 - 1 / 60 - 1e-9);
+      expect(sim).toBeLessThanOrEqual(1.5 + 1e-9);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('drops clients that stop answering pings (F-3)', () => {
