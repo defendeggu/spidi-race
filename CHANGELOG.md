@@ -4,6 +4,14 @@ Alle nennenswerten Änderungen an diesem Projekt. Format nach [Keep a Changelog]
 
 ## [Unreleased]
 
+## [1.9.1] – 2026-10-31
+
+### Geändert
+- Docker-Image, CI und Windows-Build laufen auf **Node 24 LTS** (`.nvmrc`); der Code bleibt mit Node 22 verträglich
+- three.js 0.186, Vite 8 und esbuild 0.28 (im Bild geprüft: keine sichtbaren Unterschiede; Vite baut deutlich schneller), concurrently 10, `upload-artifact` 7 für den Windows-Build
+- CI prüft bei jeder Änderung auch die Windows-App (Typecheck und Bundle)
+- Dependabot schlägt keine Major-Updates von TypeScript, `@types/node` und dem Node-Image mehr vor (bewusste Schritte von Hand); Electron kommt als eigene Pull-Request
+
 ## [1.9.0] – 2026-10-31
 
 ### Hinzugefügt
@@ -422,7 +430,8 @@ Erste stabile Version: Das Spiel ist auf echter Hardware getestet.
 - HUD mit Minimap, synthetischer Sound, 3 Kameras
 - Docker-Image und docker-compose (Port 8090)
 
-[Unreleased]: https://github.com/defendeggu/spidi-race/compare/v1.9.0...HEAD
+[Unreleased]: https://github.com/defendeggu/spidi-race/compare/v1.9.1...HEAD
+[1.9.1]: https://github.com/defendeggu/spidi-race/compare/v1.9.0...v1.9.1
 [1.9.0]: https://github.com/defendeggu/spidi-race/compare/v1.8.0...v1.9.0
 [1.8.0]: https://github.com/defendeggu/spidi-race/compare/v1.7.0...v1.8.0
 [1.7.0]: https://github.com/defendeggu/spidi-race/compare/v1.4.1...v1.7.0

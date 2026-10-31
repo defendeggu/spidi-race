@@ -1,5 +1,10 @@
 # Dependabot: weekly update proposals as pull requests (npm workspaces, Windows app, GitHub Actions, Docker base image).
 # Minor and patch updates are grouped into one PR per ecosystem to keep the noise down.
+#
+# Not proposed (deliberate steps, done by hand together with the code changes they need):
+# - TypeScript major versions (TypeScript 7 is a new compiler and needs its own migration)
+# - @types/node major versions: they follow the Node version we run (LTS, see .nvmrc)
+# - Node major versions of the Docker image: only LTS versions, switched by hand
 version: 2
 updates:
   - package-ecosystem: npm
@@ -7,19 +12,28 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: typescript
+        update-types: [version-update:semver-major]
+      - dependency-name: '@types/node'
+        update-types: [version-update:semver-major]
     groups:
       npm-minor-patch:
         update-types: [minor, patch]
 
-  # Windows-App (Electron, own lockfile)
+  # Windows app (Electron, own lockfile): Electron on its own, the build tools grouped
   - package-ecosystem: npm
     directory: /desktop
     schedule:
       interval: weekly
     open-pull-requests-limit: 3
+    ignore:
+      - dependency-name: typescript
+        update-types: [version-update:semver-major]
     groups:
-      desktop:
+      desktop-tools:
         patterns: ['*']
+        exclude-patterns: [electron]
 
   - package-ecosystem: github-actions
     directory: /
@@ -33,3 +47,6 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    ignore:
+      - dependency-name: node
+        update-types: [version-update:semver-major]

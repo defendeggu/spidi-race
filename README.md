@@ -1,6 +1,6 @@
 # Spidi Race 🏁
 
-![Version](https://img.shields.io/badge/version-1.9.0-ffcc00)
+![Version](https://img.shields.io/badge/version-1.9.1-ffcc00)
 ![Lizenz Code](https://img.shields.io/badge/code-MIT-blue)
 ![Lizenz Assets](https://img.shields.io/badge/assets-CC0-green)
 ![Docker](https://img.shields.io/badge/docker-ready-2496ED)
@@ -264,7 +264,7 @@ Jedes beendete Rennen eines menschlichen Fahrers landet in der permanenten Rangl
 
 ## Entwicklung
 
-Voraussetzung: **Node.js ≥ 22** (`.nvmrc` liegt bei, also reicht `nvm use`)
+Voraussetzung: **Node.js ≥ 22**, empfohlen ist **24 LTS** wie im Docker-Image und in der CI (`.nvmrc` liegt bei, also reicht `nvm use`)
 
 ```bash
 npm install
@@ -342,7 +342,8 @@ scripts/footprints.mjs      misst die Grundflächen der Stadtgebäude (Kollision
 server/   Node + ws: app.ts (HTTP, Statik, API, WebSocket-Upgrade), room.ts (Lobby, Rennstatus, KI), leaderboard.ts
 desktop/  Windows-App (Electron, eigenes package.json, kein Workspace): main.ts startet den Server im App-Prozess
           und öffnet das Spielfenster; preload.ts reicht nur die LAN-Adresse für die Lobby ans Spiel weiter
-.github/  CI: Typecheck, Tests und Build bei jedem Push · Windows-App: Installer bei jedem Versions-Tag · Dependabot
+.github/  CI: Typecheck, Tests und Build bei jedem Push, dazu Typecheck und Bundle der Windows-App ·
+          Windows-App: Installer bei jedem Versions-Tag · Dependabot (ohne Major-Updates von TypeScript, @types/node, Node)
 scripts/  Asset-Download
 ```
 
@@ -352,7 +353,7 @@ scripts/  Asset-Download
 
 ## Versionierung
 
-Das Projekt folgt [Semantic Versioning](https://semver.org/lang/de/). Die aktuelle Version ist **1.9.0**. Änderungen stehen im [CHANGELOG](CHANGELOG.md), Releases sind als Git-Tags `vX.Y.Z` markiert. Die Version steht auch unten rechts im Hauptmenü.
+Das Projekt folgt [Semantic Versioning](https://semver.org/lang/de/). Die aktuelle Version ist **1.9.1**. Änderungen stehen im [CHANGELOG](CHANGELOG.md), Releases sind als Git-Tags `vX.Y.Z` markiert. Die Version steht auch unten rechts im Hauptmenü.
 
 Die Version steht in allen `package.json` (Root, `shared`, `client`, `server`, `desktop`). Jeder gepushte Tag `vX.Y.Z` startet den Workflow **Windows-App**: Er baut auf Windows den Installer und legt das GitHub-Release mit dem passenden CHANGELOG-Abschnitt und `Spidi-Race-Setup-X.Y.Z.exe` an.
 

@@ -1,7 +1,7 @@
 {
   "name": "spidi-race-desktop",
   "productName": "Spidi Race",
-  "version": "1.9.0",
+  "version": "1.9.1",
   "private": true,
   "description": "Spidi Race als Windows-App (Electron): Spiel und Server in einem Fenster",
   "author": "Adi S.",
