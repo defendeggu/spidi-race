@@ -1,5 +1,5 @@
 # --- build stage: compile client (Vite) and bundle server (esbuild)
-FROM node:22-alpine AS build
+FROM node:25-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY shared/package.json shared/
@@ -10,7 +10,7 @@ COPY . .
 RUN npm test && npm run build
 
 # --- runtime stage: plain Node, no node_modules needed (server is a single bundle)
-FROM node:22-alpine
+FROM node:25-alpine
 WORKDIR /app
 ENV NODE_ENV=production PORT=8090 IN_DOCKER=1 DATA_DIR=/app/data
 COPY --from=build /app/server/dist server/dist
